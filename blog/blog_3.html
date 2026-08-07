@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orthogonal Bits · The Mathematics of Non‑Interference</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header" role="banner" aria-label="Site header">
+        <span class="brand">
+            <a href="/" aria-label="Home (top level)">orthogonal_bits <span class="muted">~</span></a>
+        </span>
+        <nav aria-label="Main navigation">
+            <a href="/">home</a>
+            <a href="/manifesto">/manifesto</a>
+            <a href="/services">/services</a>
+            <a href="index.html">/blog</a>
+            <a href="#contact">/contact</a>
+        </nav>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ===== SINGLE BLOG POST ===== -->
+        <article class="single-post" aria-labelledby="post-title">
+            <header class="post-header">
+                <h1 id="post-title">Orthogonal Bits: The Mathematics of Non‑Interference</h1>
+                <div class="post-meta">
+                    <span>📅 2026-08-02</span>
+                    <span>⏱️ 7 min read</span>
+                    <span class="tag">telecommunications</span>
+                    <span class="tag">error correction</span>
+                    <span class="tag">binary</span>
+                    <span class="tag">math</span>
+                </div>
+            </header>
+
+            <div class="post-body">
+                <p>
+                    In the world of digital communication and data processing, the term
+                    <strong>orthogonal bits</strong> describes binary sequences that are
+                    mathematically independent — their inner product (or bitwise correlation)
+                    is exactly zero. This property is not just a neat mathematical curiosity;
+                    it is the foundation of modern multiplexing, error correction, and
+                    signal processing.
+                </p>
+
+                <p>
+                    But beyond the technical definition, the concept of orthogonality
+                    resonates deeply with a core principle of systems design: components
+                    that are <em>independent</em> can coexist without interference, change
+                    without breaking each other, and scale without compounding complexity.
+                    This is why we chose the name <strong>Orthogonal Bits</strong> for
+                    our freelance engineering practice.
+                </p>
+
+                <h2>What Makes a Pair of Bits Orthogonal?</h2>
+                <p>
+                    Given two binary sequences of equal length, say <code>A = [a₁, a₂, …, aₙ]</code>
+                    and <code>B = [b₁, b₂, …, bₙ]</code> where each element is either <code>+1</code>
+                    or <code>-1</code> (mapping binary 0/1 to ±1), the <strong>dot product</strong>
+                    is defined as:
+                </p>
+
+                <pre tabindex="0" role="region" aria-label="Mathematical definition of dot product">
+                    <code>A · B = Σᵢ aᵢ · bᵢ</code>
+                </pre>
+
+                <p>
+                    If <code>A · B = 0</code>, the two sequences are <strong>orthogonal</strong>.
+                    For example:
+                </p>
+
+                <pre tabindex="0" role="region" aria-label="Example of orthogonal binary sequences">
+                    <code>A = [+1, +1, -1, -1]
+                    B = [+1, -1, +1, -1]
+
+                    A · B = (+1)(+1) + (+1)(-1) + (-1)(+1) + (-1)(-1)
+                    = 1 - 1 - 1 + 1 = 0</code>
+                </pre>
+
+                <p>
+                    This zero correlation means that the two sequences carry completely
+                    independent information. When transmitted over the same channel, they
+                    can be separated without interference — a property that is
+                    <span class="accent-code">invaluable</span> in telecommunications.
+                </p>
+
+                <h2>Applications in the Real World</h2>
+
+                <h3>Code‑Division Multiple Access (CDMA)</h3>
+                <p>
+                    In CDMA, each user is assigned a unique orthogonal code. All users
+                    transmit simultaneously on the same frequency band. The receiver
+                    uses the known code to <em>despread</em> the signal, extracting only
+                    the intended user's data while rejecting everyone else's. This is
+                    possible because the orthogonal codes do not correlate with each other.
+                </p>
+
+                <h3>Error Correction and Hamming Codes</h3>
+                <p>
+                    Orthogonality also underpins error‑correcting codes. In a
+                    <strong>Hamming code</strong>, parity‑check equations are designed
+                    to be orthogonal — each check involves a unique combination of data
+                    bits, so that a single‑bit error produces a distinct syndrome that
+                    pinpoints the faulty bit. This allows receivers to correct errors
+                    without retransmission, a critical feature in noisy environments
+                    like satellite communications.
+                </p>
+
+                <h3>Digital Signal Processing</h3>
+                <p>
+                    Orthogonal basis functions (like Walsh‑Hadamard transforms) are used
+                    in compression, filtering, and feature extraction. By projecting a
+                    signal onto an orthogonal basis, we can analyse its components without
+                    crosstalk — each coefficient represents a perfectly independent
+                    contribution.
+                </p>
+
+                <blockquote>
+                    “Orthogonality is the ultimate form of separation of concerns.
+                    Two things that are orthogonal can be changed independently without
+                    affecting each other.”
+                </blockquote>
+
+                <h2>Why This Matters for Software Engineering</h2>
+                <p>
+                    The idea of orthogonality transcends signal processing. In software
+                    architecture, <strong>orthogonal components</strong> are those that
+                    have no overlapping responsibilities — they interact through clean
+                    interfaces but remain internally decoupled. This is the essence of
+                    the <span class="accent-code">UNIX</span> philosophy: do one thing
+                    and do it well, and compose systems from small, independent parts.
+                </p>
+
+                <p>
+                    When we name our practice <strong>Orthogonal Bits</strong>, we are
+                    making a promise: our code is structured so that changes in one area
+                    do not ripple unpredictably through the whole system. We build
+                    interlocking, robust, and scalable software — but the “bits” that
+                    make up the system remain independent, just like those orthogonal
+                    binary sequences.
+                </p>
+
+                <p>
+                    This approach rejects the bloat of monolithic microservice sprawl.
+                    Instead, we design for modularity, simplicity, and resilience —
+                    the same qualities that make orthogonal codes so powerful in
+                    communications.
+                </p>
+
+                <h2>Code Example: Checking Orthogonality in Rust</h2>
+                <p>
+                    Here's a simple Rust function that checks if two binary vectors
+                    (represented as arrays of <code>i8</code> with values ±1) are orthogonal:
+                </p>
+
+                <pre tabindex="0" role="region" aria-label="Rust code example to check orthogonality">
+                    <code>fn are_orthogonal(a: &amp;[i8], b: &amp;[i8]) -> bool {
+                        if a.len() != b.len() { return false; }
+                        let dot: i32 = a.iter()
+                        .zip(b.iter())
+                        .map(|(x, y)| (*x as i32) * (*y as i32))
+                        .sum();
+                        dot == 0
+                    }
+
+                    fn main() {
+                        let a = vec![1, 1, -1, -1];
+                        let b = vec![1, -1, 1, -1];
+                        println!("Orthogonal? {}", are_orthogonal(&amp;a, &amp;b)); // true
+                    }</code>
+                </pre>
+
+                <p>
+                    This trivial check is the basis for much more sophisticated systems.
+                    In practice, we use it to verify that our data streams are properly
+                    orthogonalised — ensuring that our multiplexing and error‑correction
+                    layers work as intended.
+                </p>
+
+                <h2>Conclusion: The Power of Independence</h2>
+                <p>
+                    Orthogonal bits are a beautiful example of how mathematics enables
+                    technology. They allow multiple signals to share the same medium,
+                    errors to be corrected, and information to be transmitted reliably.
+                    But their deeper lesson is about design philosophy: when you keep
+                    things independent, you gain flexibility, robustness, and clarity.
+                </p>
+
+                <p>
+                    That is the spirit of <strong>Orthogonal Bits</strong> — building
+                    software that is not just functional, but fundamentally
+                    <em>non‑interfering</em>. Change one thing without breaking another.
+                    Scale without confusion. Engineer for endurance.
+                </p>
+            </div>
+
+            <footer class="post-footer">
+                <span class="author">
+                    <span class="author-avatar" aria-hidden="true">
+                        <span class="avatar-initials">OB</span>
+                        <span class="avatar-braille">⠕⠃</span>
+                    </span>
+                    <span>by <strong>Orthogonal Bits</strong> · freelance engineer</span>
+                </span>
+                <span>
+                    <a href="index.html" aria-label="Back to all blog posts">← all posts</a>
+                </span>
+            </footer>
+        </article>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" role="contentinfo" id="contact">
+        <!-- CONTACT (terminal cursor) on the LEFT -->
+        <a class="terminal-cursor" href="mailto:contact@orthogonalbits.dev?subject=Blog%20inquiry" aria-label="Contact us via email for blog inquiries">
+            $ contact --blog-inquiry <span class="cursor-block" aria-hidden="true"></span>
+        </a>
+
+        <!-- SIGNATURE (avatar + text) on the RIGHT -->
+        <div class="footer-left">
+            <span class="author-avatar" aria-hidden="true">
+                <span class="avatar-initials">OB</span>
+                <span class="avatar-braille">⠕⠃</span>
+            </span>
+            <span class="signature-text">
+                by <strong>Orthogonal Bits</strong> · freelance engineer
+            </span>
+        </div>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

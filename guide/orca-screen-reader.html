@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The BVI Rust Programmer's Manual – Chapter 01</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        a:hover, a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 2px;
+            padding: 0 0.2rem;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #f0f0f0;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 { font-size: 2.2rem; }
+        h2 { font-size: 1.8rem; border-bottom: 1px solid #444; }
+        h3 { font-size: 1.4rem; }
+        h4 { font-size: 1.2rem; }
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2rem 0;
+        }
+        code, .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            color: #d4d4d4;
+        }
+        /* ----- KEYBOARD-ACCESSIBLE <pre> ----- */
+        pre {
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 400px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.1s;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #eee;
+            color: #111;
+        }
+        body.light-mode pre {
+            background: #eee;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .theme-toggle:hover {
+            background: #777;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* Skip link */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* Additional styles */
+        ul, ol {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.3rem;
+        }
+        blockquote {
+            border-left: 4px solid #555;
+            padding-left: 1rem;
+            margin-left: 0;
+            font-style: italic;
+        }
+        body.light-mode blockquote {
+            border-left-color: #aaa;
+        }
+        .keycap {
+            background: #2a2a2a;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+            white-space: nowrap;
+            border: 1px solid #555;
+        }
+        body.light-mode .keycap {
+            background: #eaeaea;
+            border-color: #aaa;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            border: 1px solid #444;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        th {
+            background: #2a2a2a;
+        }
+        body.light-mode th {
+            background: #eaeaea;
+        }
+        body.light-mode th, body.light-mode td {
+            border-color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+         <span class="brand">orthogonal_bits <span class="muted">~</span><a href="./index.html" aria-label="Home (top level)"> /resources</a>
+        </span>
+        <h1>The BVI Rust Programmer's Manual</h1>
+        <p><strong>Debian 13.6, MATE, Orca 48.1</strong></p>
+        <h2>Chapter 01: Orca on This System — Three Cursors, AT‑SPI2, and X11 Specifics</h2>
+    </header>
+
+    <hr>
+
+    <!-- Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">In this chapter</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#native-terminal-shortcuts">Native MATE Terminal Shortcuts</a></li>
+            <li><a href="#orca-flat-review">Orca Laptop Mode Flat Review</a></li>
+            <li><a href="#command-line-editing">Command Line Editing Shortcuts</a></li>
+            <li><a href="#orca-is-three">1. Orca Is Not One Navigation System — It Is Three</a></li>
+            <li><a href="#layer-caret">2. Layer 1 — The System Caret</a></li>
+            <li><a href="#layer-focus">3. Layer 2 — The Accessibility Focus</a></li>
+            <li><a href="#layer-flat-review">4. Layer 3 — The Flat Review Cursor</a></li>
+            <li><a href="#how-often">5. How Often You Should Actually Use Each Layer</a></li>
+            <li><a href="#at-spi2">6. AT‑SPI2 2.56.2: What It Actually Does For You</a></li>
+            <li><a href="#x11-specifics">7. X11 and lightdm‑xsession Specifics</a></li>
+            <li><a href="#workflow-example">8. Real Workflow Example — Editing Rust Code in Helix</a></li>
+            <li><a href="#master-rules">The Master Orca Rules</a></li>
+            <li><a href="#debugging-mantra">The Orca Debugging Mantra</a></li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <main id="main-content" role="main">
+        <!-- ============================================================ -->
+        <!-- Native MATE Terminal Shortcuts -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="native-terminal-shortcuts">
+            <h2 id="native-terminal-shortcuts">🐧 Native MATE Terminal Shortcuts (Moves the Window)</h2>
+            <p>These commands scroll the terminal view itself. Orca will automatically read the new lines as they scroll into view.</p>
+            <ul>
+                <li><span class="keycap">Shift + PageUp</span>: Scroll one page up.</li>
+                <li><span class="keycap">Shift + PageDown</span>: Scroll one page down.</li>
+                <li><span class="keycap">Shift + Home</span>: Scroll to the absolute top of the history.</li>
+                <li><span class="keycap">Shift + End</span>: Scroll back to the active prompt.</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- Orca Laptop Mode Flat Review -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="orca-flat-review">
+            <h2 id="orca-flat-review">🦉 Orca Laptop Mode Flat Review (Reads Visible Text)</h2>
+            <p>These commands let you review text currently visible on the screen without moving your terminal cursor. Remember that <span class="keycap">CapsLock</span> is your Orca modifier key.</p>
+            <ul>
+                <li><span class="keycap">CapsLock + Ctrl + U</span>: Jump to the very top line.</li>
+                <li><span class="keycap">CapsLock + U</span>: Move up one line.</li>
+                <li><span class="keycap">CapsLock + I</span>: Read current line.</li>
+                <li><span class="keycap">CapsLock + O</span>: Move down one line.</li>
+                <li><span class="keycap">CapsLock + J</span>: Move to the previous word.</li>
+                <li><span class="keycap">CapsLock + K</span>: Read current word.</li>
+                <li><span class="keycap">CapsLock + L</span>: Move to the next word.</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- Command Line Editing Shortcuts -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="command-line-editing">
+            <h2 id="command-line-editing">⌨️ Command Line Editing Shortcuts</h2>
+            <p>Use these standard Linux shortcuts to navigate the line you are currently typing:</p>
+            <ul>
+                <li><span class="keycap">Ctrl + A</span>: Move cursor to the start of the line.</li>
+                <li><span class="keycap">Ctrl + E</span>: Move cursor to the end of the line.</li>
+                <li><span class="keycap">Alt + B</span>: Move cursor back one word.</li>
+                <li><span class="keycap">Alt + F</span>: Move cursor forward one word.</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 1. Orca Is Not One Navigation System -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="orca-is-three">
+            <h2 id="orca-is-three">1. Orca Is Not One Navigation System — It Is Three</h2>
+            <p>The single biggest source of confusion for anyone new to Orca is treating it as a single unified cursor. It isn't. Orca layers three separate cursors on top of each other, each controlling something different, each with its own keys, and each suited to a different kind of task.</p>
+            <p>The three layers are:</p>
+            <ol>
+                <li><strong>The System Caret</strong> — the real, blinking text‑insertion point used by the focused application.</li>
+                <li><strong>The Accessibility Focus</strong> — which UI element (button, menu item, list entry, checkbox) currently has keyboard focus.</li>
+                <li><strong>The Flat Review Cursor</strong> — a virtual, Orca‑only cursor for reading the screen when nothing else works.</li>
+            </ol>
+            <p>Once you can name which of the three you are currently using, Orca stops feeling random. Almost every "why is it reading the wrong thing" moment traces back to a mismatch between these layers.</p>
+            <blockquote>
+                <p><strong>The rule to memorize:</strong> <em>"Orca is three cursors layered together: Caret writes, Focus clicks, Review looks."</em></p>
+            </blockquote>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 2. Layer 1 — The System Caret -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="layer-caret">
+            <h2 id="layer-caret">2. Layer 1 — The System Caret</h2>
+            <p>This is the actual text cursor inside whatever application has focus: a terminal, Helix, a Firefox text field.</p>
+            <p><strong>What it controls:</strong></p>
+            <ul>
+                <li>The text insertion point</li>
+                <li>Where typing actually lands</li>
+                <li>The real editing position in the document or buffer</li>
+            </ul>
+            <p><strong>How to move it:</strong></p>
+            <ul>
+                <li>Arrow keys</li>
+                <li><span class="keycap">Ctrl + Arrow</span> keys (by word)</li>
+                <li><span class="keycap">Home</span> / <span class="keycap">End</span></li>
+                <li><span class="keycap">Page Up</span> / <span class="keycap">Page Down</span></li>
+            </ul>
+            <p>Orca automatically speaks whatever the caret passes over — characters, words, or full lines, depending on your verbosity settings. This is the mode you live in while writing Rust code in Helix or typing commands in the terminal.</p>
+            <p><strong>Think of this as:</strong> <em>Editing mode.</em></p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 3. Layer 2 — The Accessibility Focus -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="layer-focus">
+            <h2 id="layer-focus">3. Layer 2 — The Accessibility Focus</h2>
+            <p>This is the layer that AT‑SPI2 exposes directly. When you <span class="keycap">Tab</span> between a button, a menu, and a list in a GTK application — which is how essentially every MATE application, including Caja and MATE Terminal's dialogs, is built — you are moving the Accessibility Focus, not the caret.</p>
+            <p><strong>What it controls:</strong></p>
+            <ul>
+                <li>Which interface element is currently active</li>
+                <li>What responds when you press <span class="keycap">Enter</span> or <span class="keycap">Space</span></li>
+            </ul>
+            <p><strong>How to move it:</strong></p>
+            <ul>
+                <li><span class="keycap">Tab</span> / <span class="keycap">Shift + Tab</span></li>
+                <li>Arrow keys inside menus and lists</li>
+            </ul>
+            <p><strong>Key Orca commands on this layer:</strong></p>
+            <ul>
+                <li><span class="keycap">CapsLock + Enter</span> — Speak the currently focused object</li>
+                <li><span class="keycap">CapsLock + /</span> — Speak the window title</li>
+                <li><span class="keycap">CapsLock + End</span> — Read the status bar</li>
+            </ul>
+            <p><strong>Think of this as:</strong> <em>Interface navigation mode.</em></p>
+            <p>This is the layer you're in constantly while using Caja's file pane, Firefox's toolbar, or any settings dialog.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 4. Layer 3 — The Flat Review Cursor -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="layer-flat-review">
+            <h2 id="layer-flat-review">4. Layer 3 — The Flat Review Cursor</h2>
+            <p>Flat Review is Orca's own virtual cursor. It does not exist inside the application at all — it is a screen‑reader‑side representation of everything currently rendered, and it lets you inspect content that has no real caret and no accessible focus, such as unusual terminal output or a broken or partially‑accessible UI element.</p>
+            <p><strong>What it controls:</strong></p>
+            <ul>
+                <li>A temporary, read‑only exploration point</li>
+                <li>Nothing in the application itself moves when you use it</li>
+            </ul>
+            <p><strong>Toggle Flat Review:</strong> <span class="keycap">CapsLock + P</span></p>
+            <p><strong>Move within Flat Review, using the 3×3 grid:</strong></p>
+            <ul>
+                <li><span class="keycap">CapsLock + U</span> — Previous line</li>
+                <li><span class="keycap">CapsLock + I</span> — Current line</li>
+                <li><span class="keycap">CapsLock + O</span> — Next line</li>
+                <li><span class="keycap">CapsLock + J</span> — Previous word</li>
+                <li><span class="keycap">CapsLock + K</span> — Current word</li>
+                <li><span class="keycap">CapsLock + L</span> — Next word</li>
+                <li><span class="keycap">CapsLock + M</span> — Previous character</li>
+                <li><span class="keycap">CapsLock + Comma</span> — Current character</li>
+                <li><span class="keycap">CapsLock + Period</span> — Next character</li>
+                <li><span class="keycap">CapsLock + Ctrl + U</span> — Jump to the very top line.</li>
+            </ul>
+            <p><strong>Think of this as:</strong> <em>Screen inspection mode.</em></p>
+
+            <section aria-labelledby="why-flat-review-trips">
+                <h3 id="why-flat-review-trips">Why Flat Review Trips People Up</h3>
+                <p>Flat Review does <strong>not</strong> move the real caret. If you use Flat Review to examine a line of Rust code and then start typing, your keystrokes land wherever the real caret was left — not at the position you were just reading. This is the classic Orca trap: you're looking at one place but writing into another.</p>
+                <p><strong>The fix — syncing the cursors:</strong></p>
+                <ol>
+                    <li>Use Flat Review to find the position you want to edit.</li>
+                    <li>Press <span class="keycap">CapsLock + 7</span> — this performs a "left click" at the review position, moving the real caret there.</li>
+                    <li>Turn Flat Review off with <span class="keycap">CapsLock + P</span>.</li>
+                    <li>Continue editing normally.</li>
+                </ol>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 5. How Often You Should Actually Use Each Layer -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="how-often">
+            <h2 id="how-often">5. How Often You Should Actually Use Each Layer</h2>
+            <p>Experienced Orca users follow a rough proportion:</p>
+            <ul>
+                <li><strong>~90%</strong> of the time — Layer 1, System Caret. Arrow keys, <span class="keycap">Ctrl+Arrow</span>, <span class="keycap">Home</span>, <span class="keycap">End</span>. This is normal Rust editing and terminal work.</li>
+                <li><strong>~9%</strong> of the time — Layer 2, Accessibility Focus. <span class="keycap">Tab</span>, <span class="keycap">Shift+Tab</span>, arrow keys in menus — normal UI navigation in Caja, Firefox, and dialogs.</li>
+                <li><strong>~1%</strong> of the time — Layer 3, Flat Review. Only when the UI is broken, Orca has lost context, or you're inspecting unusual terminal output.</li>
+            </ul>
+            <p>If you find yourself reaching for Flat Review constantly during ordinary coding, that's a signal something upstream is misconfigured — not a signal that Flat Review is the normal tool for the job.</p>
+            <blockquote>
+                <p><strong>Memory trick:</strong><br>
+                Caret = Write<br>
+                Focus = Click<br>
+                Review = Look</p>
+            </blockquote>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 6. AT‑SPI2 2.56.2 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="at-spi2">
+            <h2 id="at-spi2">6. AT‑SPI2 2.56.2: What It Actually Does For You</h2>
+            <p>AT‑SPI2 (Assistive Technology Service Provider Interface) is the layer sitting between GTK/MATE applications and Orca. It is not something you interact with directly, but understanding its role explains a lot of Orca's behavior on this system:</p>
+            <ul>
+                <li>AT‑SPI2 exposes UI structure, not raw pixels. This is why Layer 2 (Accessibility Focus) works reliably in GTK apps like Caja and MATE Terminal's menus — the application is actively reporting its widget tree, roles, and states.</li>
+                <li>Terminal content is different. The text inside a terminal emulator's scrollback isn't a widget tree — it's a stream of characters. This is part of why terminal output sometimes needs Flat Review rather than normal focus navigation: there may be no discrete "accessible object" for a given line of shell output, only text content.</li>
+                <li>If an application does not implement AT‑SPI2 properly (poorly‑behaved Java apps, some Electron apps, certain custom‑rendered UI), Orca has nothing to read from Layer 1 or Layer 2, and Flat Review becomes the only option. On a stock MATE + GTK system like this one, this is rare, but worth recognizing immediately if it happens: if <span class="keycap">Tab</span> and arrow keys produce silence in an application, stop trying Layer 2 and switch straight to Flat Review.</li>
+            </ul>
+            <p><strong>Practical takeaway:</strong> on this system, GTK‑based MATE applications (Caja, MATE Terminal's own dialogs, MATE Control Center) are well‑supported through Layer 2. Raw terminal content and Helix's TUI rendering rely more on Layer 1 (caret) and occasionally Layer 3 (Flat Review), which is covered in depth in the Helix chapter.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 7. X11 and lightdm‑xsession -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="x11-specifics">
+            <h2 id="x11-specifics">7. X11 and lightdm‑xsession Specifics</h2>
+            <p>This system runs an X11 session launched through lightdm‑xsession, not Wayland. A few practical consequences follow from that:</p>
+            <ul>
+                <li><strong>Global key grabs work predictably.</strong> Orca and Marco can both register global keyboard shortcuts (<span class="keycap">CapsLock</span> combinations, <span class="keycap">Alt+Tab</span>, <span class="keycap">Ctrl+Alt+arrows</span>) without the sandboxing restrictions that Wayland compositors sometimes impose on accessibility tools. You should not expect any of the shortcuts in this manual to silently fail to register because of session‑type restrictions.</li>
+                <li><strong>Flat Review's screen‑reading model matches X11's rendering model.</strong> Flat Review works well on X11 because Orca can reliably inspect the text and accessibility information exposed by applications. This generally provides a consistent review experience across traditional X11 applications. This is fast and consistent on X11; behavior can differ under Wayland with different compositors, which is one reason this manual does not attempt to also cover a Wayland session.</li>
+                <li><strong>lightdm is only relevant at login.</strong> Once you are inside the MATE session, lightdm is out of the picture. If Orca ever needs restarting, note that restarting Orca does <strong>not</strong> require restarting the X session or logging out — Orca can be relaunched independently.</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- 8. Real Workflow Example -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="workflow-example">
+            <h2 id="workflow-example">8. Real Workflow Example — Editing Rust Code in Helix</h2>
+            <p>This example ties all three layers together in a realistic sequence:</p>
+            <p><strong>Normal work (Layer 1):</strong></p>
+            <p>Use arrow keys and <span class="keycap">Ctrl+Arrow</span> keys to move through code. Orca reads what you move over, character by character or word by word depending on verbosity.</p>
+            <p><strong>Something strange appears (garbled output, a rendering glitch, unclear TUI state):</strong></p>
+            <ol>
+                <li>Turn on Flat Review: <span class="keycap">CapsLock + P</span>.</li>
+                <li>Explore with <span class="keycap">CapsLock + I</span> (current line) and <span class="keycap">CapsLock + K</span> (current word) to figure out what's actually on screen.</li>
+                <li>Once you've found the spot you need, sync the caret: <span class="keycap">CapsLock + 7</span>.</li>
+                <li>Turn Flat Review back off: <span class="keycap">CapsLock + P</span>.</li>
+                <li>Continue editing normally in Layer 1.</li>
+            </ol>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- The Master Orca Rules -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="master-rules">
+            <h2 id="master-rules">The Master Orca Rules</h2>
+            <ol>
+                <li>Think in three independent positions: <strong>System Caret</strong>, <strong>Accessibility Focus</strong>, and <strong>Flat Review</strong>.</li>
+                <li>The <strong>caret</strong> is for reading and editing text; arrow keys usually move it.</li>
+                <li><strong>Focus</strong> identifies the active UI control and is commonly moved with <span class="keycap">Tab</span>, <span class="keycap">Shift+Tab</span>, menus, and other navigation keys.</li>
+                <li><strong>Flat Review</strong> is Orca's virtual reading cursor for inspecting on‑screen content without affecting the application.</li>
+                <li>Moving Flat Review does <strong>not</strong> move the real caret.</li>
+                <li>You can use <span class="keycap">CapsLock + 7</span> to try to move the system caret to the current Flat Review position when the application supports it.</li>
+                <li>As a programmer, you'll typically spend most of your time using the <strong>caret</strong>, use <strong>focus</strong> for dialogs and interface navigation, and use <strong>Flat Review</strong> as an occasional inspection or recovery tool.</li>
+                <li>On Linux, <strong>AT‑SPI2</strong> exposes the accessibility tree for applications, allowing Orca to navigate widgets, controls, and document structure.</li>
+                <li>Terminal applications and TUIs such as Helix expose far less widget structure than native GUI applications, so Orca relies mainly on caret navigation, with Flat Review available when needed.</li>
+                <li>On an X11 session (such as your Debian 13.6 MATE setup using <code>lightdm‑xsession</code>), Orca's global keyboard shortcuts are generally reliable, though accessibility ultimately depends on what each application exposes.</li>
+            </ol>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- The Orca Debugging Mantra -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="debugging-mantra">
+            <h2 id="debugging-mantra">The Orca Debugging Mantra</h2>
+            <p>When Orca does something unexpected, don't think <em>"Why is Orca broken?"</em> Think:</p>
+            <ul>
+                <li>Which layer am I using right now?</li>
+                <li>Am I in Caret mode or Review mode?</li>
+                <li>Is this a UI element (Focus) or raw text content (Caret/Review)?</li>
+                <li>Is my cursor synced to where I think it is?</li>
+                <li>Do I need to move the caret or the focus?</li>
+                <li>Is Flat Review turned on when I don't actually need it?</li>
+                <li>Is this an AT‑SPI2 gap — is the application actually exposing accessibility info at all?</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- End of chapter note -->
+        <!-- ============================================================ -->
+        <hr>
+        <p><em>End of Chapter 01. Say when you're ready for Chapter 02 — Marco Window and Workspace Management.</em></p>
+
+    </main>
+
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orthogonal Bits · Interlocking. Robust. Scalable. Software.</title>
+    <style>
+        /* ----- RESET & BASE (terminal-inspired) ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0D0F12;
+            color: #E2E8F0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            line-height: 1.65;
+            padding: 2rem 1.5rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        a {
+            color: #FF6B4A;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+        a:hover,
+        a:focus {
+            color: #ff8a6a;
+            background-color: rgba(255, 107, 74, 0.08);
+            border-radius: 2px;
+            padding: 0 0.2rem;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #E2E8F0;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+        h1 {
+            font-size: 2.8rem;
+            letter-spacing: -0.02em;
+        }
+        h2 {
+            font-size: 2rem;
+            border-bottom: 1px solid #64748B;
+            padding-bottom: 0.3rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 1.8rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .muted {
+            color: #64748B;
+        }
+        .accent {
+            color: #FF6B4A;
+        }
+
+        code,
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            background: rgba(100, 116, 139, 0.15);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            color: #E2E8F0;
+            font-size: 0.92em;
+        }
+        .accent-code {
+            color: #FF6B4A;
+            background: rgba(255, 107, 74, 0.12);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        pre {
+            background: #0a0c0f;
+            padding: 1.2rem 1.4rem;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 420px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.1s;
+            border: 1px solid #1e2227;
+            margin: 1.2rem 0;
+        }
+        pre:focus-visible {
+            outline-color: #FF6B4A;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #E2E8F0;
+            font-size: 0.92rem;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid #64748B;
+            margin: 2rem 0;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        .theme-toggle-wrap {
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #1e2227;
+            color: #E2E8F0;
+            border: 1px solid #64748B;
+            border-radius: 30px;
+            padding: 0.4rem 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, border-color 0.2s;
+            font-family: inherit;
+        }
+        .theme-toggle:hover {
+            background: #2a2f36;
+            border-color: #FF6B4A;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* ----- HEADER (root prompt) ----- */
+        .site-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 0.5rem 0 1rem 0;
+            border-bottom: 1px solid #1e2227;
+            margin-bottom: 1.5rem;
+        }
+        .site-header .brand {
+            color: #64748B;
+            font-size: 1rem;
+            letter-spacing: 0.02em;
+        }
+        .site-header .brand .accent {
+            color: #FF6B4A;
+        }
+        .site-header nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            font-size: 0.92rem;
+        }
+        .site-header nav a {
+            color: #64748B;
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .site-header nav a:hover,
+        .site-header nav a:focus {
+            color: #E2E8F0;
+            border-bottom-color: #FF6B4A;
+            background: transparent;
+            padding: 0;
+        }
+        .site-header nav a[aria-current="page"] {
+            color: #E2E8F0;
+            border-bottom-color: #FF6B4A;
+        }
+
+        /* ----- HERO ----- */
+        .hero {
+            padding: 2rem 0 1.5rem 0;
+        }
+        .hero h1 {
+            font-size: 3.6rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 0.2rem;
+        }
+        .hero .tagline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.6rem 1rem;
+            padding-top: 0.6rem;
+            border-bottom: 1px solid #64748B;
+            padding-bottom: 0.8rem;
+            font-size: 1.1rem;
+            color: #E2E8F0;
+        }
+        .hero .tagline .muted {
+            color: #64748B;
+        }
+       /* Braille Avatar: "OB" stacked using grid */
+        .braille-avatar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 0.1rem;
+            font-size: 2rem;
+            line-height: 1;
+            background: var(--bg-elevated);
+            padding: 0.3rem;
+            border: 1px solid var(--border);
+            letter-spacing: 0;
+            user-select: none;
+            width: 3.2rem;
+            height: 3.2rem;
+            place-items: center;
+            color: var(--accent);
+        }
+        .braille-avatar span {
+            display: block;
+            text-align: center;
+            line-height: 1;
+            font-size: 1.2rem;
+        }
+        /* ----- MANIFESTO CONTAINER ----- */
+        .manifesto-container {
+            background: #0a0c0f;
+            border: 1px solid #1e2227;
+            border-radius: 6px;
+            padding: 1.6rem 1.8rem;
+            margin: 1.8rem 0;
+        }
+        .manifesto-container .manifesto-title {
+            color: #FF6B4A;
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            margin-bottom: 0.8rem;
+        }
+        .manifesto-container .callout {
+            border-left: 3px solid #FF6B4A;
+            padding-left: 1.2rem;
+            margin: 1rem 0 1.2rem 0;
+            font-size: 1.1rem;
+            font-weight: 400;
+            color: #E2E8F0;
+        }
+        .manifesto-container .callout .accent {
+            color: #FF6B4A;
+        }
+        .manifesto-container .inline-tag {
+            display: inline-block;
+            background: rgba(255, 107, 74, 0.10);
+            color: #FF6B4A;
+            padding: 0 0.5rem;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        /* ----- CRAB PHILOSOPHY ----- */
+        .crab-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.8rem 2.5rem;
+            align-items: center;
+            margin: 2rem 0 1.8rem 0;
+            padding: 1.2rem 0;
+            border-top: 1px solid #1e2227;
+            border-bottom: 1px solid #1e2227;
+        }
+        .crab-ascii {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: #FF6B4A;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            white-space: pre;
+            background: #0a0c0f;
+            padding: 0.6rem 1rem;
+            border-radius: 4px;
+            border: 1px solid #1e2227;
+            flex-shrink: 0;
+        }
+        .crab-text {
+            flex: 1;
+            min-width: 200px;
+        }
+        .crab-text h3 {
+            margin-top: 0;
+        }
+
+        /* ----- SERVICES (three pillars) ----- */
+        .services-intro {
+            margin: 1rem 0 1.8rem 0;
+            padding: 0.8rem 1.2rem;
+            border-left: 3px solid #FF6B4A;
+            background: rgba(255, 107, 74, 0.04);
+            border-radius: 0 4px 4px 0;
+            font-size: 1rem;
+        }
+        .services-intro .accent {
+            color: #FF6B4A;
+            font-weight: 500;
+        }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin: 1.2rem 0 0.8rem 0;
+        }
+        .service-card {
+            background: #0a0c0f;
+            border: 1px solid #1e2227;
+            border-radius: 6px;
+            padding: 1.4rem 1.5rem;
+            transition: border-color 0.2s, background 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .service-card:hover {
+            border-color: #FF6B4A;
+            background: #0e1115;
+        }
+        .service-card .pillar-icon {
+            font-size: 1.6rem;
+            color: #FF6B4A;
+            margin-bottom: 0.4rem;
+        }
+        .service-card .service-name {
+            color: #FF6B4A;
+            font-weight: 600;
+            font-size: 1.1rem;
+            letter-spacing: 0.01em;
+        }
+        .service-card .service-desc {
+            font-size: 0.92rem;
+            color: #94a3b8;
+            margin-top: 0.3rem;
+            flex: 1;
+        }
+        .service-card .service-details {
+            margin-top: 0.8rem;
+            font-size: 0.85rem;
+            color: #64748B;
+            border-top: 1px solid #1e2227;
+            padding-top: 0.8rem;
+            list-style: none;
+            padding-left: 0;
+        }
+        .service-card .service-details li {
+            padding: 0.15rem 0 0.15rem 1.2rem;
+            position: relative;
+        }
+        .service-card .service-details li::before {
+            content: "›";
+            position: absolute;
+            left: 0;
+            color: #FF6B4A;
+        }
+        .service-card .trust-line {
+            margin-top: 0.8rem;
+            font-size: 0.82rem;
+            color: #E2E8F0;
+            border-top: 1px solid #1e2227;
+            padding-top: 0.7rem;
+        }
+        .service-card .trust-line .accent {
+            color: #FF6B4A;
+        }
+
+        /* ----- PRAGMATISM NOTE ----- */
+        .pragmatism-note {
+            margin: 1.8rem 0 0.5rem 0;
+            padding: 0.8rem 1.2rem;
+            background: #0a0c0f;
+            border: 1px solid #1e2227;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.4rem 1rem;
+        }
+        .pragmatism-note .label {
+            color: #FF6B4A;
+            font-weight: 500;
+        }
+        .pragmatism-note .muted {
+            color: #64748B;
+        }
+
+        /* ----- AVATAR WITH BRAILLE OVERLAY (compact circle) footer signature ----- */
+        .author-avatar {
+            display: grid;
+            place-items: center;
+            width: 2rem;
+            height: 1.8rem;
+            border-radius: 50%;
+            background: #1e2227;
+            border: 1px solid #64748B;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .author-avatar .avatar-initials {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #FF6B4A;
+            grid-column: 1;
+            grid-row: 1;
+            z-index: 1;
+            letter-spacing: 0.5px;
+        }
+
+        .author-avatar .avatar-braille {
+            font-size: 0.75rem;
+            line-height: 1;
+            color: #cbd5e1;
+            grid-column: 1;
+            grid-row: 1;
+            z-index: 2;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+            text-shadow: 0 0 4px #0D0F12, 0 0 4px #0D0F12;
+            opacity: 0.9;
+        }
+
+        /* ----- FOOTER ----- */
+        .site-footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #1e2227;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .site-footer .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .site-footer .footer-left .signature-text {
+            font-size: 0.85rem;
+            color: #64748B;
+        }
+        .site-footer .footer-left .signature-text strong {
+            color: #E2E8F0;
+        }
+        .terminal-cursor {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: #64748B;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: color 0.2s;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+        .terminal-cursor:hover,
+        .terminal-cursor:focus {
+            color: #E2E8F0;
+            border-color: #FF6B4A;
+            background: rgba(255, 107, 74, 0.06);
+            text-decoration: none;
+            padding: 0.2rem 0.4rem;
+        }
+        .terminal-cursor .cursor-block {
+            display: inline-block;
+            width: 0.6em;
+            height: 1.1em;
+            background: #FF6B4A;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+        }
+        @keyframes blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+        .footer-meta {
+            color: #64748B;
+            font-size: 0.8rem;
+        }
+
+        /* ===== LIGHT MODE OVERRIDES ===== */
+        body.light-mode {
+            background-color: #f4f6f8;
+            color: #1a1e24;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #1a1e24;
+        }
+        body.light-mode .muted {
+            color: #5e6a7a;
+        }
+        body.light-mode .accent {
+            color: #c5533a;
+        }
+        body.light-mode a {
+            color: #c5533a;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #a84530;
+            background-color: rgba(197, 83, 58, 0.08);
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: rgba(0, 0, 0, 0.07);
+            color: #1a1e24;
+        }
+        body.light-mode .accent-code {
+            color: #c5533a;
+            background: rgba(197, 83, 58, 0.10);
+        }
+        body.light-mode pre {
+            background: #eaeef2;
+            border-color: #cbd5e1;
+        }
+        body.light-mode pre code {
+            color: #1a1e24;
+        }
+        body.light-mode .site-header {
+            border-bottom-color: #cbd5e1;
+        }
+        body.light-mode .site-header nav a {
+            color: #5e6a7a;
+        }
+        body.light-mode .site-header nav a:hover,
+        body.light-mode .site-header nav a:focus {
+            color: #1a1e24;
+            border-bottom-color: #c5533a;
+        }
+        body.light-mode .site-header nav a[aria-current="page"] {
+            color: #1a1e24;
+            border-bottom-color: #c5533a;
+        }
+        body.light-mode .theme-toggle {
+            background: #dce1e8;
+            color: #1a1e24;
+            border-color: #94a3b8;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #cbd5e1;
+            border-color: #c5533a;
+        }
+        body.light-mode .hero .tagline {
+            color: #1a1e24;
+            border-bottom-color: #94a3b8;
+        }
+        body.light-mode .hero .tagline .muted {
+            color: #5e6a7a;
+        }
+        body.light-mode .manifesto-container {
+            background: #eaeef2;
+            border-color: #cbd5e1;
+        }
+        body.light-mode .manifesto-container .callout {
+            border-left-color: #c5533a;
+        }
+        body.light-mode .manifesto-container .manifesto-title {
+            color: #c5533a;
+        }
+        body.light-mode .manifesto-container .inline-tag {
+            background: rgba(197, 83, 58, 0.10);
+            color: #c5533a;
+        }
+        body.light-mode .crab-section {
+            border-color: #cbd5e1;
+        }
+        body.light-mode .crab-ascii {
+            background: #eaeef2;
+            border-color: #cbd5e1;
+            color: #c5533a;
+        }
+        body.light-mode .service-card {
+            background: #eaeef2;
+            border-color: #cbd5e1;
+        }
+        body.light-mode .service-card:hover {
+            border-color: #c5533a;
+            background: #e2e6ec;
+        }
+        body.light-mode .service-card .service-name {
+            color: #c5533a;
+        }
+        body.light-mode .service-card .service-desc {
+            color: #5e6a7a;
+        }
+        body.light-mode .service-card .service-details {
+            border-top-color: #cbd5e1;
+            color: #5e6a7a;
+        }
+        body.light-mode .service-card .service-details li::before {
+            color: #c5533a;
+        }
+        body.light-mode .service-card .trust-line {
+            border-top-color: #cbd5e1;
+        }
+        body.light-mode .services-intro {
+            background: rgba(197, 83, 58, 0.06);
+            border-left-color: #c5533a;
+        }
+        body.light-mode .pragmatism-note {
+            background: #eaeef2;
+            border-color: #cbd5e1;
+            color: #5e6a7a;
+        }
+        body.light-mode .pragmatism-note .label {
+            color: #c5533a;
+        }
+        body.light-mode .author-avatar {
+            background: #dce1e8;
+            border-color: #94a3b8;
+        }
+        body.light-mode .author-avatar .avatar-initials {
+            color: #c5533a;
+        }
+        body.light-mode .author-avatar .avatar-braille {
+            color: #475569;
+            text-shadow: 0 0 4px #f4f6f8, 0 0 4px #f4f6f8;
+        }
+        body.light-mode .site-footer {
+            border-top-color: #cbd5e1;
+        }
+        body.light-mode .site-footer .footer-left .signature-text {
+            color: #5e6a7a;
+        }
+        body.light-mode .site-footer .footer-left .signature-text strong {
+            color: #1a1e24;
+        }
+        body.light-mode .terminal-cursor {
+            color: #5e6a7a;
+        }
+        body.light-mode .terminal-cursor:hover,
+        body.light-mode .terminal-cursor:focus {
+            color: #1a1e24;
+            border-color: #c5533a;
+        }
+        body.light-mode .terminal-cursor .cursor-block {
+            background: #c5533a;
+        }
+        body.light-mode .footer-meta {
+            color: #5e6a7a;
+        }
+        body.light-mode hr {
+            border-top-color: #cbd5e1;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #c5533a;
+        }
+
+        /* ----- RESPONSIVE ----- */
+        @media (max-width: 640px) {
+            body {
+                padding: 1.2rem 1rem;
+            }
+            .site-header {
+                flex-direction: column;
+                gap: 0.6rem;
+                align-items: stretch;
+            }
+            .site-header nav {
+                gap: 0.8rem 1.2rem;
+            }
+            .hero h1 {
+                font-size: 2.4rem;
+            }
+            .hero .tagline {
+                font-size: 1rem;
+            }
+            .manifesto-container {
+                padding: 1.2rem 1rem;
+            }
+            .crab-ascii {
+                font-size: 0.75rem;
+                padding: 0.4rem 0.7rem;
+            }
+            .crab-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+            .site-footer {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            .site-footer .footer-left {
+                width: 100%;
+                justify-content: flex-start;
+            }
+            .pragmatism-note {
+                flex-direction: column;
+                gap: 0.2rem;
+            }
+        }
+        @media (max-width: 420px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            .theme-toggle-wrap {
+                text-align: left;
+            }
+                        .braille-avatar {
+                width: 2.8rem;
+                height: 2.8rem;
+            }
+            .braille-avatar span {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header" role="banner" aria-label="Site header">
+                <div class="braille-avatar" role="img" aria-label="Braille letters O and B stacked vertically">
+                    <span>O</span><span>B</span>
+                    <span>⠕</span><span>⠃</span>
+                </div>
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+        </span>
+        <nav aria-label="Main navigation">
+            <a href="#manifesto" aria-current="page">/manifesto</a>
+            <a href="#services">/services</a>
+            <a href="blog/index.html">/blog</a>
+            <a href="guide/index.html">/resources</a>
+            <a href="#contact">/contact</a>
+        </nav>
+    </header>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero" aria-labelledby="hero-heading">
+        <h1 id="hero-heading">Orthogonal Bits</h1>
+        <div class="tagline">
+            <span>Interlocking.</span>
+            <span>Robust.</span>
+            <span>Scalable.</span>
+            <span class="muted">Software.</span>
+        </div>
+    </section>
+
+    <hr />
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ===== MANIFESTO ===== -->
+        <section aria-labelledby="manifesto-heading" id="manifesto">
+            <h2 id="manifesto-heading">// THE ORTHOGONAL MANIFESTO</h2>
+
+            <div class="manifesto-container">
+                <div class="manifesto-title">
+                    <span class="accent">⟡</span> core tenet
+                </div>
+
+                <div class="callout">
+                    “We don’t build software to be managed; <span class="accent">we build software to withstand</span>.”
+                </div>
+
+                <p style="margin-bottom:0.8rem;">
+                    The modern software landscape is broken — choked by <span class="inline-tag">cloud bloat</span>
+                    and over‑engineered microservices. Teams build fragile, sprawling architectures
+                    just to justify massive bills and endless maintenance cycles.
+                </p>
+
+                <p style="margin-bottom:0.8rem;">
+                    <strong>Orthogonal Bits</strong> rejects the bloat. We don’t aim for mere
+                    <em>“maintainability”</em> — a passive word for software on life support.
+                    We engineer for <strong>resilience</strong>.
+                </p>
+
+                <p>
+                    We write code in <span class="accent-code">Rust</span> because we take
+                    <strong>absolute responsibility</strong> for the products we build.
+                    No garbage collection pauses, no hidden memory leaks, no cutting corners.
+                </p>
+
+                <pre tabindex="0" role="region" aria-label="Code sample: orthogonal composition in Rust">
+                    <code>fn main() {
+                        let system = Orthogonal::new()
+                        .interlock()
+                        .harden()
+                        .scale();
+
+                        system.deploy(Strategy::BestFit);
+                        println!("✓ {}", system.status());
+                    }</code>
+                </pre>
+
+                <p style="margin-top:0.8rem; color:#64748B;">
+                    <span class="muted">//</span> No hidden state. No implicit side effects.
+                    <span class="muted">//</span> Just composable, verifiable truth.
+                </p>
+            </div>
+        </section>
+
+        <!-- ===== CRAB PHILOSOPHY ===== -->
+        <section class="crab-section" aria-labelledby="crab-heading">
+            <div class="crab-ascii" role="img" aria-label="ASCII art of a crab">
+                \/ (..) \/
+                (======)   // MOLT. ADAPT. RESIST.
+                ____/  \____
+            </div>
+            <div class="crab-text">
+                <h3 id="crab-heading">The Crab Philosophy</h3>
+                <p>
+                    Like the crustacean that shares its name with our language,
+                    our software operates with <strong>self‑contained power</strong> —
+                    tightly packed, fiercely efficient, owning its environment.
+                </p>
+                <p style="margin-top:0.6rem;">
+                    When our software outgrows its shell, it doesn’t break under its own weight.
+                    It <strong>molts</strong> safely, migrating cleanly to a new shell or
+                    growing new skin to handle the new scale.
+                </p>
+                <p class="muted" style="font-size:0.92rem; margin-top:0.6rem;">
+                    <span class="accent">⧫</span> Growth without fracture.
+                </p>
+            </div>
+        </section>
+
+        <!-- ===== PRAGMATISM: TORVALDS OVER TANENBAUM ===== -->
+        <section aria-labelledby="pragmatism-heading">
+            <h2 id="pragmatism-heading">// PRAGMATISM OVER PURE THEORY</h2>
+
+            <div class="pragmatism-note" style="margin-bottom:1.2rem;">
+                <span class="label">⏺ philosophy</span>
+                <span>
+                    We subscribe to a modern <span class="accent">UNIX</span> philosophy
+                    fueled by <strong>Linus Torvalds’ pragmatism</strong>,
+                    not academic futures.
+                </span>
+            </div>
+
+            <div class="manifesto-container" style="margin-top:0;">
+                <p style="margin-bottom:0.8rem;">
+                    <strong>Ideal theory must yield to practical execution.</strong>
+                    Beautiful whiteboard diagrams mean nothing if they fall apart under
+                    real‑world traffic or cost thousands in unneeded infrastructure.
+                </p>
+                <p>
+                    We build interlocking, robust, scalable software that compiles fast,
+                    runs hot, and stays up. If you want an army of consultants to manage
+                    your technical debt, look elsewhere.
+                </p>
+                <div class="callout" style="margin-top:1rem; margin-bottom:0;">
+                    <span class="accent">⟡</span> If you want software engineered to
+                    <strong>endure</strong>, let’s build.
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SERVICES (three pillars) ===== -->
+        <section aria-labelledby="services-heading" id="services">
+            <h2 id="services-heading">// SERVICES</h2>
+
+            <div class="services-intro">
+                <span class="accent">⏺</span> <strong>Ideal theory must yield to practical execution.</strong>
+                <span class="muted" style="display:inline-block; margin-left:0.6rem;">
+                    — Three pillars, one pragmatic approach.
+                </span>
+            </div>
+
+            <div class="services-grid">
+                <!-- INTERLOCKING -->
+                <div class="service-card">
+                    <div class="pillar-icon">◈</div>
+                    <div class="service-name">Interlocking</div>
+                    <div class="service-desc">
+                        Systems integration &amp; composition — building modular,
+                        UNIX‑inspired architectures where components fit like gears.
+                    </div>
+                    <ul class="service-details">
+                        <li>Clean interface design (APIs, IPC, pipelines)</li>
+                        <li>Dependency inversion &amp; decoupling</li>
+                        <li>Atomic, replaceable building blocks</li>
+                    </ul>
+                    <div class="trust-line">
+                        <span class="accent">⧫</span> Compose, don’t couple.
+                    </div>
+                </div>
+
+                <!-- ROBUST -->
+                <div class="service-card">
+                    <div class="pillar-icon">◈</div>
+                    <div class="service-name">Robust</div>
+                    <div class="service-desc">
+                        Resilience engineering — hardening systems against
+                        failure, with fault‑tolerance baked in from day one.
+                    </div>
+                    <ul class="service-details">
+                        <li>Error handling &amp; recovery strategies</li>
+                        <li>Observability &amp; structured logging</li>
+                        <li>Chaos testing &amp; failure injection</li>
+                    </ul>
+                    <div class="trust-line">
+                        <span class="accent">⧫</span> Withstand, don’t just recover.
+                    </div>
+                </div>
+
+                <!-- SCALABLE -->
+                <div class="service-card">
+                    <div class="pillar-icon">◈</div>
+                    <div class="service-name">Scalable</div>
+                    <div class="service-desc">
+                        Performance &amp; growth architecture — designing
+                        systems that scale horizontally without breaking.
+                    </div>
+                    <ul class="service-details">
+                        <li>Capacity planning &amp; load management</li>
+                        <li>Stateless &amp; sharded designs</li>
+                        <li>Caching, queuing &amp; backpressure</li>
+                    </ul>
+                    <div class="trust-line">
+                        <span class="accent">⧫</span> Grow, don’t collapse.
+                    </div>
+                </div>
+            </div>
+
+            <!-- LOCAL-FIRST, CLOUD-SECOND NOTE -->
+            <div class="pragmatism-note" style="margin-top:1.5rem;">
+                <span class="label">⏺ deployment philosophy</span>
+                <span><span class="accent">local‑first</span> <span class="muted">|</span> <span class="accent">cloud‑second</span></span>
+                <span class="muted">— pragmatic, non‑dogmatic. Choose the best fit for the workload, not the trend.</span>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" role="contentinfo" id="contact">
+        <!-- CONTACT (terminal cursor) on the LEFT -->
+        <a class="terminal-cursor" href="mailto:contact@orthogonalbits.dev?subject=Project%20Inquiry" aria-label="Contact us via email for project inquiries">
+            $ contact --project-inquiry <span class="cursor-block" aria-hidden="true"></span>
+        </a>
+
+        <!-- SIGNATURE (avatar + text) on the RIGHT -->
+        <div class="footer-left">
+            <span class="author-avatar" aria-hidden="true">
+                <span class="avatar-initials">OB</span>
+                <span class="avatar-braille">⠕⠃</span>
+            </span>
+            <span class="signature-text">
+                by <strong>Orthogonal Bits</strong> · freelance engineer
+            </span>
+        </div>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

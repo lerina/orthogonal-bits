@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orthogonal Bits · Resources</title>
+    <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header" role="banner" aria-label="Site header">
+        <span class="brand">
+            <a href="../index.html" aria-label="Home (top level)">orthogonal_bits <span class="muted">~</span></a>
+        </span>
+        <nav aria-label="Main navigation">
+            <!--
+            <a href="../index.html" target="_blank">orthogonal bits</a>
+            <a href="/manifesto">/manifesto</a>
+            <a href="/services">/services</a>
+            <a href="blog.html">/blog</a>
+            -->
+            <a href="index.html" aria-current="page">/resources</a>
+            <a href="../index.html#contact">/contact</a>
+        </nav>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ===== RESOURCES ===== -->
+        <section aria-labelledby="resources-heading">
+            <h1 id="resources-heading">// RESOURCES</h1>
+
+            <div class="blog-intro">
+                <span class="accent">⏺</span> A small collection of guides, handbooks, and experiments.
+                <span class="muted">— Practical knowledge for curious minds.</span>
+            </div>
+
+            <h2 id="resource-list">Featured resources</h2>
+            <div class="post-list" role="list" aria-labelledby="resource-list">
+
+                <!-- RESOURCE 1 -->
+                <article class="post-preview" role="listitem">
+                    <a href="orca-screen-reader.html" class="post-title">Terminal Shortcuts and Orca in Laptop mode</a>
+                    <p class="post-excerpt">
+                        A practical guide to using the Orca screen reader efficiently
+                        in a laptop environment, with terminal shortcuts that boost
+                        productivity for visually impaired users.
+                    </p>
+                    <a href="orca-screen-reader.html" class="read-more" aria-label="Read more about Terminal Shortcuts and Orca">Read more ›</a>
+                </article>
+
+                <!-- RESOURCE 2 -->
+                <article class="post-preview" role="listitem">
+                    <a href="handbook.html" class="post-title">Rust Handbook — Accessible Edition</a>
+                    <p class="post-excerpt">
+                        An accessible version of the Rust programming language handbook,
+                        written with clarity and inclusivity in mind. Ideal for beginners
+                        and those who prefer plain language.
+                    </p>
+                    <a href="handbook.html" class="read-more" aria-label="Read more about the Rust Handbook">Read more ›</a>
+                </article>
+
+                <!-- RESOURCE 3 -->
+                <article class="post-preview" role="listitem">
+                    <a href="code-comprehension.html" class="post-title">A Guide to Understanding Codebases with Topcoat</a>
+                    <p class="post-excerpt">
+                        Learn how to approach large, unfamiliar codebases using the
+                        Topcoat methodology – a structured way to map, document, and
+                        navigate complex projects.
+                    </p>
+                    <a href="code-comprehension.html" class="read-more" aria-label="Read more about understanding codebases">Read more ›</a>
+                </article>
+
+                <!-- RESOURCE 4 -->
+                <article class="post-preview" role="listitem">
+                    <a href="tiny-experiments.html" class="post-title">How to Live a Curious, Creative Life Through Scientific Self-Discovery</a>
+                    <p class="post-excerpt">
+                        A manifesto for small, daily experiments – treating your own
+                        life as a laboratory to foster creativity, resilience, and
+                        continuous learning.
+                    </p>
+                    <a href="tiny-experiments.html" class="read-more" aria-label="Read more about Tiny Experiments">Read more ›</a>
+                </article>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" role="contentinfo" id="contact">
+        <a class="terminal-cursor" href="mailto:contact@orthogonalbits.dev?subject=Resources%20inquiry" aria-label="Contact us via email">
+            $ contact --resources <span class="cursor-block" aria-hidden="true"></span>
+        </a>
+        <div class="footer-left">
+            <span class="author-avatar" aria-hidden="true">
+                <span class="avatar-initials">OB</span>
+                <span class="avatar-braille">⠕⠃</span>
+            </span>
+            <span class="signature-text">
+                by <strong>Orthogonal Bits</strong> · freelance engineer
+            </span>
+        </div>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

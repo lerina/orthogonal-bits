@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orthogonal Bits · Trains, Tracks, and Pipes</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header" role="banner" aria-label="Site header">
+        <span class="brand">
+            <a href="/" aria-label="Home (top level)">orthogonal_bits <span class="muted">~</span></a>
+        </span>
+        <nav aria-label="Main navigation">
+            <a href="/">home</a>
+            <a href="/manifesto">/manifesto</a>
+            <a href="/services">/services</a>
+            <a href="index.html">/blog</a>
+            <a href="#contact">/contact</a>
+        </nav>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ===== SINGLE BLOG POST ===== -->
+        <article class="single-post" aria-labelledby="post-title">
+            <header class="post-header">
+                <h1 id="post-title">Trains, Tracks, and Pipes: A Pragmatic Alternative to Microservice Bloat</h1>
+                <div class="post-meta">
+                    <span>📅 2026-08-03</span>
+                    <span>⏱️ 8 min read</span>
+                    <span class="tag">unix</span>
+                    <span class="tag">architecture</span>
+                    <span class="tag">local-first</span>
+                    <span class="tag">pipes</span>
+                </div>
+            </header>
+
+            <div class="post-body">
+                <p>
+                    I have a confession to make. When I picture a well‑designed system,
+                    I don't see a wall of neatly stacked Lego bricks. I see a
+                    <strong>model railway</strong> — locomotives pulling carriages along
+                    fixed tracks, switching points, signals, and the gentle clatter of
+                    wheels on rails. And when I think of how software should be composed,
+                    I reach for the <span class="accent-code">UNIX pipe</span> before
+                    I reach for a service mesh.
+                </p>
+
+                <p>
+                    This is not a statement against microservices or the cloud. It is
+                    simply a preference — one rooted in experience, pragmatism, and a
+                    deep respect for the <strong>UNIX philosophy</strong>: write programs
+                    that do one thing and do it well, and connect them with simple,
+                    text‑based streams.
+                </p>
+
+                <h2>The Railway Metaphor</h2>
+                <p>
+                    A model railway is a system of <strong>independent rolling stock</strong>
+                    that runs on <strong>fixed, predictable tracks</strong>. Each carriage
+                    has a specific purpose: a coal wagon, a passenger coach, a brake van.
+                    They couple together mechanically, but they are self‑contained units.
+                    The track provides a clear, unidirectional path — data flows in one
+                    direction, step by step, from input to output.
+                </p>
+
+                <p>
+                    This is the opposite of the "Lego" microservices metaphor, where
+                    components snap together arbitrarily and often require complex
+                    orchestration, service discovery, and distributed state management.
+                    In a railway, the path is determined by the <strong>points (switches)</strong>
+                    and <strong>signals</strong> — which in software are the
+                    <em>pipes</em> and <em>filters</em> that connect small, focused
+                    programs.
+                </p>
+
+                <p>
+                    I find this model more <strong>tangible</strong> and less abstract.
+                    When you chain four Unix programs together with pipes, you can see
+                    the data move from left to right, transformed at each stage. There
+                    is no hidden state, no service registry, no load balancer — just
+                    a deterministic flow of bytes.
+                </p>
+
+                <blockquote>
+                    “The UNIX pipe is the original microservice — but without the
+                    overhead, the network calls, or the YAML.”
+                </blockquote>
+
+                <h2>Why Trains Over Lego</h2>
+                <p>
+                    Lego bricks are modular, sure, but they also encourage <strong>tight coupling</strong>
+                    if you're not careful. A single brick can be replaced, but you often
+                    have to disassemble the surrounding structure. In a railway, each
+                    carriage is independent; you can swap a coach without lifting the
+                    entire train off the tracks. The <strong>track itself</strong> is
+                    the contract — the standardised interface (stdin/stdout) that everyone
+                    agrees upon.
+                </p>
+
+                <p>
+                    This is the essence of the <span class="accent-code">UNIX</span> way:
+                    <em>“Write programs that do one thing and do it well. Write programs
+                    to work together. Write programs to handle text streams, because that
+                    is a universal interface.”</em>
+                </p>
+
+                <p>
+                    In contrast, the microservices hype has led to sprawling architectures
+                    with dozens of moving parts, each requiring its own deployment, monitoring,
+                    and scaling strategy. Many of these systems could have been built with
+                    a handful of well‑crafted command‑line tools, a few cron jobs, and a
+                    well‑designed database — <strong>local‑first</strong>, running on a
+                    single machine or a small cluster, without the need for Kubernetes
+                    or a dozen cloud services.
+                </p>
+
+                <h2>Local‑First, Cloud‑Second (But Not Dogmatic)</h2>
+                <p>
+                    I have a strong preference for <strong>local‑first</strong> software.
+                    I like the idea that the data lives on my machine, under my control,
+                    and that the applications I use are self‑contained and portable.
+                    This is not a religious stance — I use cloud services where they
+                    genuinely add value (e.g., global CDN, email delivery, or ephemeral
+                    compute). But I am deeply skeptical of the “cloud‑first, always”
+                    mentality that leads to vendor lock‑in, unpredictable costs, and
+                    architectural over‑engineering.
+                </p>
+
+                <p>
+                    I believe in <strong>data ownership</strong>. If a service goes away,
+                    I want my data to remain accessible in a standard format (SQLite,
+                    CSV, JSON) that I can read with a text editor or a simple script.
+                    This is the railway approach: the cargo (data) is independent of
+                    the locomotive (the application). You can swap the engine, and the
+                    cargo still gets where it needs to go.
+                </p>
+
+                <p>
+                    That said, I am <strong>not dogmatic</strong>. If a problem genuinely
+                    requires a distributed system, I will use one. If the cloud offers
+                    a clear operational advantage (e.g., auto‑scaling for burst traffic),
+                    I will adopt it. But I start with the simplest possible solution,
+                    often a single‑process program that reads from stdin, writes to stdout,
+                    and is composed with other such programs. Only when that proves
+                    insufficient do I reach for something heavier.
+                </p>
+
+                <h2>Example: A Data Pipeline in Rust</h2>
+                <p>
+                    To illustrate the railway‑pipe approach, here is a tiny Rust program
+                    that reads lines of text, filters out comments, transforms each line
+                    to uppercase, and writes the result. It is designed to be used in a
+                    pipeline:
+                </p>
+
+                <pre tabindex="0" role="region" aria-label="Rust pipeline example">
+                    <code>use std::io::{self, BufRead};
+
+                    fn main() {
+                        let stdin = io::stdin();
+                        let handle = stdin.lock();
+                        for line in handle.lines() {
+                            let line = line.unwrap();
+                            if line.starts_with('#') { continue; }
+                            println!("{}", line.to_uppercase());
+                        }
+                    }</code>
+                </pre>
+
+                <p>
+                    You can chain this with <code>grep</code>, <code>sort</code>, or
+                    any other Unix tool. The data flows in a single direction, like a
+                    train on a track. There is no network, no serialisation, no
+                    service discovery — just bytes.
+                </p>
+
+                <p>
+                    This approach scales surprisingly well. Many data processing tasks
+                    that are often pushed to Spark or cloud‑based ETL pipelines can be
+                    handled locally with a few well‑chosen Unix tools or small Rust
+                    programs, running on a single machine with local files. It is
+                    <strong>fast, reliable, and cheap</strong>.
+                </p>
+
+                <h2>Conclusion: The Pragmatic Path</h2>
+                <p>
+                    I am not here to tell you to abandon microservices or the cloud.
+                    I am simply sharing a preference: I find the railway model and the
+                    UNIX pipe to be more <strong>intuitive, composable, and cost‑effective</strong>
+                    for a wide range of problems. They encourage minimalism, clarity,
+                    and data ownership — values that I hold dear.
+                </p>
+
+                <p>
+                    If you are tired of YAML‑driven complexity and runaway cloud bills,
+                    consider reaching for a simple pipeline. Build a small, focused
+                    program. Run it locally. Pipe its output to the next tool. You might
+                    be surprised how much you can achieve with a few carriages and a
+                    solid track.
+                </p>
+
+                <p class="muted" style="font-style:italic;">
+                    <span class="accent">⟡</span> This is not a manifesto — it is a
+                    perspective. And like any good engineer, I am happy to be proven
+                    wrong by the data.
+                </p>
+            </div>
+
+            <footer class="post-footer">
+                <span class="author">
+                    <span class="author-avatar" aria-hidden="true">
+                        <span class="avatar-initials">OB</span>
+                        <span class="avatar-braille">⠕⠃</span>
+                    </span>
+                    <span>by <strong>Orthogonal Bits</strong> · freelance engineer</span>
+                </span>
+                <span>
+                    <a href="index.html" aria-label="Back to all blog posts">← all posts</a>
+                </span>
+            </footer>
+        </article>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" role="contentinfo" id="contact">
+        <!-- CONTACT (terminal cursor) on the LEFT -->
+        <a class="terminal-cursor" href="mailto:contact@orthogonalbits.dev?subject=Blog%20inquiry" aria-label="Contact us via email for blog inquiries">
+            $ contact --blog-inquiry <span class="cursor-block" aria-hidden="true"></span>
+        </a>
+
+        <!-- SIGNATURE (avatar + text) on the RIGHT -->
+        <div class="footer-left">
+            <span class="author-avatar" aria-hidden="true">
+                <span class="avatar-initials">OB</span>
+                <span class="avatar-braille">⠕⠃</span>
+            </span>
+            <span class="signature-text">
+                by <strong>Orthogonal Bits</strong> · freelance engineer
+            </span>
+        </div>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

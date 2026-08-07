@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orthogonal Bits · Interlocking Systems</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header" role="banner" aria-label="Site header">
+        <span class="brand">
+            <a href="/" aria-label="Home (top level)">orthogonal_bits <span class="muted">~</span></a>
+        </span>
+        <nav aria-label="Main navigation">
+            <a href="/">home</a>
+            <a href="/manifesto">/manifesto</a>
+            <a href="/services">/services</a>
+            <a href="index.html">/blog</a>
+            <a href="#contact">/contact</a>
+        </nav>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ===== SINGLE BLOG POST ===== -->
+        <article class="single-post" aria-labelledby="post-title">
+            <header class="post-header">
+                <h1 id="post-title">Interlocking systems: composability without the complexity</h1>
+                <div class="post-meta">
+                    <span>📅 2026-08-05</span>
+                    <span>⏱️ 8 min read</span>
+                    <span class="tag">architecture</span>
+                    <span class="tag">composition</span>
+                    <span class="tag">interfaces</span>
+                    <span class="tag">pragmatism</span>
+                </div>
+            </header>
+
+            <div class="post-body">
+                <p>
+                    There is a quiet elegance in a well‑machined gear train. Each gear
+                    has a precise number of teeth, a carefully calculated pitch, and a
+                    smooth surface. When two gears mesh, they transmit rotational force
+                    without slipping or binding. They are independent, yet they work
+                    together flawlessly — each turning at its own speed, transmitting
+                    power in a predictable way.
+                </p>
+
+                <p>
+                    That is the vision of <strong>interlocking systems</strong> in
+                    software. Components that fit together like gears — clean interfaces,
+                    minimal coupling, and the art of practical composition. This is not
+                    about gluing together a thousand microservices with a thousand
+                    network calls. It is about building small, focused pieces that
+                    interact through simple, well‑defined contracts.
+                </p>
+
+                <blockquote>
+                    “Interlocking is not integration — it is the absence of friction
+                    between independent parts.”
+                </blockquote>
+
+                <h2>The Gear Metaphor</h2>
+                <p>
+                    A gear has a single responsibility: to transmit rotational motion.
+                    It does not care about the colour of the shaft, the material of the
+                    housing, or the direction of the overall machine. It only cares
+                    about the shape of its teeth and the spacing between them — its
+                    <strong>interface</strong>. As long as the interface is consistent,
+                    you can replace any gear with another of the same pitch, and the
+                    system will continue to function.
+                </p>
+                <p>
+                    In software, this translates to components that expose a clear API
+                    (functions, modules, services) and communicate through well‑defined
+                    data structures. The internal implementation is opaque — it can be
+                    rewritten, optimised, or even rewritten in another language, as long
+                    as the public interface remains unchanged.
+                </p>
+
+                <h2>Principles of Interlocking Design</h2>
+                <h4>1. Clean Interfaces</h4>
+                <p>
+                    The interface is the <em>contract</em>. It should be simple,
+                    intention‑revealing, and stable. Avoid exposing internal state.
+                    Prefer immutable data structures. Use plain data types (JSON,
+                    protobuf, or simple structs) rather than complex objects with
+                    hidden behaviour.
+                </p>
+                <p>
+                    A good interface is like a gear tooth: it is designed to mesh
+                    effortlessly with its counterpart. It is not overly specialised,
+                    nor is it vague. It is precise enough to be useful, but general
+                    enough to be reused.
+                </p>
+
+                <h4>2. Minimal Coupling</h4>
+                <p>
+                    Coupling is the measure of how much one component knows about the
+                    internals of another. In a tightly coupled system, changing one
+                    part forces changes in many others — a cascade of brittleness.
+                    Interlocking systems aim for <strong>loose coupling</strong>:
+                    components know only the interface of the things they interact with,
+                    not their implementation details.
+                </p>
+                <p>
+                    This is achieved by programming to interfaces, using dependency
+                    injection, and avoiding global state. The UNIX pipe is the ultimate
+                    example: each program reads bytes from stdin and writes bytes to
+                    stdout. It has no idea where the bytes come from or where they are
+                    going — but they fit together perfectly.
+                </p>
+
+                <h4>3. Practical Composition</h4>
+                <p>
+                    Composition is the process of combining simple components to build
+                    more complex behaviour. This is the heart of interlocking systems.
+                    Instead of creating monolithic blocks, we build small, focused
+                    pieces and chain them together.
+                </p>
+                <p>
+                    In UNIX, this is done with pipes. In object‑oriented languages, it
+                    is done with decorators, middleware, or functional composition. In
+                    distributed systems, it can be done with message queues or
+                    lightweight RPC — but the principle remains the same: each component
+                    does one thing, and the flow of data connects them.
+                </p>
+
+                <h2>A Practical Example: A Validator Pipeline</h2>
+                <p>
+                    Suppose you need to validate incoming JSON data: check the schema,
+                    verify that certain fields are within bounds, and perhaps enrich
+                    the data with additional fields. A monolithic validator would do
+                    all of this in one function, making it hard to test, extend, or
+                    reuse.
+                </p>
+                <p>
+                    An interlocking approach splits the job into separate pieces:
+                </p>
+                <ul>
+                    <li><strong>SchemaValidator</strong> – checks that the JSON matches a JSON Schema.</li>
+                    <li><strong>RangeChecker</strong> – ensures numeric fields are within allowed ranges.</li>
+                    <li><strong>Enricher</strong> – adds derived fields (e.g., computed timestamps).</li>
+                </ul>
+                <p>
+                    Each component is a function that takes a JSON value and returns
+                    either an error or the (potentially modified) value. They can be
+                    chained together:
+                </p>
+                <pre tabindex="0" role="region" aria-label="Rust pipeline example for validation">
+                    <code>type Result&lt;T&gt; = std::result::Result&lt;T, String&gt;;
+
+                    fn validate_schema(data: serde_json::Value) -> Result&lt;serde_json::Value&gt; { ... }
+                    fn check_ranges(data: serde_json::Value) -> Result&lt;serde_json::Value&gt; { ... }
+                    fn enrich(data: serde_json::Value) -> Result&lt;serde_json::Value&gt; { ... }
+
+                    fn process(data: serde_json::Value) -> Result&lt;serde_json::Value&gt; {
+                        validate_schema(data)
+                            .and_then(check_ranges)
+                            .and_then(enrich)
+                    }</code>
+                </pre>
+                <p>
+                    This pipeline is easy to test (each function is isolated), easy to
+                    extend (add a new filter), and easy to understand (the flow is
+                    linear and explicit). It is interlocking in the best sense — each
+                    part fits neatly into the next, but they remain independent.
+                </p>
+
+                <h2>Interlocking vs. Microservices</h2>
+                <p>
+                    The term “microservices” has become synonymous with complexity.
+                    Distributed systems bring network latency, partial failures,
+                    eventual consistency, and operational overhead. They are not
+                    inherently bad — they are sometimes necessary — but they are
+                    <strong>not the only way</strong> to achieve modularity.
+                </p>
+                <p>
+                    Interlocking systems, on the other hand, aim for <strong>local
+                    composition</strong>. The components run in the same process,
+                    share the same memory, and communicate through function calls.
+                    This is orders of magnitude simpler than network calls, and it
+                    still gives you many of the benefits of modularity: testability,
+                    reusability, and separation of concerns.
+                </p>
+                <p>
+                    When you do need to scale beyond a single process, you can package
+                    your interlocking components as services — but you will have already
+                    proven that they work together cleanly. The interface is stable,
+                    the logic is encapsulated, and the composition is explicit.
+                </p>
+
+                <h2>Why This Matters Now</h2>
+                <p>
+                    We are living through a wave of complexity fatigue. Teams are
+                    drowning in YAML, terraform, and Kubernetes manifests. The promise
+                    of microservices — “scale independently” — has been overshadowed by
+                    the reality of “debugging distributed failures.”
+                </p>
+                <p>
+                    Interlocking design offers a way out. It is not a rejection of
+                    modern tools; it is a <strong>mindset</strong> that prioritises
+                    clarity, simplicity, and maintainability. It asks: <em>“Can I
+                    build this as a pipeline of small, focused functions before I
+                    spin up a Kafka cluster?”</em> Often, the answer is yes.
+                </p>
+                <blockquote>
+                    “Interlocking is the art of making complexity invisible — not by
+                    hiding it, but by structuring it so that each piece is simple on
+                    its own.”
+                </blockquote>
+
+                <h2>Practical Advice for Building Interlocking Systems</h2>
+                <ul>
+                    <li><strong>Start with a pipeline.</strong> Before you design a service, design a series of transformations. Chain them together with simple data types.</li>
+                    <li><strong>Define interfaces early.</strong> The interface is the contract. Make it explicit, versioned, and stable.</li>
+                    <li><strong>Prefer pure functions.</strong> Functions that have no side effects are easier to reason about and test.</li>
+                    <li><strong>Avoid shared mutable state.</strong> If you must have state, encapsulate it and access it through a well‑defined API.</li>
+                    <li><strong>Keep it local.</strong> Run everything in a single process unless you have a proven reason not to. You can always split later.</li>
+                    <li><strong>Write tools, not services.</strong> Think in terms of small utilities that do one thing and do it well.</li>
+                </ul>
+                <p>
+                    These are not new ideas — they are the foundation of the UNIX
+                    philosophy. But they are being rediscovered by a generation of
+                    engineers who are tired of fighting infrastructure.
+                </p>
+
+                <h2>Conclusion: The Power of Gears</h2>
+                <p>
+                    Interlocking systems are a <strong>practical</strong> approach to
+                    building software that lasts. They embrace complexity by breaking
+                    it into manageable, independent pieces that mesh together cleanly.
+                    They favour composition over inheritance, interfaces over
+                    implementations, and simplicity over ceremony.
+                </p>
+                <p>
+                    The next time you are about to spin up a new service, ask yourself:
+                    can I build this as a gear in a larger machine? Can I make it fit
+                    with the existing gears without adding a new axle? If the answer
+                    is yes, you are on the right track.
+                </p>
+                <p class="muted" style="font-style:italic;">
+                    <span class="accent">⟡</span> Interlocking is not a silver bullet —
+                    it is a choice. And it is a choice that pays dividends in
+                    maintainability, clarity, and joy.
+                </p>
+            </div>
+
+            <footer class="post-footer">
+                <span class="author">
+                    <span class="author-avatar" aria-hidden="true">
+                        <span class="avatar-initials">OB</span>
+                        <span class="avatar-braille">⠕⠃</span>
+                    </span>
+                    <span>by <strong>Orthogonal Bits</strong> · freelance engineer</span>
+                </span>
+                <span>
+                    <a href="index.html" aria-label="Back to all blog posts">← all posts</a>
+                </span>
+            </footer>
+        </article>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" role="contentinfo" id="contact">
+        <!-- CONTACT (terminal cursor) on the LEFT -->
+        <a class="terminal-cursor" href="mailto:contact@orthogonalbits.dev?subject=Blog%20inquiry" aria-label="Contact us via email for blog inquiries">
+            $ contact --blog-inquiry <span class="cursor-block" aria-hidden="true"></span>
+        </a>
+
+        <!-- SIGNATURE (avatar + text) on the RIGHT -->
+        <div class="footer-left">
+            <span class="author-avatar" aria-hidden="true">
+                <span class="avatar-initials">OB</span>
+                <span class="avatar-braille">⠕⠃</span>
+            </span>
+            <span class="signature-text">
+                by <strong>Orthogonal Bits</strong> · freelance engineer
+            </span>
+        </div>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

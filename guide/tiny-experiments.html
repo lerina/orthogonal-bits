@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiny Experiments — inspired by Anne-Laure Le Cunff</title>
+
+    <style>
+        /* ----- RESET & BASE ----- */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            line-height: 1.7;
+            padding: 1.5rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #1e1e1e;
+        }
+
+        a {
+            color: #7aa9ff;
+            text-decoration: underline;
+            text-underline-offset: 0.15em;
+            transition: color 0.2s;
+        }
+        a:hover,
+        a:focus-visible {
+            color: #a8c8ff;
+        }
+        body.light-mode a {
+            color: #1a5bbf;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus-visible {
+            color: #0d3d8a;
+        }
+
+        /* ----- SKIP LINK ----- */
+        .skip-link {
+            position: fixed;
+            top: -100%;
+            left: 1rem;
+            padding: 0.75rem 1.25rem;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            border-radius: 0.5rem;
+            z-index: 10000;
+            font-weight: 600;
+            transition: top 0.2s;
+            text-decoration: none;
+            border: 2px solid #7aa9ff;
+        }
+        .skip-link:focus {
+            top: 1rem;
+        }
+        body.light-mode .skip-link {
+            background: #ffffff;
+            color: #1e1e1e;
+            border-color: #1a5bbf;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1.5rem;
+        }
+
+        .theme-toggle {
+            background: #2a2a2a;
+            color: #e0e0e0;
+            border: 2px solid #3a3a3a;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .theme-toggle:hover,
+        .theme-toggle:focus-visible {
+            background: #3a3a3a;
+            border-color: #7aa9ff;
+            outline: 2px solid #7aa9ff;
+            outline-offset: 2px;
+        }
+        .theme-toggle .icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        body.light-mode .theme-toggle {
+            background: #e8e8e8;
+            color: #1e1e1e;
+            border-color: #ccc;
+        }
+        body.light-mode .theme-toggle:hover,
+        body.light-mode .theme-toggle:focus-visible {
+            background: #d5d5d5;
+            border-color: #1a5bbf;
+            outline-color: #1a5bbf;
+        }
+
+        /* ----- HEADER ----- */
+        header {
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #2a2a2a;
+        }
+        body.light-mode header {
+            border-bottom-color: #ddd;
+        }
+
+        header h1 {
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+        }
+        header .subtitle {
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: #aaa;
+            margin-bottom: 0.4rem;
+        }
+        body.light-mode header .subtitle {
+            color: #555;
+        }
+        header .author {
+            font-size: 1.05rem;
+            font-weight: 400;
+            color: #8a8a8a;
+        }
+        body.light-mode header .author {
+            color: #666;
+        }
+
+        /* ----- NAV / TOC ----- */
+        nav {
+            background: #1a1a1a;
+            border-radius: 1rem;
+            padding: 1.5rem 1.75rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid #2a2a2a;
+        }
+        body.light-mode nav {
+            background: #f0f0f0;
+            border-color: #ddd;
+        }
+
+        nav h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.02em;
+            color: #ccc;
+        }
+        body.light-mode nav h2 {
+            color: #333;
+        }
+
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem 0.8rem;
+        }
+        nav ul li {
+            margin: 0;
+        }
+        nav ul li a {
+            display: inline-block;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.4rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #b0b0b0;
+            text-decoration: none;
+            transition: background 0.2s, color 0.2s;
+            border: 1px solid transparent;
+        }
+        nav ul li a:hover,
+        nav ul li a:focus-visible {
+            background: #2a2a2a;
+            color: #e0e0e0;
+            border-color: #7aa9ff;
+            outline: none;
+        }
+        body.light-mode nav ul li a {
+            color: #444;
+        }
+        body.light-mode nav ul li a:hover,
+        body.light-mode nav ul li a:focus-visible {
+            background: #e0e0e0;
+            color: #000;
+            border-color: #1a5bbf;
+        }
+
+        /* ----- MAIN CONTENT ----- */
+        main {
+            margin-top: 0.5rem;
+        }
+
+        /* ----- SECTIONS ----- */
+        section {
+            margin-bottom: 3.5rem;
+            padding-top: 0.5rem;
+        }
+
+        section h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            line-height: 1.3;
+            scroll-margin-top: 1.5rem;
+        }
+        section h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-top: 1.75rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            scroll-margin-top: 1.5rem;
+        }
+        section h4 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-top: 1.25rem;
+            margin-bottom: 0.3rem;
+            scroll-margin-top: 1.5rem;
+        }
+
+        section p {
+            margin-bottom: 1rem;
+        }
+        section ul,
+        section ol {
+            margin: 0.5rem 0 1rem 1.5rem;
+        }
+        section li {
+            margin-bottom: 0.3rem;
+        }
+        section blockquote {
+            border-left: 4px solid #7aa9ff;
+            padding-left: 1.25rem;
+            margin: 1.25rem 0;
+            color: #ccc;
+            font-style: italic;
+        }
+        body.light-mode section blockquote {
+            color: #444;
+            border-left-color: #1a5bbf;
+        }
+
+        /* ----- CODE BLOCKS ----- */
+        pre {
+            max-height: 400px;
+            overflow: auto;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin: 1rem 0 1.5rem 0;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            tab-size: 2;
+            -webkit-overflow-scrolling: touch;
+            transition: border-color 0.2s, outline-color 0.2s;
+        }
+        pre:focus-visible {
+            outline: 3px solid #7aa9ff;
+            outline-offset: 2px;
+            border-color: #7aa9ff;
+        }
+        body.light-mode pre {
+            background: #f0f0f0;
+            border-color: #ddd;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #1a5bbf;
+            border-color: #1a5bbf;
+        }
+
+        pre code {
+            display: block;
+            white-space: pre;
+            word-break: normal;
+            word-wrap: normal;
+            color: #e0e0e0;
+        }
+        body.light-mode pre code {
+            color: #1e1e1e;
+        }
+
+        /* ----- FIGURES & TABLES ----- */
+        figure {
+            margin: 1.5rem 0;
+        }
+        figcaption {
+            font-size: 0.9rem;
+            color: #999;
+            margin-top: 0.3rem;
+            text-align: center;
+        }
+        body.light-mode figcaption {
+            color: #666;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0 1.5rem 0;
+            font-size: 0.95rem;
+        }
+        th,
+        td {
+            border: 1px solid #2a2a2a;
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #1a1a1a;
+            font-weight: 600;
+        }
+        body.light-mode th,
+        body.light-mode td {
+            border-color: #ccc;
+        }
+        body.light-mode th {
+            background: #e8e8e8;
+        }
+
+        /* ----- RESPONSIVE ----- */
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem;
+            }
+            header h1 {
+                font-size: 1.8rem;
+            }
+            section h2 {
+                font-size: 1.6rem;
+            }
+            nav ul {
+                flex-direction: column;
+                gap: 0.2rem;
+            }
+            nav ul li a {
+                display: block;
+                padding: 0.4rem 0.6rem;
+            }
+            .theme-toggle {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.8rem;
+            }
+            pre {
+                font-size: 0.8rem;
+                padding: 0.9rem;
+                max-height: 300px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* focus-visible polyfill friendly */
+        :focus:not(:focus-visible) {
+            outline: none;
+        }
+        :focus-visible {
+            outline: 3px solid #7aa9ff;
+            outline-offset: 2px;
+        }
+        body.light-mode :focus-visible {
+            outline-color: #1a5bbf;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch between dark and light mode">
+            <span class="icon" aria-hidden="true">🌙</span>
+            <span id="themeLabel">Dark</span>
+        </button>
+    </div>
+
+    <!-- HEADER -->
+    <header>
+         <div class="brand">orthogonal_bits <span class="muted">~</span><a href="./index.html" aria-label="Home (top level)"> /resources</a>
+        </div>
+        <h1>Tiny Experiments</h1>
+        <div class="subtitle">How to Live a Curious, Creative Life Through Scientific Self-Discovery</div>
+        <div class="author">by Lerina <em>Inspired by Anne‑Laure Le Cunff</em></div>
+    </header>
+
+    <!-- TABLE OF CONTENTS -->
+    <nav aria-labelledby="toc-heading">
+        <h2 id="toc-heading">Contents</h2>
+        <ul>
+            <li><a href="#sec-intro">Introduction</a></li>
+            <li><a href="#sec-pact">The PACT Framework</a></li>
+            <li><a href="#sec-head-heart-hand">The Head‑Heart‑Hand Method</a></li>
+            <li><a href="#sec-intentional-imperfection">Intentional Imperfection</a></li>
+            <li><a href="#sec-short-term-mediocrity">Short‑Term Mediocrity for Long‑Term Excellence</a></li>
+            <li><a href="#sec-binary-x">The Binary X Method</a></li>
+            <li><a href="#sec-consistency">Consistency Over Intensity</a></li>
+            <li><a href="#sec-first-domino">Finding Your First Domino</a></li>
+            <li><a href="#sec-cognitive-scripts">Breaking Free from Cognitive Scripts</a></li>
+            <li><a href="#sec-creative-collaboration">Creative Collaboration Without Fear</a></li>
+            <li><a href="#sec-rule-zero">Rule Zero: Show Up</a></li>
+            <li><a href="#sec-neuroplasticity">Neuroplasticity &amp; Habit Stacking</a></li>
+            <li><a href="#sec-conclusion">Conclusion</a></li>
+        </ul>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 1: INTRODUCTION                                       -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-intro-heading" id="sec-intro">
+            <h2 id="sec-intro-heading">Introduction: The Power of Tiny Experiments</h2>
+
+            <p>
+                A <strong>tiny experiment</strong> is a commitment method inspired by the scientific method,
+                designed to help you break through procrastination and build momentum by lowering the stakes
+                of your actions. Instead of viewing your goals as high‑pressure, pass‑or‑fail events,
+                you treat them as hypotheses to be tested.
+            </p>
+
+            <p>
+                This approach shifts your mindset from <em>“I must succeed or I am a failure”</em>
+                to <em>“What can I learn from this trial?”</em> By running short, low‑stakes experiments
+                on your own habits, you gather real data about what works for <em>you</em> — and what doesn’t.
+            </p>
+
+            <p>
+                In this book, neuroscientist and entrepreneur <strong>Anne‑Laure Le Cunff</strong>
+                walks you through the tools and frameworks that make this possible:
+                the <strong>PACT</strong> framework, the <strong>Head‑Heart‑Hand</strong> triple check,
+                the <strong>Binary X</strong> habit tracker, and more. Each chapter builds on the last,
+                giving you a complete system for turning uncertainty into discovery.
+            </p>
+
+            <blockquote>
+                “By viewing your habits as tiny experiments, you remove the fear of failure.
+                If an experiment doesn’t work, it provides valuable data for your next attempt,
+                turning the pressure of perfectionism into a process of learning.”
+            </blockquote>
+
+            <p>
+                Whether you struggle with perfectionism, procrastination, or simply feel stuck
+                in a routine that no longer serves you, the tiny experiments approach offers
+                a compassionate, science‑backed way forward.
+            </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 2: PACT                                               -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-pact-heading" id="sec-pact">
+            <h2 id="sec-pact-heading">The PACT Framework</h2>
+
+            <p>
+                At the heart of the tiny experiments philosophy lies the <strong>PACT</strong> framework —
+                a set of four criteria that turn a vague aspiration into a concrete, testable commitment.
+                PACT stands for <strong>Purposeful, Actionable, Continuous,</strong> and <strong>Trackable</strong>.
+            </p>
+
+            <h3>Purposeful</h3>
+            <p>
+                Your experiment must connect to a meaningful direction in your life — not an arbitrary
+                external milestone. Instead of saying “I want to lose weight,” ask <em>why</em> that matters.
+                Maybe it’s about having more energy to play with your kids, or feeling stronger in your body.
+                Purpose gives your experiment staying power.
+            </p>
+
+            <h3>Actionable</h3>
+            <p>
+                The commitment must be a concrete, tangible action you can actually do.
+                “Be more productive” is not actionable. “Write one paragraph every morning” is.
+                Shrink the goal until it becomes an undeniable, bite‑sized behavior.
+            </p>
+
+            <h3>Continuous</h3>
+            <p>
+                You commit to performing the action over a specific duration or frequency —
+                e.g., walking for 20 minutes daily for 20 days. This allows you to collect enough
+                data to draw meaningful conclusions. A single attempt tells you little;
+                a series of attempts reveals patterns.
+            </p>
+
+            <h3>Trackable</h3>
+            <p>
+                You keep a simple binary record of whether you performed the action or not.
+                This is <em>not</em> about complex metrics or performance quality.
+                It is simply a check: did you show up? Yes or no.
+                This removes the pressure of judging your output and keeps the focus on consistency.
+            </p>
+
+            <p>
+                The PACT framework transforms goal‑setting into a self‑experiment.
+                You are no longer “failing a goal”; you are collecting data to inform your next iteration.
+            </p>
+
+            <pre tabindex="0" role="region" aria-label="PACT framework summary">
+                ┌──────────────────────────────────────────────────────────┐
+                │  PACT — Purposeful · Actionable · Continuous · Trackable │
+                ├──────────────────────────────────────────────────────────┤
+                │  Purposeful   →  tied to intrinsic motivation            │
+                │  Actionable   →  a tiny, concrete behavior               │
+                │  Continuous   →  repeated over a fixed period            │
+                │  Trackable    →  binary (1 / 0) record                   │
+                └──────────────────────────────────────────────────────────┘</pre>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3: HEAD-HEART-HAND                                    -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-head-heart-hand-heading" id="sec-head-heart-hand">
+            <h2 id="sec-head-heart-hand-heading">The Head‑Heart‑Hand Method</h2>
+
+            <p>
+                Procrastination is not a character flaw — it is a <strong>signal</strong>.
+                The <strong>Head‑Heart‑Hand</strong> method, introduced by Anne‑Laure Le Cunff,
+                helps you diagnose the root cause of your resistance so you can address it directly.
+            </p>
+
+            <h3>Head (Rational)</h3>
+            <p>
+                Ask: <em>Should I really do this?</em> Is this the right priority, or could it be delegated,
+                postponed, or removed? If you are not rationally convinced of the task’s value,
+                no amount of willpower will make it easy. Reframe the strategy or have a conversation
+                about why the task matters.
+            </p>
+
+            <h3>Heart (Emotional)</h3>
+            <p>
+                If you are rationally convinced but still stuck, look at your emotional connection.
+                Does the task feel unexciting, daunting, or lonely? Redesign the experience:
+                change your environment, work alongside a friend, or build in a small reward.
+                Make it more enjoyable so your heart wants to participate.
+            </p>
+
+            <h3>Hand (Practical)</h3>
+            <p>
+                If both your head and heart are aligned, the issue may be practical.
+                Do you lack the specific skills, tools, or support to complete the work?
+                Seek training, coaching, or simply ask for help. Sometimes the only thing
+                standing between you and action is a missing piece of knowledge or resources.
+            </p>
+
+            <p>
+                If you have applied the triple check and are <em>still</em> stuck,
+                the speaker suggests looking for <strong>systemic barriers</strong> —
+                environmental misalignment, support deficits, or the need for a hard conversation
+                about your role or workload.
+            </p>
+
+            <pre tabindex="0" role="region" aria-label="Head-Heart-Hand diagnostic framework">
+                ┌─────────────────────────────────────────────┐
+                │  HEAD  →  Is this the right strategy?       │
+                │  HEART →  Does it feel unenjoyable?         │
+                │  HAND  →  Am I missing skills or tools?     │
+                └─────────────────────────────────────────────┘</pre>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 4: INTENTIONAL IMPERFECTION                           -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-intentional-imperfection-heading" id="sec-intentional-imperfection">
+            <h2 id="sec-intentional-imperfection-heading">Intentional Imperfection</h2>
+
+            <p>
+                Perfectionism is often an illusion. You cannot perform at 200% capacity
+                in every area of your life simultaneously. <strong>Intentional imperfection</strong>
+                is the practice of strategically choosing where to invest your energy and where
+                to settle for “good enough.”
+            </p>
+
+            <h3>Why it works</h3>
+            <ul>
+                <li>
+                    <strong>Reduces burnout:</strong> By not trying to maintain an impossible standard
+                    across the board, you protect your energy for what truly matters.
+                </li>
+                <li>
+                    <strong>Improves communication:</strong> When you clearly communicate your trade‑offs
+                    to colleagues, family, or stakeholders, you build trust and manage expectations
+                    before they become disappointments.
+                </li>
+                <li>
+                    <strong>Enables sustainable excellence:</strong> You maintain the momentum needed
+                    to achieve extraordinary results over the long term, because you are not
+                    exhausting yourself on every single task.
+                </li>
+                <li>
+                    <strong>Better resource management:</strong> Treat your energy, time, and attention
+                    as limited resources. Allocate them deliberately rather than spreading them thin.
+                </li>
+            </ul>
+
+            <blockquote>
+                “Intentional imperfection forces you to acknowledge that you cannot be at
+                an elite level in every area at once. By choosing your priorities consciously,
+                you give yourself permission to be human — and that is what makes sustained
+                excellence possible.”
+            </blockquote>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 5: SHORT-TERM MEDIOCRITY                              -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-short-term-mediocrity-heading" id="sec-short-term-mediocrity">
+            <h2 id="sec-short-term-mediocrity-heading">Short‑Term Mediocrity for Long‑Term Excellence</h2>
+
+            <p>
+                This principle is the practical expression of intentional imperfection.
+                By accepting a “good enough” performance in some areas <em>right now</em>,
+                you prevent burnout and ensure consistent, high‑quality results over the long haul.
+            </p>
+
+            <ul>
+                <li>
+                    <strong>Resource management:</strong> Intensity often burns through your limited
+                    resources — time, energy, attention — leaving you depleted. Short‑term mediocrity
+                    preserves those resources for the long game.
+                </li>
+                <li>
+                    <strong>Risk mitigation:</strong> High‑intensity approaches often involve
+                    excessive risks to get quick results. Consistency, by contrast, acts like
+                    a “slow and steady” strategy that prevents catastrophic losses.
+                </li>
+                <li>
+                    <strong>Momentum building:</strong> Showing up consistently — even in a small way —
+                    builds a streak that is more powerful and rarer than occasional bursts of intensity.
+                </li>
+            </ul>
+
+            <p>
+                The goal is not to be mediocre forever. The goal is to be <em>strategic</em>
+                so that you can sustain your effort long enough to achieve something truly meaningful.
+            </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 6: BINARY X METHOD                                    -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-binary-x-heading" id="sec-binary-x">
+            <h2 id="sec-binary-x-heading">The Binary X Method</h2>
+
+            <p>
+                The <strong>Binary X Method</strong> is a minimalist habit‑tracking system
+                that strips away complexity, streaks, and guilt. It is designed to reduce friction
+                and keep you focused on consistency rather than perfection.
+            </p>
+
+            <h3>Core Rules</h3>
+            <ul>
+                <li>
+                    <strong>Binary tracking:</strong> If you complete the habit for the day,
+                    mark it with a single <strong>X</strong>. If you don’t, leave the space
+                    <strong>blank</strong>. No partial credit, no notes, no percentages.
+                </li>
+                <li>
+                    <strong>One X per day:</strong> Even if you do the habit multiple times,
+                    you still mark only one X. The system measures daily consistency, not volume.
+                </li>
+                <li>
+                    <strong>Leave blanks alone:</strong> A blank space is neutral data —
+                    not a failure, not a reason for guilt. Do not draw sad faces or use colored marks.
+                </li>
+                <li>
+                    <strong>No streak counting:</strong> Resist the urge to calculate streaks
+                    or percentages. That brings back the pressure the method is designed to remove.
+                </li>
+            </ul>
+
+            <h3>How to implement</h3>
+            <ul>
+                <li>
+                    <strong>Paper:</strong> Use a simple notebook, a printed grid, or a wall calendar.
+                    Place it somewhere visible (nightstand, fridge, desk).
+                </li>
+                <li>
+                    <strong>Digital:</strong> Use a basic notes app (Apple Notes, Google Keep)
+                    or a plain text file. Avoid specialized habit apps with notifications and social features.
+                </li>
+                <li>
+                    <strong>Weekly review:</strong> Spend 5 minutes once a week to review your X’s and blanks.
+                    Ask: <em>What worked? What got in the way? What one small change can I make next week?</em>
+                </li>
+            </ul>
+
+            <pre tabindex="0" role="region" aria-label="Binary X tracking example">
+                Week 1:  X  X  _  X  X  _  X
+                Week 2:  X  X  X  X  _  X  X
+                Week 3:  X  _  X  X  X  X  X</pre>
+
+            <p>
+                The Binary X Method aligns perfectly with the <strong>Trackable</strong> pillar
+                of the PACT framework. It turns habit tracking from a source of judgment
+                into a source of insight.
+            </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 7: CONSISTENCY                                        -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-consistency-heading" id="sec-consistency">
+            <h2 id="sec-consistency-heading">Consistency Over Intensity</h2>
+
+            <p>
+                In the conversation between Anne‑Laure Le Cunff and Jay Papasan,
+                they emphasize why <strong>consistency</strong> almost always outperforms
+                short‑term intensity for achieving long‑term goals.
+            </p>
+
+            <ul>
+                <li>
+                    <strong>Resource management:</strong> Intensity burns through limited resources
+                    (time, energy, attention) and leads to burnout. Consistency preserves them.
+                </li>
+                <li>
+                    <strong>The long game:</strong> High‑intensity approaches often involve
+                    excessive risks for quick results. Consistency acts like “slow and steady,”
+                    preventing catastrophic losses and keeping you in the game.
+                </li>
+                <li>
+                    <strong>Building momentum:</strong> The PACT framework emphasizes showing up
+                    regularly — even in a tiny way — to build a habit streak. This consistency
+                    is more powerful and rarer than the ability to push hard for a single day.
+                </li>
+                <li>
+                    <strong>Sustainable excellence:</strong> True, lasting success is usually
+                    the result of showing up on a consistent basis, not occasional bursts of perfection.
+                </li>
+            </ul>
+
+            <blockquote>
+                “Consistency is rare. It is more powerful than intensity because it compounds.
+                A small action repeated daily beats a massive effort done once.”
+            </blockquote>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 8: FIRST DOMINO                                       -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-first-domino-heading" id="sec-first-domino">
+            <h2 id="sec-first-domino-heading">Finding Your First Domino</h2>
+
+            <p>
+                Jay Papasan describes the <strong>first domino</strong> as the single, most important
+                action that will create the momentum to make other tasks easier or unnecessary.
+                It is the smallest action that leads to the biggest cascade of results.
+            </p>
+
+            <h3>How to find your first domino</h3>
+            <ul>
+                <li>
+                    <strong>Right‑size the assignment:</strong> Instead of aiming for a massive,
+                    daunting goal (the 18th domino), scale the task down until it is small enough
+                    to be immediately actionable.
+                </li>
+                <li>
+                    <strong>Focus on the immediate next step:</strong> Ask yourself what simple,
+                    concrete action you can take <em>right now</em> that will naturally lead to progress.
+                </li>
+                <li>
+                    <strong>Lower the stakes:</strong> Use the tiny experiments approach to remove
+                    the fear of failure. Commit to a very small action, prioritize consistency over
+                    perfection, and overcome the initial inertia of starting.
+                </li>
+            </ul>
+
+            <p>
+                By focusing on the first domino, you transition from overwhelming planning
+                to <strong>unstoppable momentum</strong>. The rest of the dominoes will follow.
+            </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 9: COGNITIVE SCRIPTS                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-cognitive-scripts-heading" id="sec-cognitive-scripts">
+            <h2 id="sec-cognitive-scripts-heading">Breaking Free from Cognitive Scripts</h2>
+
+            <p>
+                <strong>Cognitive scripts</strong> are internalized behavioral patterns that can
+                dictate our life decisions and keep us stuck in failing routines. While scripts
+                are helpful for daily tasks (like going to the doctor), they become detrimental
+                when applied to major life choices.
+            </p>
+
+            <h3>The three scripts</h3>
+            <ul>
+                <li>
+                    <strong>The Sequel Script:</strong> The belief that your future must align
+                    with your past, causing you to repeat the same career or relationship patterns
+                    rather than exploring new growth opportunities.
+                </li>
+                <li>
+                    <strong>The Crowd‑pleaser Script:</strong> Making life decisions based on
+                    external expectations — parents, friends, partners — rather than your own
+                    authentic desires.
+                </li>
+                <li>
+                    <strong>The Epic Script:</strong> An insidious societal pressure to always be
+                    “big,” “ambitious,” or “impactful.” This leads to a fear of simple, meaningful
+                    lives and causes people to equate any failure with a life failure.
+                </li>
+            </ul>
+
+            <h3>How to overcome scripts</h3>
+            <ul>
+                <li>
+                    <strong>Identify “shoulds”:</strong> Notice when you say “I should do this”
+                    and replace it with “What might I want to explore?”
+                </li>
+                <li>
+                    <strong>Ask reflective questions:</strong> Shift from following the past,
+                    the crowd, or “passion” toward discovering your path, your tribe, and your curiosity.
+                </li>
+                <li>
+                    <strong>Embrace uncertainty:</strong> Instead of living by rigid scripts,
+                    view your life as a series of tiny experiments.
+                </li>
+            </ul>
+
+            <blockquote>
+                “Ban ‘should.’ It is or it is not. Replace judgment with curiosity,
+                and you open the door to a life you actually want to live.”
+            </blockquote>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 10: CREATIVE COLLABORATION                            -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-creative-collaboration-heading" id="sec-creative-collaboration">
+            <h2 id="sec-creative-collaboration-heading">Creative Collaboration Without Fear</h2>
+
+            <p>
+                Actor and entrepreneur <strong>Edward Norton</strong> offers insights into
+                effective creative collaboration. While there is no single rule for success,
+                leadership plays a critical role in setting a framework that aligns the team
+                on a shared vision.
+            </p>
+
+            <h3>Key principles</h3>
+            <ul>
+                <li>
+                    <strong>Embrace creative risk:</strong> Directors like Alejandro Iñárritu
+                    and Olivia Wilde foster collaboration by framing uncertainty as a discovery process —
+                    “stitching a parachute on the way down.”
+                </li>
+                <li>
+                    <strong>Frame ideas as experiments:</strong> Inspired by Mike Bloomberg’s approach
+                    to early business challenges, pitch ideas as low‑stakes tests. Offer to revert
+                    if it fails, which turns friction into productive optionality.
+                </li>
+                <li>
+                    <strong>Build partnerships:</strong> No enterprise is built alone.
+                    Value partners who create a “1+1+1=10” synergy. Choose partners carefully
+                    and build long‑term relationships based on mutual trust.
+                </li>
+                <li>
+                    <strong>The power of listening:</strong> When leading, “shut up” and leave empty space.
+                    This allows others to fill that space, giving you deeper insight into their
+                    unique capabilities.
+                </li>
+            </ul>
+
+            <p>
+                The same experimental mindset that applies to personal habits also applies to
+                teamwork: <em>try it, observe, learn, adapt.</em>
+            </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 11: RULE ZERO                                         -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-rule-zero-heading" id="sec-rule-zero">
+            <h2 id="sec-rule-zero-heading">Rule Zero: Show Up</h2>
+
+            <p>
+                <strong>Showing up</strong> is the foundational strategy for overcoming
+                the paralysis caused by perfectionism and procrastination. It is the
+                one rule that underpins every other technique in this book.
+            </p>
+
+            <h3>Why showing up matters</h3>
+            <ul>
+                <li>
+                    <strong>Builds momentum:</strong> Many people fail because they aim for
+                    the 18th domino instead of focusing on the first one. By committing to
+                    a tiny experiment or a small daily habit, you lower the stakes and make it
+                    easier to start.
+                </li>
+                <li>
+                    <strong>Creates a streak:</strong> Using the PACT framework, the goal is
+                    not to perform perfectly, but to show up and perform a “yes/no” check.
+                    This builds a habit streak that is more sustainable than high‑intensity,
+                    short‑lived efforts.
+                </li>
+                <li>
+                    <strong>Enables short‑term mediocrity for long‑term excellence:</strong>
+                    By showing up consistently in a small, manageable way, you avoid burning out
+                    your limited resources. This strategic consistency allows you to sustain
+                    your performance over the long run.
+                </li>
+            </ul>
+
+            <blockquote>
+                “Rule Zero is simple: show up. Not perfectly, not heroically — just show up.
+                The rest is details.”
+            </blockquote>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 12: NEUROPLASTICITY                                   -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-neuroplasticity-heading" id="sec-neuroplasticity">
+            <h2 id="sec-neuroplasticity-heading">Neuroplasticity &amp; Habit Stacking</h2>
+
+            <p>
+                <strong>Neuroplasticity</strong> — the brain’s ability to reorganize itself —
+                can be leveraged to change habits and shift your identity by training your attention.
+                Much of our behavior is governed by pre‑programmed mental pathways that we have
+                reinforced over years.
+            </p>
+
+            <h3>The power of identity</h3>
+            <p>
+                Roughly 80% of daily behavior is tied to identity. To change your results
+                (success, health, productivity), you must address the internal programming
+                behind your actions. Meditation is not just a relaxation technique —
+                it is a system for <strong>training attention</strong>.
+            </p>
+
+            <p>
+                By repeatedly noticing when the mind wanders and gently bringing focus back
+                to the breath, you strengthen neural circuits responsible for self‑awareness
+                and cognitive control. This creates a <strong>void</strong> — a gap between
+                an impulse (e.g., the urge to scroll) and your reaction — allowing you to choose
+                how to respond.
+            </p>
+
+            <h3>Habit stacking</h3>
+            <p>
+                To build consistency, the creator suggests <strong>habit stacking</strong>:
+                link meditation to an existing daily routine, such as reading or coding.
+                Place your meditation session <em>immediately after</em> your anchor habit,
+                reducing the mental friction of deciding when to start. Start small —
+                just 2–5 minutes per day.
+            </p>
+
+            <p>
+                Two common modes are:
+            </p>
+            <ul>
+                <li>
+                    <strong>Mode 1: I meditate, then I code</strong> — clear the mind before
+                    deep work.
+                </li>
+                <li>
+                    <strong>Mode 2: I code, then I meditate</strong> — decompress and reflect
+                    after focused effort.
+                </li>
+            </ul>
+
+            <pre tabindex="0" role="region" aria-label="Habit stacking pattern">
+                Anchor habit  →  New habit  →  Reward
+                (e.g., reading) → (2 min meditation) → (feel grounded)</pre>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 13: CONCLUSION                                        -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-conclusion-heading" id="sec-conclusion">
+            <h2 id="sec-conclusion-heading">Conclusion: Your Life as a Series of Experiments</h2>
+
+            <p>
+                The frameworks in this book — PACT, Head‑Heart‑Hand, the Binary X Method,
+                intentional imperfection, and more — are not rigid rules. They are tools
+                to help you live more <strong>curiously, creatively, and sustainably</strong>.
+            </p>
+
+            <p>
+                When you treat your life as a series of tiny experiments, you free yourself
+                from the tyranny of perfectionism. Every outcome becomes data. Every “failure”
+                becomes a lesson. Every day is an opportunity to test a new hypothesis about
+                what works for <em>you</em>.
+            </p>
+
+            <p>
+                Start small. Show up. Track simply. Reflect honestly. Iterate constantly.
+                That is the path to sustainable growth — and it begins with your very next
+                tiny experiment.
+            </p>
+
+            <blockquote>
+                “You are not a machine to be optimized. You are a living system to be explored.
+                Run your experiments with kindness, and let the data guide you forward.”
+            </blockquote>
+        </section>
+
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- JAVASCRIPT: Theme Toggle                                      -->
+    <!-- ============================================================ -->
+    <script>
+        (function() {
+            const toggle = document.getElementById('themeToggle');
+            const label = document.getElementById('themeLabel');
+            const icon = toggle.querySelector('.icon');
+            const body = document.body;
+
+            // Check stored preference or system preference
+            const stored = localStorage.getItem('themePreference');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            let isDark = true;
+            if (stored === 'light') {
+                isDark = false;
+            } else if (stored === 'dark') {
+                isDark = true;
+            } else {
+                isDark = prefersDark;
+            }
+
+            function applyTheme(dark) {
+                if (dark) {
+                    body.classList.remove('light-mode');
+                    label.textContent = 'Dark';
+                    icon.textContent = '🌙';
+                    localStorage.setItem('themePreference', 'dark');
+                } else {
+                    body.classList.add('light-mode');
+                    label.textContent = 'Light';
+                    icon.textContent = '☀️';
+                    localStorage.setItem('themePreference', 'light');
+                }
+                isDark = dark;
+            }
+
+            applyTheme(isDark);
+
+            toggle.addEventListener('click', function() {
+                applyTheme(!isDark);
+            });
+
+            // Also toggle on Enter/Space (button handles this natively)
+        })();
+    </script>
+
+</body>
+</html>
+

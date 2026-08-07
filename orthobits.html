@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orthogonal Bits · Interlocking · Robust · Scalable</title>
+    <meta name="description" content="Orthogonal Bits: Pragmatic software engineering. Rust, UNIX pipes, local-first systems, and clean interfaces. No cloud bloat.">
+    
+    <style>
+        /* --- DESIGN TOKENS (Terminal-Inspired) --- */
+        :root {
+            --bg: #0D0F12;
+            --bg-elevated: #14171C;
+            --text: #E2E8F0;
+            --text-muted: #94A3B8;
+            --accent: #FF6B4A;
+            --accent-dim: #CC5533;
+            --border: #2A2F35;
+            --font: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+            --max-width: 80rem;
+            --space: 1.5rem;
+        }
+        
+        /* Light mode overrides */
+        [data-theme="light"] {
+            --bg: #F8F9FA;
+            --bg-elevated: #FFFFFF;
+            --text: #1E293B;
+            --text-muted: #475569;
+            --border: #CBD5E1;
+            --accent: #D94A2A;
+        }
+
+        /* --- RESET & BASE --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 1.125rem;
+            line-height: 1.7;
+            padding: var(--space);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        /* --- SKIP LINK (Accessibility) --- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: var(--bg);
+            padding: 0.5rem 1.5rem;
+            z-index: 1000;
+            font-weight: bold;
+            border-radius: 0 0 0.25rem 0.25rem;
+            transition: top 0.15s;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* --- CONTAINER --- */
+        .container {
+            max-width: var(--max-width);
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+        }
+
+        /* --- HEADER & NAV --- */
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        /* Braille Avatar: "OB" stacked using grid */
+        .braille-avatar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 0.1rem;
+            font-size: 2rem;
+            line-height: 1;
+            background: var(--bg-elevated);
+            padding: 0.3rem;
+            border: 1px solid var(--border);
+            letter-spacing: 0;
+            user-select: none;
+            width: 3.2rem;
+            height: 3.2rem;
+            place-items: center;
+            color: var(--accent);
+        }
+        .braille-avatar span {
+            display: block;
+            text-align: center;
+            line-height: 1;
+            font-size: 1.2rem;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .brand-text h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+        .brand-text .tagline {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        nav {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 0.3rem 0;
+            border-bottom: 2px solid transparent;
+            transition: color 0.1s, border-color 0.1s;
+        }
+        nav a:hover,
+        nav a:focus-visible {
+            color: var(--text);
+            border-bottom-color: var(--accent);
+        }
+        nav a[aria-current="page"] {
+            color: var(--text);
+            border-bottom-color: var(--accent);
+        }
+
+        /* Theme Toggle (Keyboard accessible) */
+        .theme-toggle {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.3rem 0.7rem;
+            font-family: var(--font);
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 0.2rem;
+            transition: background 0.1s;
+            line-height: 1;
+        }
+        .theme-toggle:hover,
+        .theme-toggle:focus-visible {
+            background: var(--accent);
+            color: var(--bg);
+            border-color: var(--accent);
+        }
+
+        /* --- MAIN CONTENT LAYOUT --- */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+        }
+
+        section {
+            scroll-margin-top: 2rem;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        h2 .accent-arrow {
+            color: var(--accent);
+            font-weight: 400;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        /* --- HERO (Manifesto Intro) --- */
+        .hero {
+            padding: 2rem 0 1rem 0;
+            border-left: 4px solid var(--accent);
+            padding-left: 1.5rem;
+        }
+        .hero p {
+            font-size: 1.35rem;
+            max-width: 65ch;
+        }
+        .hero .mantra {
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 1.5rem;
+        }
+        .hero .attribution {
+            margin-top: 1rem;
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* --- SERVICES GRID (3 Pillars) --- */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 2rem;
+            margin-top: 0.5rem;
+        }
+        .service-card {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 0.25rem;
+            transition: border-color 0.2s;
+        }
+        .service-card:hover {
+            border-color: var(--accent);
+        }
+        .service-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .service-card .emoji-badge {
+            font-style: normal;
+            font-size: 1.3rem;
+        }
+
+        /* --- BLOG LIST (Minimal) --- */
+        .blog-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+        }
+        .blog-entry {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+        }
+        .blog-entry:last-child {
+            border-bottom: none;
+        }
+        .blog-entry .meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        .blog-entry .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .blog-entry .tag {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.6rem;
+            font-size: 0.7rem;
+            text-transform: lowercase;
+            color: var(--text-muted);
+            border-radius: 0.2rem;
+        }
+        .blog-entry a {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .blog-entry a:hover,
+        .blog-entry a:focus-visible {
+            color: var(--accent);
+        }
+        .blog-entry .excerpt {
+            margin-top: 0.3rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* --- CODE BLOCK (Accessible) --- */
+        pre {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            overflow-x: auto;
+            font-size: 0.9rem;
+            border-radius: 0.25rem;
+            margin: 1rem 0;
+            color: var(--text);
+            tab-size: 4;
+            -webkit-overflow-scrolling: touch;
+        }
+        pre:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            border-top: 2px solid var(--border);
+            padding-top: 2rem;
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        footer a {
+            color: var(--text-muted);
+            text-decoration: underline 1px dotted var(--border);
+            text-underline-offset: 0.2rem;
+        }
+        footer a:hover {
+            color: var(--text);
+        }
+
+        /* --- RESPONSIVE TWEAKS --- */
+        @media (max-width: 640px) {
+            header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+            }
+            nav {
+                justify-content: space-between;
+            }
+            .hero p {
+                font-size: 1.1rem;
+            }
+            .braille-avatar {
+                width: 2.8rem;
+                height: 2.8rem;
+            }
+            .braille-avatar span {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="container">
+        <header role="banner" aria-label="Site header">
+            <a href="/" class="brand" aria-label="Orthogonal Bits home">
+                <div class="braille-avatar" role="img" aria-label="Braille letters O and B stacked vertically">
+                    <span>O</span><span>B</span>
+                    <span>⠕</span><span>⠃</span>
+                </div>
+                <div class="brand-text">
+                    <h1>Orthogonal Bits</h1>
+                    <span class="tagline">Interlocking · Robust · Scalable</span>
+                </div>
+            </a>
+
+            <nav aria-label="Main navigation">
+                <a href="/manifesto.html" aria-current="page">Manifesto</a>
+                <a href="/services.html">Services</a>
+                <a href="/blog.html">Blog</a>
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark and light mode">
+                    <span id="themeIcon">☀️</span>
+                </button>
+            </nav>
+        </header>
+
+        <main id="main-content" role="main">
+            <!-- HERO / MANIFESTO SNIPPET -->
+            <section class="hero" aria-labelledby="hero-title">
+                <h2 id="hero-title" style="border: none; margin-bottom: 0.5rem;">
+                    <span class="accent-arrow">$></span> The Orthogonal Manifesto
+                </h2>
+                <p>
+                    <span class="mantra">Ideal theory must yield to practical execution.</span>
+                    <br>
+                    We reject cloud bloat, over‑engineered microservices, and dogmatic architecture. 
+                    We embrace local‑first (but not dogmatic), clean interfaces, minimal coupling, 
+                    and practical composition. 
+                </p>
+                <p class="attribution">— UNIX philosophy, applied through Rust &amp; interlocking systems.</p>
+            </section>
+
+            <!-- SERVICES SNIPPET (3 Pillars) -->
+            <section aria-labelledby="services-title">
+                <h2 id="services-title">
+                    <span class="accent-arrow">$></span> Services
+                    <span class="text-muted" style="font-size:1rem; font-weight:400; margin-left:0.5rem;">— The Triad</span>
+                </h2>
+                <div class="services-grid">
+                    <div class="service-card">
+                        <h3><span class="emoji-badge">⚙️</span> Interlocking</h3>
+                        <p class="text-muted" style="font-size:0.95rem;">Systems built like gear trains. Each component does one thing well, meshing cleanly without unnecessary friction.</p>
+                    </div>
+                    <div class="service-card">
+                        <h3><span class="emoji-badge">🛡️</span> Robust</h3>
+                        <p class="text-muted" style="font-size:0.95rem;">Borrow checker rigor, exhaustive error handling, and deterministic behavior. Resilient by construction.</p>
+                    </div>
+                    <div class="service-card">
+                        <h3><span class="emoji-badge">📈</span> Scalable</h3>
+                        <p class="text-muted" style="font-size:0.95rem;">Horizontal scaling via stateless pipes, vertical scaling via zero‑copy abstractions. Scale on your terms.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BLOG SNIPPET (Latest posts) -->
+            <section aria-labelledby="blog-title">
+                <h2 id="blog-title">
+                    <span class="accent-arrow">$></span> Blog
+                    <span class="text-muted" style="font-size:1rem; font-weight:400; margin-left:0.5rem;">— latest writings</span>
+                </h2>
+                <div class="blog-list">
+                    <article class="blog-entry">
+                        <h3><a href="/posts/trains-tracks-pipes.html">Trains, Tracks, and Pipes</a></h3>
+                        <div class="excerpt">A pragmatic alternative to microservice bloat. Why replacing HTTP RPC with named pipes and deterministic state machines reduces cognitive load.</div>
+                        <div class="meta">
+                            <time datetime="2026-08-01">2026-08-01</time>
+                            <span class="tags">
+                                <span class="tag">unix</span>
+                                <span class="tag">pipes</span>
+                                <span class="tag">distributed</span>
+                            </span>
+                        </div>
+                    </article>
+                    <article class="blog-entry">
+                        <h3><a href="/posts/orthogonal-mathematics.html">Orthogonal Bits: The Mathematics of Non‑Interference</a></h3>
+                        <div class="excerpt">How vector spaces and linear independence inform our design philosophy. When components don't overlap, complexity collapses.</div>
+                        <div class="meta">
+                            <time datetime="2026-07-28">2026-07-28</time>
+                            <span class="tags">
+                                <span class="tag">theory</span>
+                                <span class="tag">math</span>
+                                <span class="tag">design</span>
+                            </span>
+                        </div>
+                    </article>
+                    <article class="blog-entry">
+                        <h3><a href="/posts/unix-philosophy-modern.html">The UNIX philosophy in modern systems design</a></h3>
+                        <div class="excerpt">Do one thing and do it well. Write programs that handle text streams. Today's cloud native landscape could use a heavy dose of 1970s discipline.</div>
+                        <div class="meta">
+                            <time datetime="2026-07-20">2026-07-20</time>
+                            <span class="tags">
+                                <span class="tag">unix</span>
+                                <span class="tag">philosophy</span>
+                                <span class="tag">legacy</span>
+                            </span>
+                        </div>
+                    </article>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <a href="/blog.html" style="color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent);">View all posts →</a>
+                </div>
+            </section>
+
+            <!-- A CODE BLOCK DEMONSTRATING ACCESSIBILITY (The Ortho-DX tool mention) -->
+            <section aria-labelledby="code-title" style="margin-top: 1rem;">
+                <h2 id="code-title"><span class="accent-arrow">$></span> In practice</h2>
+                <p class="text-muted" style="margin-bottom: 0.5rem;">This is how we transform compiler noise into screen‑reader friendly narratives:</p>
+                <pre tabindex="0" role="region" aria-label="Code snippet showing pipe to ortho-dx narrative mode">
+$ cargo build --message-format=json 2>&1 | ortho-dx --mode=narrative
+<strong style="color: var(--accent);">>></strong> ERROR E0308: mismatched types. At src/main.rs line 4 column 16, 
+   expected `String`, found integer. Suggestion: replace with String::from(5).</pre>
+                <p class="text-muted" style="font-size: 0.9rem;">No visual noise. Pure, queryable, sequential truth.</p>
+            </section>
+        </main>
+
+        <footer role="contentinfo">
+            <span>© 2026 <strong>Orthogonal Bits</strong> — built with Rust, pipes, and extreme prejudice against bloat.</span>
+            <span>
+                <a href="/manifesto.html">Manifesto</a> · 
+                <a href="/services.html">Services</a> · 
+                <a href="https://github.com/orthogonal-bits">GitHub</a> · 
+                <a href="#main-content">Back to top ↑</a>
+            </span>
+        </footer>
+    </div>
+
+    <script>
+        (function() {
+            // 1. THEME LOGIC (localStorage + prefers-color-scheme)
+            const toggle = document.getElementById('themeToggle');
+            const icon = document.getElementById('themeIcon');
+            const root = document.documentElement;
+
+            function applyTheme(theme) {
+                if (theme === 'light') {
+                    root.setAttribute('data-theme', 'light');
+                    icon.textContent = '🌙';
+                } else {
+                    root.removeAttribute('data-theme');
+                    icon.textContent = '☀️';
+                }
+                try {
+                    localStorage.setItem('ob-theme', theme);
+                } catch (_) {}
+            }
+
+            function getPreferredTheme() {
+                try {
+                    const stored = localStorage.getItem('ob-theme');
+                    if (stored) return stored;
+                } catch (_) {}
+                return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            }
+
+            // Initialize
+            applyTheme(getPreferredTheme());
+
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                const current = root.getAttribute('data-theme');
+                const next = current === 'light' ? 'dark' : 'light';
+                applyTheme(next);
+                toggle.focus(); // keep keyboard focus manageable
+            });
+
+            // 2. KEYBOARD SHORTCUT: Alt+T to toggle theme
+            document.addEventListener('keydown', function(e) {
+                if (e.altKey && e.key === 't') {
+                    e.preventDefault();
+                    toggle.click();
+                }
+            });
+
+            // 3. ACCESSIBILITY: announce theme change to screen readers
+            const originalApply = applyTheme;
+            applyTheme = function(theme) {
+                originalApply(theme);
+                const msg = document.getElementById('themeAnnouncer');
+                if (msg) {
+                    msg.textContent = `Theme changed to ${theme} mode`;
+                }
+            };
+            // Inject live region for announcer
+            const announcer = document.createElement('div');
+            announcer.id = 'themeAnnouncer';
+            announcer.setAttribute('role', 'status');
+            announcer.setAttribute('aria-live', 'polite');
+            announcer.style.position = 'absolute';
+            announcer.style.width = '1px';
+            announcer.style.height = '1px';
+            announcer.style.padding = '0';
+            announcer.style.margin = '-1px';
+            announcer.style.overflow = 'hidden';
+            announcer.style.clip = 'rect(0, 0, 0, 0)';
+            announcer.style.border = '0';
+            document.body.appendChild(announcer);
+        })();
+    </script>
+</body>
+</html>

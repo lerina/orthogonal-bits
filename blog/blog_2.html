@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Orthogonal Bits · The UNIX Philosophy in Modern Systems Design</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+    <!-- SKIP LINK -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- THEME TOGGLE -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header class="site-header" role="banner" aria-label="Site header">
+        <span class="brand">
+            <a href="/" aria-label="Home (top level)">orthogonal_bits <span class="muted">~</span></a>
+        </span>
+        <nav aria-label="Main navigation">
+            <a href="/">home</a>
+            <a href="/manifesto">/manifesto</a>
+            <a href="/services">/services</a>
+            <a href="index.html">/blog</a>
+            <a href="#contact">/contact</a>
+        </nav>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ===== SINGLE BLOG POST ===== -->
+        <article class="single-post" aria-labelledby="post-title">
+            <header class="post-header">
+                <h1 id="post-title">The UNIX philosophy in modern systems design</h1>
+                <div class="post-meta">
+                    <span>📅 2026-08-04</span>
+                    <span>⏱️ 9 min read</span>
+                    <span class="tag">unix</span>
+                    <span class="tag">architecture</span>
+                    <span class="tag">philosophy</span>
+                    <span class="tag">microservices</span>
+                </div>
+            </header>
+
+            <div class="post-body">
+                <p>
+                    In 1978, Doug McIlroy, then head of the Bell Labs Computing Techniques
+                    Research Department, distilled decades of experience into a single,
+                    radical idea: <em>“Write programs that do one thing and do it well.”</em>
+                    This became the cornerstone of the <strong>UNIX philosophy</strong> —
+                    a set of principles that produced the most influential operating system
+                    in history and shaped the entire discipline of software engineering.
+                </p>
+
+                <p>
+                    Four decades later, we find ourselves buried under a mountain of
+                    microservices, Kubernetes YAML, and API gateways. The simplicity
+                    of McIlroy's vision feels like a distant memory. But as the industry
+                    wakes up to the costs of over‑engineering, the UNIX philosophy is
+                    experiencing a quiet renaissance — and its lessons are more relevant
+                    than ever.
+                </p>
+
+                <blockquote>
+                    “The UNIX philosophy is not a relic — it is a corrective to the
+                    excesses of modern distributed systems.”
+                </blockquote>
+
+                <h2>The Core Principles</h2>
+                <p>
+                    The UNIX philosophy can be summarised in a handful of precepts that
+                    transcend operating systems:
+                </p>
+                <ol>
+                    <li><strong>Do one thing and do it well</strong> — each program should have a single, well‑defined purpose.</li>
+                    <li><strong>Write programs that work together</strong> — prefer composition over duplication.</li>
+                    <li><strong>Handle text streams</strong> — because text is a universal interface that can be inspected, manipulated, and piped between tools.</li>
+                    <li><strong>Build tools, not applications</strong> — favour small, reusable utilities that can be chained.</li>
+                    <li><strong>Keep it simple</strong> — avoid complexity unless it is absolutely necessary.</li>
+                </ol>
+                <p>
+                    These principles were not just theoretical. They guided the creation
+                    of <code>grep</code>, <code>awk</code>, <code>sed</code>, and the
+                    shell itself — tools that are still used daily by millions of
+                    developers and system administrators.
+                </p>
+
+                <h2>How We Lost the Plot</h2>
+                <p>
+                    The rise of microservices promised to bring UNIX‑style modularity
+                    to the enterprise. Instead, it gave us a new kind of complexity:
+                    distributed tracing, circuit breakers, service meshes, and endless
+                    infrastructure as code. Each "service" was supposed to be small
+                    and focused, but in practice, they grew to encompass dozens of
+                    endpoints, each with its own database, caching layer, and deployment
+                    pipeline.
+                </p>
+                <p>
+                    The original UNIX tools are tiny — <code>grep</code> is a few thousand
+                    lines of C. A modern microservice often weighs in at hundreds of
+                    thousands of lines of code, running in a container that requires a
+                    cluster manager just to stay alive. We replaced pipes with REST calls
+                    and shell scripts with YAML orchestrators. The result is a system
+                    that is harder to reason about, more expensive to run, and more
+                    fragile in production.
+                </p>
+
+                <h2>The UNIX Way in the Cloud Era</h2>
+                <p>
+                    The good news is that the UNIX philosophy is not obsolete — it is
+                    being rediscovered. A new generation of tools and languages are
+                    bringing its principles back to the forefront:
+                </p>
+                <ul>
+                    <li><strong>Go</strong> and <strong>Rust</strong> encourage building small, statically compiled binaries that are easy to distribute and run.</li>
+                    <li><strong>Containers</strong> (Docker) are essentially sandboxed processes — they are the modern equivalent of chroot jails, not a reason to build a distributed monolith.</li>
+                    <li><strong>Serverless functions</strong> (AWS Lambda, Cloudflare Workers) are a direct application of "do one thing well" — each function is a tiny, focused piece of logic.</li>
+                    <li><strong>SQLite</strong> is the ultimate local‑first data store — it works like a text file, but with powerful query capabilities.</li>
+                </ul>
+                <p>
+                    The key is to use these tools in a way that honours the original
+                    vision: compose small, independent pieces with simple interfaces,
+                    and avoid unnecessary stateful complexity.
+                </p>
+
+                <h2>A Practical Example: A Log Analysis Pipeline</h2>
+                <p>
+                    Imagine you need to parse server logs, extract error counts, and
+                    send a summary to a dashboard. A microservices approach might involve
+                    a log shipper, a message queue, a stream processor, a database, and
+                    a separate dashboard service — each with its own deployment, scaling,
+                    and monitoring.
+                </p>
+                <p>
+                    A UNIX‑style pipeline, on the other hand, could look like this:
+                </p>
+                <pre tabindex="0" role="region" aria-label="UNIX pipeline example">
+                    <code>cat /var/log/nginx/access.log \
+                        | grep ' 500 ' \
+                        | awk '{print $1}' \
+                        | sort | uniq -c \
+                        | mail -s "500 errors today" admin@example.com</code>
+                </pre>
+                <p>
+                    This is a single command line that reads the log, filters for 500
+                    errors, extracts the client IP, counts unique occurrences, and
+                    emails the result. It is trivial to understand, debug, and modify.
+                    If the volume grows, you can replace <code>cat</code> with a streaming
+                    tool or run the pipeline in a serverless function. The core logic
+                    remains the same.
+                </p>
+                <p>
+                    This is not to say that microservices are never justified. For
+                    systems with multiple teams, high throughput, or diverse technology
+                    stacks, a distributed architecture may be the right choice. But
+                    starting with a simple pipeline and only adding complexity when
+                    it is proven necessary is the UNIX way — and it is a principle
+                    we could all afford to remember.
+                </p>
+
+                <h2>Why This Matters for Your Systems</h2>
+                <p>
+                    The UNIX philosophy is not a nostalgic throwback; it is a
+                    <strong>pragmatic strategy</strong> for building resilient,
+                    maintainable systems. It encourages:
+                </p>
+                <ul>
+                    <li><strong>Clarity</strong> — each component has a single responsibility, making it easy to understand and test.</li>
+                    <li><strong>Composability</strong> — tools can be chained in unexpected ways, increasing their utility.</li>
+                    <li><strong>Simplicity</strong> — the fewer moving parts, the fewer places for bugs to hide.</li>
+                    <li><strong>Local‑first operability</strong> — you can run and debug the entire pipeline on your laptop without a cloud account.</li>
+                </ul>
+                <p>
+                    In an era of cloud bloat and complexity fatigue, these qualities
+                    are not just nice‑to‑haves — they are competitive advantages.
+                    A team that can ship a feature by composing three existing commands
+                    will always be faster than a team that must spin up four new
+                    services and coordinate a release across multiple repositories.
+                </p>
+
+                <h2>Conclusion: Keep It Simple, Keep It UNIX</h2>
+                <p>
+                    The UNIX philosophy is not a set of rigid dogmas. It is a
+                    <strong>mindset</strong> — a way of thinking about software that
+                    prioritises clarity, reuse, and human comprehension. It has survived
+                    for half a century because it works.
+                </p>
+                <p>
+                    As we navigate the ever‑expanding universe of cloud services and
+                    distributed systems, we would do well to ask ourselves: <em>“Is
+                    this complexity truly necessary?”</em> If the answer is no, reach
+                    for a pipe. Write a small program. Compose it with others. Keep
+                    your data local until you have a good reason to move it.
+                </p>
+                <p>
+                    The tools may change, but the principles endure. And that is the
+                    true power of the UNIX philosophy.
+                </p>
+                <p class="muted" style="font-style:italic;">
+                    <span class="accent">⟡</span> This post is not a rejection of
+                    modern tools — it is a reminder that the foundation is still solid.
+                </p>
+            </div>
+
+            <footer class="post-footer">
+                <span class="author">
+                    <span class="author-avatar" aria-hidden="true">
+                        <span class="avatar-initials">OB</span>
+                        <span class="avatar-braille">⠕⠃</span>
+                    </span>
+                    <span>by <strong>Orthogonal Bits</strong> · freelance engineer</span>
+                </span>
+                <span>
+                    <a href="index.html" aria-label="Back to all blog posts">← all posts</a>
+                </span>
+            </footer>
+        </article>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" role="contentinfo" id="contact">
+        <!-- CONTACT (terminal cursor) on the LEFT -->
+        <a class="terminal-cursor" href="mailto:contact@orthogonalbits.dev?subject=Blog%20inquiry" aria-label="Contact us via email for blog inquiries">
+            $ contact --blog-inquiry <span class="cursor-block" aria-hidden="true"></span>
+        </a>
+
+        <!-- SIGNATURE (avatar + text) on the RIGHT -->
+        <div class="footer-left">
+            <span class="author-avatar" aria-hidden="true">
+                <span class="avatar-initials">OB</span>
+                <span class="avatar-braille">⠕⠃</span>
+            </span>
+            <span class="signature-text">
+                by <strong>Orthogonal Bits</strong> · freelance engineer
+            </span>
+        </div>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

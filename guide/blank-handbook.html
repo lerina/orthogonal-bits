@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[REPLACE WITH BOOK or TEXT TITLE]</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        a:hover, a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 2px;
+            padding: 0 0.2rem;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #f0f0f0;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 { font-size: 2.2rem; }
+        h2 { font-size: 1.8rem; border-bottom: 1px solid #444; }
+        h3 { font-size: 1.4rem; }
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2rem 0;
+        }
+        code, .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            color: #d4d4d4;
+        }
+        /* ----- KEYBOARD-ACCESSIBLE <pre tabindex="0" role="region" aria-label="Code sample"> ----- */
+        pre {
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 400px;          /* scrollable */
+            tab-size: 4;
+            /* Make it focusable and show focus ring */
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.1s;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;     /* visible focus ring in dark mode */
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #eee;
+            color: #111;
+        }
+        body.light-mode pre {
+            background: #eee;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;     /* visible focus ring in light mode */
+        }
+        body.light-mode pre code {
+            background: transparent;
+        }
+
+        /* ----- TOGGLE BUTTON (scrolls with page) ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .theme-toggle:hover {
+            background: #777;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* Skip link */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link for keyboard users -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+        <!-- Toggle button (scrolls with page) -->
+    <div class="theme-toggle-wrap">
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+        ☀️ Light
+    </button>
+    </div>
+    <header role="banner" aria-label="Book header">
+        <h1>[REPLACE WITH BOOK or TEXT TITLE]</h1>
+        <h2>Accessible Edition</h2>
+        <p><strong>[REPLACE WITH BOOK or TEXT SUBTITLE]</strong></p>
+        <p>[REPLACE WITH BOOK or TEXT AUTHOR IF AVAILABLE]</p>
+    </header>
+
+    <hr>
+
+    <!-- Navigation: Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            [REPLACE WITH BOOK or TEXT TOC]
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- Main content starts here -->
+    <main id="main-content" role="main">
+        <!-- The rest of the content (Preface, chapters, etc.) will be in subsequent parts -->
+[THE FOLLOWING IS AN EXAMPLE OF A SECTION REPLACE WITH REAL CONTENT]
+
+        <section aria-labelledby="conventions-used">
+            <h3 id="conventions-used">Conventions used</h3>
+            <p>There are a number of text conventions used throughout this book.</p>
+            <p><strong>CodeInText</strong>: Indicates code words in text, database table names, folder names, filenames, file extensions, pathnames, dummy URLs, user input, and Twitter handles. For example: “The .clone() method on String creates a new allocation on the heap and copies the content ("hello") into it.”</p>
+            <p>A block of code is set as follows:</p>
+            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    {
+        let espresso = String::from("Delicious");
+        println!("{}", espresso);
+    }
+}</code></pre>
+            <p>Any command-line input or output is written as follows:</p>
+            <pre tabindex="0" role="region" aria-label="Code sample"><code>docker --version</code></pre>
+            <p><strong>Bold</strong>: Indicates a new term, an important word, or words that you see on the screen. For instance, words in menus or dialog boxes appear in the text like this. For example: “At its core, an <strong>HTTP request</strong> consists of the following:”</p>
+            <p>Warnings or important notes appear like this.</p>
+            <p>Tips and tricks appear like this.</p>
+        </section>
+[END EXAMPLE OF A SECTION]
+
+</main>
+        <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            // Check localStorage for saved preference; default to dark
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';   // currently light → show "Dark"
+            } else {
+                // default: dark
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';  // currently dark → show "Light"
+            }
+
+            // Toggle on click
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>    
+</body>
+</html>
+

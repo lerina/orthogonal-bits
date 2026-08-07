@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Code (Program) Comprehension — A Guide to Understanding Codebases with Topcoat</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 1000px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.2s, background-color 0.2s;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.6em;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #3a3a3a;
+            padding-bottom: 0.3em;
+        }
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 1.6em;
+        }
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 1.4em;
+        }
+        h5,
+        h6 {
+            font-size: 1.1rem;
+            margin-top: 1.2em;
+        }
+        hr {
+            border: 0;
+            border-top: 2px solid #3a3a3a;
+            margin: 2.5rem 0;
+        }
+        code,
+        .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.9em;
+        }
+        p {
+            margin: 0 0 1.2em 0;
+        }
+        ul,
+        ol {
+            margin: 0 0 1.2em 1.8em;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 0.4em;
+        }
+        blockquote {
+            border-left: 4px solid #555;
+            margin: 1.5em 0;
+            padding: 0.5em 1.5em;
+            background: #1a1a1a;
+            border-radius: 0 6px 6px 0;
+        }
+        blockquote p {
+            margin-bottom: 0.5em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5em 0;
+            font-size: 0.95em;
+        }
+        th,
+        td {
+            border: 1px solid #444;
+            padding: 0.6rem 1rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-weight: 600;
+        }
+        tr:nth-child(even) {
+            background: #1a1a1a;
+        }
+
+        /* ----- KEYBOARD-ACCESSIBLE <pre> ----- */
+        pre {
+            background: #1e1e1e;
+            padding: 1.2rem 1.5rem;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 420px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.15s;
+            margin: 1.2em 0;
+            font-size: 0.92em;
+            line-height: 1.6;
+            position: relative;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #d4d4d4;
+            font-size: inherit;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #1a1a1a;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #1a1a1a;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #eee;
+            color: #1a1a1a;
+        }
+        body.light-mode pre {
+            background: #f0f0f0;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+            color: #1a1a1a;
+        }
+        body.light-mode blockquote {
+            background: #f0f0f0;
+            border-left-color: #aaa;
+        }
+        body.light-mode th {
+            background: #e0e0e0;
+            color: #1a1a1a;
+        }
+        body.light-mode td {
+            border-color: #ccc;
+        }
+        body.light-mode tr:nth-child(even) {
+            background: #f0f0f0;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #3a3a3a;
+            color: #fff;
+            border: none;
+            border-radius: 40px;
+            padding: 0.6rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .theme-toggle:hover {
+            background: #555;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        .theme-toggle:focus-visible {
+            outline: 3px solid #88c0ff;
+            outline-offset: 3px;
+        }
+        body.light-mode .theme-toggle {
+            background: #444;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #666;
+        }
+        body.light-mode .theme-toggle:focus-visible {
+            outline-color: #0055cc;
+        }
+
+        /* ----- SKIP LINK ----- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.6rem 1.5rem;
+            z-index: 1000;
+            border-radius: 0 0 10px 10px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* ----- TOC styling ----- */
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        nav ul ul {
+            padding-left: 1.6rem;
+            margin: 0.2rem 0 0.6rem 0;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0.2rem;
+            border-radius: 3px;
+        }
+        .toc-sub {
+            font-weight: 400;
+            color: #aaa;
+            font-size: 0.9em;
+        }
+        body.light-mode .toc-sub {
+            color: #555;
+        }
+
+        /* ----- section spacing ----- */
+        section {
+            margin-bottom: 3rem;
+        }
+        section> :first-child {
+            margin-top: 0;
+        }
+
+        /* ----- responsive ----- */
+        @media (max-width: 700px) {
+            body {
+                padding: 1.2rem 1rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            h3 {
+                font-size: 1.3rem;
+            }
+            pre {
+                padding: 0.8rem 1rem;
+                max-height: 320px;
+                font-size: 0.85em;
+            }
+            .theme-toggle-wrap {
+                text-align: center;
+            }
+            table {
+                font-size: 0.85em;
+            }
+            th,
+            td {
+                padding: 0.4rem 0.6rem;
+            }
+        }
+        @media (max-width: 480px) {
+            body {
+                padding: 0.8rem 0.6rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+            h2 {
+                font-size: 1.3rem;
+            }
+            pre {
+                font-size: 0.8em;
+                max-height: 260px;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* print-friendly */
+        @media print {
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                padding: 1.5rem !important;
+            }
+            .theme-toggle-wrap {
+                display: none !important;
+            }
+            .skip-link {
+                display: none !important;
+            }
+            pre {
+                max-height: none !important;
+                background: #f4f4f4 !important;
+                border: 1px solid #ccc !important;
+            }
+            pre:focus-visible {
+                outline-color: #000 !important;
+            }
+            a {
+                color: #000 !important;
+            }
+            h1,
+            h2,
+            h3,
+            h4,
+            h5,
+            h6 {
+                color: #000 !important;
+            }
+            h2 {
+                border-bottom-color: #aaa !important;
+            }
+            code {
+                background: #eee !important;
+                color: #000 !important;
+            }
+            blockquote {
+                border-left-color: #aaa !important;
+                background: #f4f4f4 !important;
+            }
+            table {
+                border-color: #aaa !important;
+            }
+            th {
+                background: #ddd !important;
+                color: #000 !important;
+            }
+            td {
+                border-color: #aaa !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- HEADER -->
+    <header role="banner" aria-label="Book header">
+            <span class="brand">
+            <a href="../index.html" aria-label="Home (top level)">orthogonal_bits <span class="muted">~</span></a>
+        </span>
+        <h1>Code (Program) Comprehension</h1>
+        <h2 style="border-bottom: none; font-weight: 400; color: #aaa; margin-top: 0.2em; font-size: 1.6rem;">
+            A Guide to Understanding Codebases with Topcoat
+        </h2>
+        <p style="font-size: 1.1rem; color: #bbb; margin-top: 0.5rem;">
+            <strong>Subtitle:</strong> Mastering the cognitive process of studying codebases — from mental models to architecture recovery, with a deep dive into the Tokio team's full-stack Rust framework.
+        </p>
+        <p style="font-size: 1rem; color: #aaa;">
+            <strong>Author:</strong> Lerina &amp; The Tokio / Topcoat Community Contributors
+        </p>
+    </header>
+
+    <hr />
+
+    <!-- TABLE OF CONTENTS -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <!-- TOC generated from the document structure -->
+            <li><a href="#sec-program-comprehension">1. Program Comprehension (Code Comprehension)</a>
+                <ul>
+                    <li><a href="#sec-code-tracing">1.1 Code Tracing</a></li>
+                    <li><a href="#sec-architecture-recovery">1.2 Architecture Recovery / Design Recovery</a></li>
+                    <li><a href="#sec-codebase-mapping">1.3 Codebase Mapping</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-top-down-strategy">2. Top‑Down Strategy</a></li>
+            <li><a href="#sec-bottom-up-strategy">3. Bottom‑Up Strategy</a></li>
+            <li><a href="#sec-hybrid-strategy">4. The Hybrid Strategy: “Opportunistic”</a></li>
+            <li><a href="#sec-phase1-black-box">5. Phase 1: The “Black Box” Input/Output Map</a></li>
+            <li><a href="#sec-phase2-lifecycle">6. Phase 2: Follow the Component Lifecycle</a></li>
+            <li><a href="#sec-phase3-skeleton">7. Phase 3: The “Skeleton” Reading Technique</a></li>
+            <li><a href="#sec-phase4-metacognition">8. Phase 4: Metacognition (“Learning to Learn”)</a></li>
+            <li><a href="#sec-build-mental-model">9. Build a Mental Model</a></li>
+            <li><a href="#sec-setup-tools">10. Setup and Tools</a></li>
+            <li><a href="#sec-step-by-step-mapping">11. Step‑by‑Step Mapping Process</a></li>
+            <li><a href="#sec-read-map-codebase">12. Read and Map the Codebase</a></li>
+            <li><a href="#sec-structural-mind-map">13. Structural Mind Map</a></li>
+            <li><a href="#sec-step-by-step-mapping-topcoat">14. Step‑by‑Step Mapping Strategy (Topcoat)</a></li>
+            <li><a href="#sec-topcoat-code-reading-template">15. Topcoat Code Reading Template</a></li>
+            <li><a href="#sec-trace-initialization">16. Trace the Initialization (<code>main.rs</code>)</a></li>
+            <li><a href="#sec-primary-page-handler">17. Identify the Primary Page Handler</a></li>
+            <li><a href="#sec-first-native-component">18. Map Your First Native Component</a></li>
+            <li><a href="#sec-diving-into-request-response">19. Diving into <code>examples/request‑response</code></a></li>
+            <li><a href="#sec-step1-map-example-layer">19.1 Step 1: Map the Example Layer</a></li>
+            <li><a href="#sec-step2-transition-framework">19.2 Step 2: Transition to the Internal Framework Source</a></li>
+            <li><a href="#sec-step3-unknown-log-macro">19.3 Step 3: Use an “Unknown Log” for the Macro Step</a></li>
+            <li><a href="#sec-smoke-test">20. Step 1: Run the Smoke Test</a></li>
+            <li><a href="#sec-read-json-handler">21. Step 2: Read the JSON Handler</a></li>
+            <li><a href="#sec-track-invisible-bridge">22. Step 3: Track the “Invisible Bridge”</a></li>
+            <li><a href="#sec-engineers-mapping-output">23. The Engineer’s Mapping Output</a></li>
+            <li><a href="#sec-dynamic-html-boundary">24. Trace the Dynamic HTML Boundary</a></li>
+            <li><a href="#sec-app-context-map">25. Locate the “App Context” Map</a></li>
+            <li><a href="#sec-shard-network-cycle">26. Analyze the Shard Network Cycle</a></li>
+            <li><a href="#sec-what-to-put-in-notebook">27. What to Put in Your Notebook</a></li>
+            <li><a href="#sec-how-to-use-notes">28. How to Use Your Notes</a></li>
+            <li><a href="#sec-topcoat-view-crate-skeleton">29. <code>topcoat‑view</code> — The Crate Skeleton</a></li>
+            <li><a href="#sec-track-entry-gate">30. Track the Entry Gate (<code>macro/</code> Module)</a></li>
+            <li><a href="#sec-map-grammar-node-types">31. Map the Grammar Node Types (<code>grammar/</code>)</a></li>
+            <li><a href="#sec-active-test-map">32. How to Active‑Test Your Map</a></li>
+            <li><a href="#sec-parser-blueprint">33. The Parser Blueprint</a></li>
+            <li><a href="#sec-core-node-definitions">34. The Core Node Definitions</a></li>
+            <li><a href="#sec-document-parser-step">35. How to Document a Parser Step</a></li>
+            <li><a href="#sec-codegen-lifecycle">36. The Codegen Lifecycle</a></li>
+            <li><a href="#sec-quote-logic">37. Tracking the <code>quote!</code> Logic for Node Elements</a></li>
+            <li><a href="#sec-codegen-checklist">38. The Codegen Checklist for Your Notebook</a></li>
+            <li><a href="#sec-real-world-app">39. Real‑world Application Architecture</a></li>
+            <li><a href="#sec-references">References</a></li>
+        </ul>
+    </nav>
+
+    <hr />
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Program Comprehension -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-program-comprehension-heading" id="sec-program-comprehension">
+            <h2 id="sec-program-comprehension-heading">1. Program Comprehension (Code Comprehension)</h2>
+            <p>
+                In software engineering, this specific activity is formally known as <strong>Program Comprehension</strong> (or <strong>Code Comprehension</strong>).
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+                It is a subfield of software maintenance and evolution that describes the cognitive process where a developer studies a codebase to build a correct mental model of how the system works.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+                Depending on the context, engineers use a few closely related terms for the specific steps you just took:
+            </p>
+
+            <h3 id="sec-code-tracing">1.1 Code Tracing</h3>
+            <p>
+                This is the micro‑activity of mentally executing the code step‑by‑step. When you looked at <code>main.rs</code> and followed the execution line‑by‑line into the page handler, you were tracing the control flow to see how data shifts from the server to the client runtime.
+                <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+            </p>
+
+            <h3 id="sec-architecture-recovery">1.2 Architecture Recovery / Design Recovery</h3>
+            <p>
+                When you take an existing codebase and sketch its structures, components, and boundaries in a notebook, you are performing <strong>Design Recovery</strong>. You are reconstructing a high‑level abstract map of a system using nothing but the raw source code.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+
+            <h3 id="sec-codebase-mapping">1.3 Codebase Mapping</h3>
+            <p>
+                In modern team workflows, creating these structural layouts—whether in a notebook or via digital tooling—is called <strong>Codebase Mapping</strong>. It is the practice of creating a spatial representation of your application's architecture to dramatically lower the cognitive load required to navigate it.
+                <sup><a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+            </p>
+            <p>
+                Ultimately, industry studies consistently show that developers spend up to 60% of their time doing exactly this—reading and comprehending code rather than writing it.
+                <sup><a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+            </p>
+            <p>
+                The most efficient strategy depends entirely on how familiar you are with the domain and what goal you want to achieve right now. Choosing the wrong one is why developers get trapped in the “rabbit hole” of reading every line of code without understanding the big picture.
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Top-Down Strategy -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-top-down-strategy-heading" id="sec-top-down-strategy">
+            <h2 id="sec-top-down-strategy-heading">2. Top‑Down Strategy (Best for Overview &amp; Onboarding)</h2>
+            <p>
+                This approach starts with the big picture and breaks it down into smaller details. You rely on high‑level mental models and domain knowledge to guess how the code is structured before you even read it.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+            </p>
+            <ul>
+                <li><strong>When to use:</strong> Onboarding to a new codebase, learning a framework like Topcoat, or understanding macro system architectures.</li>
+                <li><strong>How it works:</strong> You start at <code>main.rs</code>, move to the routes (<code>/dashboard</code>), look at component files, and only look at the logic inside functions when absolutely necessary.</li>
+                <li><strong>Pros:</strong> Incredibly fast; keeps you from getting bogged down in implementation details.</li>
+                <li><strong>Cons:</strong> Fails if you do not understand the underlying framework or language features (like Rust async lifetimes or macros).
+                    <sup><a href="#ref-5" aria-label="Reference 5">[5]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a>, <a href="#ref-7" aria-label="Reference 7">[7]</a>, <a href="#ref-8" aria-label="Reference 8">[8]</a>, <a href="#ref-9" aria-label="Reference 9">[9]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Bottom-Up Strategy -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-bottom-up-strategy-heading" id="sec-bottom-up-strategy">
+            <h2 id="sec-bottom-up-strategy-heading">3. Bottom‑Up Strategy (Best for Bugs &amp; Refactoring)</h2>
+            <p>
+                This approach starts at the microscopic level—a single variable, a specific line, or a precise error message—and groups chunks of code together into increasingly larger mental structures until you understand the whole module.
+                <sup><a href="#ref-10" aria-label="Reference 10">[10]</a>, <a href="#ref-11" aria-label="Reference 11">[11]</a>, <a href="#ref-12" aria-label="Reference 12">[12]</a></sup>
+            </p>
+            <ul>
+                <li><strong>When to use:</strong> Fixing a specific bug, analyzing an unfamiliar micro‑algorithm, or when the codebase has zero documentation or clear architecture.
+                    <sup><a href="#ref-13" aria-label="Reference 13">[13]</a></sup>
+                </li>
+                <li><strong>How it works:</strong> You choose one statement (e.g., a failing database query via Toasty ORM). You trace it backward to see where its inputs came from and forward to see where its outputs go.
+                    <sup><a href="#ref-14" aria-label="Reference 14">[14]</a>, <a href="#ref-15" aria-label="Reference 15">[15]</a></sup>
+                </li>
+                <li><strong>Pros:</strong> Highly accurate; builds an ironclad understanding of an isolated piece of logic.
+                    <sup><a href="#ref-16" aria-label="Reference 16">[16]</a></sup>
+                </li>
+                <li><strong>Cons:</strong> Suffers from “tunnel vision”; it takes a massive amount of time and cognitive energy to map an entire system this way.
+                    <sup><a href="#ref-17" aria-label="Reference 17">[17]</a>, <a href="#ref-18" aria-label="Reference 18">[18]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Hybrid Strategy -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-hybrid-strategy-heading" id="sec-hybrid-strategy">
+            <h2 id="sec-hybrid-strategy-heading">4. The Hybrid Strategy: “Opportunistic” (The Real‑World Winner)</h2>
+            <p>
+                Expert software engineers rarely stick to just one. They use an <strong>Opportunistic Strategy</strong> that blends both:
+            </p>
+            <ol>
+                <li><strong>Start Top‑Down:</strong> Spend 15 minutes mapping the main routes and component folders to get a structural map in your notebook.</li>
+                <li><strong>Switch to Bottom‑Up:</strong> As soon as you encounter a critical mechanism you don't understand (like a specific Topcoat macro state synchronization), stop. Drill down into that specific snippet, map it out exhaustively, and write a summary.</li>
+                <li><strong>Zoom back Out:</strong> Place that newly understood chunk back into your top‑down architectural map and continue.
+                    <sup><a href="#ref-19" aria-label="Reference 19">[19]</a>, <a href="#ref-20" aria-label="Reference 20">[20]</a>, <a href="#ref-21" aria-label="Reference 21">[21]</a></sup>
+                </li>
+            </ol>
+            <p>
+                Choosing <a href="https://github.com/tokio-rs/topcoat" target="_blank" rel="noopener noreferrer">Topcoat</a> as your vehicle for “learning to learn” codebases is an excellent, high‑leverage choice. Because it blends server‑side Rust (Tokio/Axum) with automated client‑side JavaScript generation via macros, it forces you to understand cross‑compilation patterns and modern reactive web architectures.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+                Since your goal is to learn how the overall framework works, you must explicitly use the <strong>Top‑Down Strategy</strong>. Your objective is to map boundaries and contracts, not to memorize code syntax.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                Here is your tactical blueprint to execute this top‑down deep dive in your notebook.
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Phase 1 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-phase1-black-box-heading" id="sec-phase1-black-box">
+            <h2 id="sec-phase1-black-box-heading">5. Phase 1: The “Black Box” Input/Output Map</h2>
+            <p>
+                Before reading any implementation details, look at Topcoat from the outside. Open your notebook to a clean spread and dedicate page 1 to the <strong>System Architecture</strong>.
+            </p>
+            <ul>
+                <li>
+                    <strong>Define the Boundary:</strong> Write down where Rust ends and JavaScript begins. Topcoat avoids WebAssembly by having its macros parse your Rust code and spit out pure, optimized vanilla JS for the browser.
+                    <sup><a href="#ref-5" aria-label="Reference 5">[5]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+                </li>
+                <li>
+                    <strong>Identify the Core Engines:</strong> Label the two hearts of the project:
+                    <ol>
+                        <li><strong>The Server Engine:</strong> Driven by Tokio (async runtime) and Axum (HTTP framework).</li>
+                        <li><strong>The Reactive Engine:</strong> Powered by Toasty ORM (data mapping) and a specialized client‑side runtime.
+                            <sup><a href="#ref-7" aria-label="Reference 7">[7]</a>, <a href="#ref-8" aria-label="Reference 8">[8]</a>, <a href="#ref-9" aria-label="Reference 9">[9]</a></sup>
+                        </li>
+                    </ol>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Phase 2 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-phase2-lifecycle-heading" id="sec-phase2-lifecycle">
+            <h2 id="sec-phase2-lifecycle-heading">6. Phase 2: Follow the Component Lifecycle</h2>
+            <p>
+                Turn to page 2. Instead of tracking a single variable, trace how a user request flows completely through the ecosystem. Draw this sequence as an architectural timeline:
+                <sup><a href="#ref-10" aria-label="Reference 10">[10]</a></sup>
+            </p>
+            <pre tabindex="0" role="region" aria-label="Architectural timeline diagram"><code>[ HTTP Request ] ──> Axum Router ──> Async Component ──> DB Fetch (Toasty)
+                                                               │
+[ DOM Update ]   &lt;── JS Runtime  &lt;── Server HTML Render &lt;──────┘</code></pre>
+            <ul>
+                <li>
+                    <strong>The Server Phase:</strong> Write a note about how async components are allowed to talk directly to your database. In typical frameworks (like React), you need an API endpoint. In Topcoat, the server renders the component directly, wiping out an entire layer of network glue.
+                    <sup><a href="#ref-11" aria-label="Reference 11">[11]</a>, <a href="#ref-12" aria-label="Reference 12">[12]</a></sup>
+                </li>
+                <li>
+                    <strong>The Macro Phase:</strong> Look closely at how the framework reads reactive tags. In your notebook, create a column labeled <code>#[component]</code> and another labeled <strong>Generated Output</strong>. This reminds you that the code you write is a blueprint for code the framework generates behind the scenes.
+                    <sup><a href="#ref-13" aria-label="Reference 13">[13]</a>, <a href="#ref-14" aria-label="Reference 14">[14]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Phase 3 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-phase3-skeleton-heading" id="sec-phase3-skeleton">
+            <h2 id="sec-phase3-skeleton-heading">7. Phase 3: The “Skeleton” Reading Technique</h2>
+            <p>
+                When you open Topcoat's internal framework files (or an application built with it), do not read from line 1 downward. Skim the structures first.
+                <sup><a href="#ref-15" aria-label="Reference 15">[15]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    <strong>Collapse All Blocks:</strong> If you use a code editor, collapse all function bodies so you only see function names, inputs, and outputs.
+                    <sup><a href="#ref-16" aria-label="Reference 16">[16]</a></sup>
+                </li>
+                <li>
+                    <strong>Log the Traits and Structs:</strong> In your notebook, list the core structs (e.g., <code>Context</code>, <code>Shard</code>, <code>Signal</code>). Next to each, write a one‑sentence guess as to what its job is based entirely on its name.
+                </li>
+                <li>
+                    <strong>Map by Dependencies:</strong> Look at the <code>Cargo.toml</code> file at the root. Write down the top 3 external libraries Topcoat relies on. Knowing what foundational bricks the framework stands on will instantly explain why certain design decisions were made.
+                    <sup><a href="#ref-17" aria-label="Reference 17">[17]</a>, <a href="#ref-18" aria-label="Reference 18">[18]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Phase 4 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-phase4-metacognition-heading" id="sec-phase4-metacognition">
+            <h2 id="sec-phase4-metacognition-heading">8. Phase 4: Metacognition (“Learning to Learn”)</h2>
+            <p>
+                Because you are building the skill of code comprehension itself, you need a section at the back of your notebook dedicated to your own learning process.
+            </p>
+            <ul>
+                <li>
+                    <strong>The “Unknown” Log:</strong> Create a running list of concepts that make you uncomfortable (e.g., Rust macros, internal mutability, WebSocket state syncing). Do not stop to look them up immediately; log them and keep moving top‑down.
+                    <sup><a href="#ref-19" aria-label="Reference 19">[19]</a></sup>
+                </li>
+                <li>
+                    <strong>The “Ah‑ha!” Column:</strong> When you finally understand a concept on your log, cross it out and write down the exact breakthrough realization. This creates a psychological feedback loop that makes reading intimidating code addictive.
+                    <sup><a href="#ref-20" aria-label="Reference 20">[20]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Build a mental model -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-build-mental-model-heading" id="sec-build-mental-model">
+            <h2 id="sec-build-mental-model-heading">9. Build a Mental Model</h2>
+            <p>
+                To build a mental model of unfamiliar code using a notebook, write down core components as you explore. Map entry points, trace data flows through functions, sketch system architecture diagrams, and note down questions or confusing blocks to test your assumptions step‑by‑step.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Setup and Tools -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-setup-tools-heading" id="sec-setup-tools">
+            <h2 id="sec-setup-tools-heading">10. Setup and Tools</h2>
+            <ul>
+                <li><strong>Medium:</strong> Use a physical paper notebook or a digital note tool like Obsidian or Notion.</li>
+                <li><strong>Format:</strong> Keep a pen handy or use markdown blocks with quick digital sketches.</li>
+                <li><strong>Goal:</strong> Focus on high‑level patterns, not every single line of syntax.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a>, <a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Step-by-Step Mapping Process -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-step-by-step-mapping-heading" id="sec-step-by-step-mapping">
+            <h2 id="sec-step-by-step-mapping-heading">11. Step‑by‑Step Mapping Process</h2>
+            <ul>
+                <li><strong>Find the entry point:</strong> Write down the main file or function where execution starts.</li>
+                <li><strong>Trace data flow:</strong> Draw arrows showing how input data moves through functions and transforms.</li>
+                <li><strong>List key objects:</strong> Note main classes, data structures, and their primary responsibilities.</li>
+                <li><strong>Write questions:</strong> Jot down confusing logic or unknowns to investigate and cross out when solved.</li>
+                <li><strong>Summarize in plain English:</strong> Write a one‑paragraph summary of what a module does in your own words.</li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Read and map the codebase -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-read-map-codebase-heading" id="sec-read-map-codebase">
+            <h2 id="sec-read-map-codebase-heading">12. Read and Map the Codebase</h2>
+            <p>
+                To read and map the codebase of <a href="https://github.com/tokio-rs/topcoat" target="_blank" rel="noopener noreferrer">Topcoat</a>—the full‑stack, server‑rendered reactive web framework by the <a href="https://tokio.rs/blog/2026-07-22-announcing-topcoat" target="_blank" rel="noopener noreferrer">Tokio team</a>—your notebook needs to capture how Rust server code seamlessly translates into client‑side reactivity without WebAssembly. Because Topcoat uses macros to cross‑compile a subset of Rust expressions into JavaScript signals, tracing macros and server‑side components is vital.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a>, <a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Structural Mind Map -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-structural-mind-map-heading" id="sec-structural-mind-map">
+            <h2 id="sec-structural-mind-map-heading">13. Structural Mind Map</h2>
+            <p>Divide your notebook page into three distinct sections to reflect Topcoat’s architectural layout:</p>
+            <pre tabindex="0" role="region" aria-label="Structural mind map diagram"><code>+-------------------------------------------------------+
+|  1. SERVER BOUNDARY (Axum routes / Toasty ORM)        |
++-------------------------------------------------------+
+                           │
+                           ▼ (Macros cross-compile)
++-------------------------------------------------------+
+|  2. RECOVERY &amp; SHARDS (State updates &amp; server HTML)   |
++-------------------------------------------------------+
+                           │
+                           ▼ (Metadata injection)
++-------------------------------------------------------+
+|  3. BROWSER RUNTIME (topcoat-runtime JS / HTMX)       |
++-------------------------------------------------------+</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Step-by-Step Mapping Strategy (Topcoat) -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-step-by-step-mapping-topcoat-heading" id="sec-step-by-step-mapping-topcoat">
+            <h2 id="sec-step-by-step-mapping-topcoat-heading">14. Step‑by‑Step Mapping Strategy (Topcoat)</h2>
+            <ul>
+                <li>
+                    <strong>Track Module‑Based Routing:</strong> Topcoat utilizes file‑system routing. Open your notebook and map the directory layout under <code>src/routes/</code> to visualize your application's URL path hierarchy.
+                    <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+                <li>
+                    <strong>Trace Async Component Data:</strong> Topcoat features async components that pull data directly from databases (often via the Toasty ORM) without separate API endpoints. In your notes, write down the name of the component and sketch an arrow pointing directly to the SQL database or database model it touches.
+                    <sup><a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+                <li>
+                    <strong>Isolate “Shards” and Signals:</strong> Look for components explicitly designated as shards—these are blocks that re‑render on the server when their arguments change. Highlight these in your notebook with a specific symbol (like a star ★) because they bridge local browser events back to the Tokio server.
+                    <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+                <li>
+                    <strong>Audit Macro Expressions:</strong> Topcoat uses macros to turn basic Rust state logic into metadata instructions for its bundled browser JS runtime. In your notebook, record the original Rust expression on the left and leave room on the right to sketch what client‑side reactive state it controls.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Topcoat Code Reading Template -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-topcoat-code-reading-template-heading" id="sec-topcoat-code-reading-template">
+            <h2 id="sec-topcoat-code-reading-template-heading">15. Topcoat Code Reading Template</h2>
+            <p>Copy this structured outline directly onto a fresh page in your notebook for every major view or module you examine:</p>
+            <pre tabindex="0" role="region" aria-label="Topcoat code reading template"><code>### MODULE/ROUTE: [e.g., /dashboard]
+1. DATA INGESTION (Where does the database/state match the component?)
+   * Data Source:
+   * Async Function:
+2. UI COMPONENTS &amp; SHARDS (What pieces are server-rendered vs. dynamic?)
+   * Async Component Name:
+   * Is it a Shard? [Yes / No] -> (If yes, what triggers its server re-render?)
+3. CLIENT INTERACTIVITY (Which Rust expressions compile to JS signals?)
+   * Macro/Signal:
+   * Client-side effect:
+4. CONFUSIONS / UNRESOLVED MACROS
+   * [ ] Why does macro X expand this way?
+   * [ ] Test: Use `cargo expand` to trace what the Topcoat compiler injected here.</code></pre>
+            <p>
+                Would you like me to show you how to map out a specific code snippet (like a Topcoat route handler or shard component) using this exact template?
+                <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Trace the Initialization -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-trace-initialization-heading" id="sec-trace-initialization">
+            <h2 id="sec-trace-initialization-heading">16. Trace the Initialization (<code>main.rs</code>)</h2>
+            <p>
+                When opening a Topcoat project, you should always start mapping at the initialization entry point and the primary entry page. This anchors your mental model before diving into nested shards and complex reactivity macros.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <p>Open your main source entry file. Write down the top‑level initialization block to document how the runtime boots up.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+            </p>
+            <pre tabindex="0" role="region" aria-label="Rust code: main.rs initialization"><code>#[tokio::main]
+async fn main() {
+    topcoat::start(Router::builder().discover().build()).await.unwrap();
+}</code></pre>
+            <ul>
+                <li>
+                    <strong>What to write in your notebook:</strong> Note that <code>Router::builder().discover()</code> automatically handles file‑system routing. Draw a box representing the Tokio Runtime Engine powering the underlying listener.
+                    <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Primary Page Handler -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-primary-page-handler-heading" id="sec-primary-page-handler">
+            <h2 id="sec-primary-page-handler-heading">17. Identify the Primary Page Handler</h2>
+            <p>Look for the <code>#[page("/")]</code> macro. This is your actual structural starting point.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <pre tabindex="0" role="region" aria-label="Rust code: page handler"><code>#[page("/")]
+async fn home() -> Result {
+    view! {
+        &lt;!DOCTYPE html&gt;
+        &lt;html&gt;
+            &lt;head&gt;
+                &lt;title&gt;"Hello world"&lt;/title&gt;
+                topcoat::dev::script()
+            &lt;/head&gt;
+            &lt;body&gt;
+                hello(name: "World")
+            &lt;/body&gt;
+        &lt;/html&gt;
+    }
+}</code></pre>
+            <ul>
+                <li><strong>What to write in your notebook:</strong></li>
+                <li>Write down the entry route (<code>/</code> maps to <code>fn home</code>).</li>
+                <li>Draw a star next to <code>topcoat::dev::script()</code>. Note that this injects the background WebSocket/JavaScript bridge for the hot‑reloading and expression‑sync engine.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Map Your First Native Component -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-first-native-component-heading" id="sec-first-native-component">
+            <h2 id="sec-first-native-component-heading">18. Map Your First Native Component</h2>
+            <p>Follow the <code>hello(name: "World")</code> function call inside the macro down to its <code>#[component]</code> block.
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <pre tabindex="0" role="region" aria-label="Rust code: component block"><code>#[component]
+async fn hello(name: &amp;str) -> Result {
+    view! {
+        &lt;h1&gt;"Hello, " (name) "!"&lt;/h1&gt;
+    }
+}</code></pre>
+            <ul>
+                <li>
+                    <strong>What to write in your notebook:</strong> Draw a clear structural boundary line separating the <strong>Page Context</strong> from the <strong>Component Context</strong>. Record that parameters are evaluated and fully rendered server‑side before any data reaches the client.
+                    <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+                </li>
+            </ul>
+            <p><strong>How your notebook should look right now:</strong></p>
+            <pre tabindex="0" role="region" aria-label="Notebook diagram"><code>[ Entry: main() ] ──> Activates file-system router discover()
+                         │
+                         ▼[ Route: "/" ] ───────> Calls fn home()
+                         │
+                         ├──> Injects topcoat::dev::script() (Client Bridge Runtime)
+                         └──> Evaluates Component: hello(name: "World")
+                                 │
+                                 └──> Output: Server-Rendered Static HTML &lt;h1&gt;</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Diving into examples/request-response -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-diving-into-request-response-heading" id="sec-diving-into-request-response">
+            <h2 id="sec-diving-into-request-response-heading">19. Diving into <code>examples/request‑response</code></h2>
+            <p>
+                Starting your top‑down comprehension with the <code>request‑response</code> example is a highly strategic choice. Because this specific example serves only API routes under <code>/api</code> and has no visual pages, it completely strips away the complex client‑side macro translation and JS reactivity mechanisms.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+                This allows you to anchor your mental model purely on Topcoat's HTTP processing layer before moving to the internal framework source.
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Step 1: Map the Example Layer -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-step1-map-example-layer-heading" id="sec-step1-map-example-layer">
+            <h3 id="sec-step1-map-example-layer-heading">19.1 Step 1: Map the Example Layer (Top‑Down Skeleton)</h3>
+            <p>Open a clean page in your notebook. Do not read line‑by‑line; look exclusively at how the data boundaries are declared in <code>examples/request‑response/src/</code>.</p>
+
+            <h4>1. Document the Entry System (<code>main.rs</code>)</h4>
+            <p>Locate the entry point. Because Topcoat utilizes module‑based file‑system routing, you will want to observe how the router gathers the API handlers.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <ul>
+                <li><strong>Notebook Goal:</strong> Draw a box labeled <code>Router::builder().discover()</code>. Write a note that Topcoat maps the <code>src/api/</code> folder structure to <code>/api/...</code> endpoints automatically.
+                    <sup><a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+            </ul>
+
+            <h4>2. Isolate the Contracts (<code>src/api/</code> modules)</h4>
+            <p>The readme indicates that this example showcases side‑by‑side parsing (JSON, forms, multipart uploads, streams).</p>
+            <ul>
+                <li><strong>Notebook Goal:</strong> Create a comparative table of <strong>Extractors vs. Responses</strong> based on the file boundaries:</li>
+            </ul>
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Endpoints (File Name)</th>
+                        <th scope="col">Input Type Expected</th>
+                        <th scope="col">Output Type Returned</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>json.rs</code></td>
+                        <td>JSON Payload</td>
+                        <td>JSON Object</td>
+                    </tr>
+                    <tr>
+                        <td><code>form.rs</code></td>
+                        <td>URL‑Encoded / Multipart</td>
+                        <td>Custom Status / Redirect</td>
+                    </tr>
+                    <tr>
+                        <td><code>stream.rs</code></td>
+                        <td>Raw Byte Stream</td>
+                        <td>Custom CSV / Buffered Stream</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Step 2: Transition to Internal Framework -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-step2-transition-framework-heading" id="sec-step2-transition-framework">
+            <h3 id="sec-step2-transition-framework-heading">19.2 Step 2: Transition to the Internal Framework Source</h3>
+            <p>
+                Once you see how the example sets up HTTP routes, you can “push through” to the internal framework repository. Your hybrid strategy now shifts to finding the traits that make the example work.
+            </p>
+
+            <h4>1. Hunt for the “Magic” Traits</h4>
+            <p>
+                In your example notebook, you will see functions returning types or extracting data types implicitly. When you open the core <code>crates/topcoat</code> framework repository, find the definition directories for these two critical pillars:
+            </p>
+            <ul>
+                <li><strong><code>FromRequest</code>:</strong> The trait defining how Topcoat extracts data out of an incoming HTTP request.</li>
+                <li><strong><code>IntoResponse</code>:</strong> The trait defining how Topcoat transforms a Rust return value (like JSON or custom HTML structures) back into raw HTTP bytes.</li>
+                <li><strong>Notebook Strategy:</strong> Write these two traits at the top of a page as <strong>The HTTP Gateway</strong>. Everything entering or leaving the framework must implement these contracts.</li>
+            </ul>
+
+            <h4>2. Unmask the Underlying Dependency</h4>
+            <p>
+                As you read the internal framework dependencies (<code>Cargo.toml</code>), you will quickly discover that Topcoat leans heavily on the <a href="https://github.com/tokio-rs/axum" target="_blank" rel="noopener noreferrer">Tokio/Axum ecosystem</a> for its underlying network stack.
+                <sup><a href="#ref-5" aria-label="Reference 5">[5]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+            </p>
+            <ul>
+                <li><strong>Mental Model Update:</strong> Do not get intimidated by the complex HTTP parsing code. Write down in your notebook: “Topcoat’s routing mechanism wraps Axum handles. Focus only on how Topcoat attaches its custom Request Context (<code>Cx</code>) onto the request path.”</li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Step 3: Unknown Log for Macro Step -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-step3-unknown-log-macro-heading" id="sec-step3-unknown-log-macro">
+            <h3 id="sec-step3-unknown-log-macro-heading">19.3 Step 3: Use an “Unknown Log” for the Macro Step</h3>
+            <p>
+                When you transition from the API‑only example to reading the full framework code, you will encounter the <code>view!</code> and <code>#[shard]</code> macros.
+                Do not try to read macro parser code yet. It is a notorious bottom‑up trap.
+                Instead, log it in your notebook like this:
+            </p>
+            <pre tabindex="0" role="region" aria-label="Unknown log example"><code>[ UNKNOWN LOG ]
+* Item: view! macro engine
+* What I know: It renders HTML server-side and outputs vanilla JS metadata.
+* Deep Dive Plan: Postpone reading the `topcoat-macros` crate until I am completely comfortable with how standard routing requests work.</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Smoke Test -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-smoke-test-heading" id="sec-smoke-test">
+            <h2 id="sec-smoke-test-heading">20. Step 1: Run the Smoke Test (Environment Baseline)</h2>
+            <p>
+                A seasoned software engineer analyzing a brand‑new framework would start by compiling the project and tracking a single, trivial raw request from the outside world into the framework. They call this establishing a “Smoke Test baseline”—proving the engine works before picking it apart.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <p>Let's execute this professional sequence step‑by‑step together using the <code>request‑response</code> example crate.</p>
+            <p>An engineer always interacts with the project as an end‑user first. Boot up the developer environment:
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <pre tabindex="0" role="region" aria-label="Command: cargo topcoat dev"><code>cargo topcoat dev -p request-response</code></pre>
+            <ul>
+                <li>
+                    <strong>In your notebook:</strong> Write down the primary binding address (usually <code>http://127.0.0.1:3000</code>). Confirm it works by firing a simple cURL request to ensure a valid payload comes back:
+                </li>
+            </ul>
+            <pre tabindex="0" role="region" aria-label="Command: curl"><code>curl http://127.0.0.1:3000/api/json</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Read the JSON Handler -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-read-json-handler-heading" id="sec-read-json-handler">
+            <h2 id="sec-read-json-handler-heading">21. Step 2: Read the JSON Handler (The Simplest Specimen)</h2>
+            <p>
+                Engineers do not read complex code first; they find the shortest path with the fewest dependencies to isolate framework patterns. Open <code>examples/request‑response/src/api/json.rs</code>.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+                The code typically looks like this standard Rust pattern:
+            </p>
+            <pre tabindex="0" role="region" aria-label="Rust code: json handler"><code>use topcoat::extract::Json;
+use topcoat::response::IntoResponse;
+
+pub async fn handler(Json(payload): Json&lt;MyData&gt;) -> impl IntoResponse {
+    Json(MyData { status: "success".to_string(), ..payload })
+}</code></pre>
+            <ul>
+                <li>
+                    <strong>In your notebook:</strong> Write down this exact structural transformation loop:
+                </li>
+            </ul>
+            <pre tabindex="0" role="region" aria-label="Structural transformation loop"><code>[ Outside HTTP Request ] ──( Json&lt;MyData&gt; )──> handler() ──( impl IntoResponse )──> [ HTTP Response ]</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Track the Invisible Bridge -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-track-invisible-bridge-heading" id="sec-track-invisible-bridge">
+            <h2 id="sec-track-invisible-bridge-heading">22. Step 3: Track the “Invisible Bridge” (Framework Transition)</h2>
+            <p>
+                Now, we switch from the Example layer to the Internal Framework layer. Your target question as an engineer is: <strong>How does Topcoat handle <code>Json</code> extraction and response generation?</strong>
+                Open the core framework code (the internal <code>crates/topcoat</code> source) and hunt for how <code>Json</code> connects to HTTP.
+            </p>
+
+            <h4>1. Extractors (<code>FromRequest</code>)</h4>
+            <ul>
+                <li>Find the file where <code>struct Json&lt;T&gt;</code> is defined (likely in <code>src/extract/json.rs</code> or re‑exported from Axum).</li>
+                <li>
+                    <strong>In your notebook:</strong> Note down that <code>Json</code> implements Topcoat's (or Axum's) <code>FromRequest</code> trait. This is the framework contract that reads incoming HTTP byte buffers and deserializes them into structured Rust structs via <code>serde</code>.
+                    <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+            </ul>
+
+            <h4>2. Formatter Responses (<code>IntoResponse</code>)</h4>
+            <ul>
+                <li>Find where <code>IntoResponse</code> is defined for <code>Json&lt;T&gt;</code>.</li>
+                <li>
+                    <strong>In your notebook:</strong> Note down how the framework alters headers (e.g., forcing <code>content‑type: application/json</code>) and writes serialization objects directly down the socket back to the user.
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Engineer's Mapping Output -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-engineers-mapping-output-heading" id="sec-engineers-mapping-output">
+            <h2 id="sec-engineers-mapping-output-heading">23. The Engineer's Mapping Output</h2>
+            <p>By following this path, the first structural page of your framework mental model notebook is officially built:</p>
+            <pre tabindex="0" role="region" aria-label="Cognitive architecture map"><code>COGNITIVE ARCHITECTURE MAP: TOPCOAT REQUEST LAYER
+1. FILE SYSTEM ROUTER (Automatic Detection)
+   * The directory folder structure `src/api/json.rs` binds natively to `/api/json` endpoints.
+2. THE FRAMING CONTRACTS (The absolute core primitives)
+   * Input Contract: FromRequest -> Extracts/parses raw wire formats into type-safe Rust state.
+   * Output Contract: IntoResponse -> Transforms Rust expressions back into outgoing HTTP packets.
+3. INTERNAL INHERITANCE
+   * Observation: Topcoat uses the Tokio/Axum network model for underlying extractors.
+   * Benefit: Known stability; focuses specifically on full-stack ergonomics.</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Trace the Dynamic HTML Boundary -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-dynamic-html-boundary-heading" id="sec-dynamic-html-boundary">
+            <h2 id="sec-dynamic-html-boundary-heading">24. Trace the Dynamic HTML Boundary</h2>
+            <p>
+                The next best step for a software engineer exploring Topcoat is to move from the pure‑API <code>request‑response</code> example into a UI‑based example that showcases Server‑Side Rendering (SSR) combined with client‑side reactive metadata.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+                This is where Topcoat's true architectural innovation happens: cross‑compiling ordinary type‑checked Rust expressions into thin JavaScript instructions for the browser runtime (<code>topcoat‑runtime</code>), completely avoiding heavy WebAssembly bundles.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <p>
+                Find an example repository or view using the <code>view!</code> macro and a state tracker (like an incrementing counter or form submission).
+                Look specifically for how a button click updates a variable. In your notebook, map this exact sequence horizontally:
+            </p>
+            <pre tabindex="0" role="region" aria-label="Button click sequence"><code>[ User Clicks Button ] ──> Browser Runtime Intercepts ──> Evaluates JS Signal ──> Updates DOM Fragment</code></pre>
+            <ul>
+                <li>
+                    <strong>What to note:</strong> Write down that the browser is not making a full page reload. It is executing a subset of your Rust logic that Topcoat pre‑translated into a JavaScript signal before sending it down the wire.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: App Context Map -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-app-context-map-heading" id="sec-app-context-map">
+            <h2 id="sec-app-context-map-heading">25. Locate the “App Context” Map</h2>
+            <p>
+                In any full‑stack framework, components need to securely share state like database pools or authentication keys without passing parameters down manually through fifteen levels of components. Topcoat handles this via a dedicated registry.
+                <sup><a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    <strong>Open the Documentation:</strong> Find the framework's <code>app_context.md</code> documentation file inside the repository.
+                </li>
+                <li>
+                    <strong>The Engineering Contract:</strong> Read how types are registered into <code>app_context</code>. The core engineering rule to write in your notebook is: <em>The engine maps lookups by a type's specific <code>TypeId</code>. Requesting an unregistered object triggers a startup‑time panic.</em> This tells you exactly where to look if an application crashes right at launch.
+                    <sup><a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Shard Network Cycle -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-shard-network-cycle-heading" id="sec-shard-network-cycle">
+            <h2 id="sec-shard-network-cycle-heading">26. Analyze the Shard Network Cycle</h2>
+            <p>
+                Topcoat introduces a core primitive called a <strong>Shard</strong>—a component explicitly designed to automatically re‑render on the server whenever its local arguments shift. This acts exactly like an <a href="https://news.ycombinator.com/item?id=48952067" target="_blank" rel="noopener noreferrer">HTMX or Hotwire server round‑trip</a> but without writing custom AJAX fetch configurations.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-7" aria-label="Reference 7">[7]</a></sup>
+                Open the framework codebase and search for the <code>#[shard]</code> macro attribute definition:
+            </p>
+            <ul>
+                <li>
+                    <strong>The Blueprint Note:</strong> Draw a distinct lifecycle loop in your notebook tracking how a Shard maintains its isolated boundaries:
+                </li>
+            </ul>
+            <pre tabindex="0" role="region" aria-label="Shard lifecycle"><code>1. Server builds initial page + embedded Shard block with metadata attributes.
+2. Client-side browser event triggers a state mutation.
+3. The embedded `topcoat-runtime` communicates with the Tokio backend.
+4. Server isolation engine processes the Shard function individually and sends back updated markup chunks.</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: What to Put in Your Notebook -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-what-to-put-in-notebook-heading" id="sec-what-to-put-in-notebook">
+            <h2 id="sec-what-to-put-in-notebook-heading">27. What to Put in Your Notebook</h2>
+            <p>
+                To master a codebase as non‑trivial as Topcoat, your notebook must not be a passive transcript of code. It must function as an active external brain.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <p>
+                Here is exactly what content to put in your notebook and how to actively use those notes to accelerate your comprehension.
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <p>Divide your notes into four highly structured categories designed to break down Topcoat's cross‑compiling reactive architecture.
+                <sup><a href="#ref-4" aria-label="Reference 4">[4]</a>, <a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+            </p>
+
+            <h3>A. Architectural Boundary Diagrams</h3>
+            <p>
+                Do not write text when you can sketch. Draw spatial boxes showing how Topcoat avoids compiling everything to WebAssembly by splitting your Rust expressions into server logic and tiny client instructions.
+                <sup><a href="#ref-4" aria-label="Reference 4">[4]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a>, <a href="#ref-7" aria-label="Reference 7">[7]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    <strong>What it looks like:</strong> Sketch a literal wall down the page. Label the left side “Server (Axum/Tokio Engine)” and the right side “Client (<code>topcoat‑runtime</code> JavaScript Engine)”. Draw arrows showing data transitioning across this threshold via the <code>view!</code> macro.
+                    <sup><a href="#ref-4" aria-label="Reference 4">[4]</a>, <a href="#ref-7" aria-label="Reference 7">[7]</a>, <a href="#ref-8" aria-label="Reference 8">[8]</a>, <a href="#ref-9" aria-label="Reference 9">[9]</a></sup>
+                </li>
+            </ul>
+
+            <h3>B. Primitives &amp; Contracts (The Glossary)</h3>
+            <p>Every codebase has its own specific vocabulary. In Topcoat, you need a precise dictionary defining its foundational blocks:
+                <sup><a href="#ref-10" aria-label="Reference 10">[10]</a></sup>
+            </p>
+            <ul>
+                <li><strong>Component:</strong> Server‑rendered UI structure.</li>
+                <li><strong>Shard:</strong> Sub‑component that detects client‑side argument changes and triggers a server‑side partial re‑render.</li>
+                <li><strong>Signals:</strong> Evaluated on the server for the initial render and cross‑compiled via macros to thin in‑browser JavaScript handlers.
+                    <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+            </ul>
+
+            <h3>C. Pattern Trackers</h3>
+            <p>Whenever you find a structural convention the codebase follows repeatedly, document it as a repeatable pattern.</p>
+            <ul>
+                <li>
+                    <strong>Example:</strong> “File‑System Routing: Adding a file to <code>src/api/</code> or <code>src/routes/</code> automatically maps it to a matching web path via the macro‑driven <code>Router::builder().discover()</code> call.”
+                    <sup><a href="#ref-8" aria-label="Reference 8">[8]</a></sup>
+                </li>
+            </ul>
+
+            <h3>D. The Unknown Log (Critical for ‘Learning to Learn’)</h3>
+            <p>Write down questions the moment they pop into your head. Do not go down a rabbit hole trying to answer them immediately.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <ul>
+                <li>[ ] How exactly does the compiler parse a Rust expression and transform it into native JavaScript?</li>
+                <li>[ ] Where are state variables stored in memory between HTTP ticks?</li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: How to Use Your Notes -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-how-to-use-notes-heading" id="sec-how-to-use-notes">
+            <h2 id="sec-how-to-use-notes-heading">28. How to Use Your Notes</h2>
+            <p>
+                Taking notes is only 20% of the battle; using them dynamically is where real comprehension happens.
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+
+            <h3>A. The “Diff” Test (Cross‑Referencing)</h3>
+            <p>
+                When you move from the simple <code>request‑response</code> API example to a complex frontend Topcoat example, open your <strong>Primitives &amp; Contracts</strong> list.
+                <sup><a href="#ref-10" aria-label="Reference 10">[10]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    Check off what remains the same (e.g., <code>FromRequest</code> handles payloads in both contexts) and highlight what is brand new (e.g., <code>topcoat::dev::script()</code> injecting WebSocket runtimes). This forces your brain to only process the novel delta of the code.
+                    <sup><a href="#ref-9" aria-label="Reference 9">[9]</a></sup>
+                </li>
+            </ul>
+
+            <h3>B. Active Back‑Tracing (Feynman Technique)</h3>
+            <p>
+                Pick a single file in the repository (such as <code>crates/topcoat/src/view/macro.rs</code>). Close the code editor entirely. Using only your notebook diagrams, try to explain to yourself out loud exactly how a button click on the frontend navigates through the framework to update a server‑side state asset. Wherever you stumble or hesitate, that is a blind spot—open the code back up and patch your notes.
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+
+            <h3>C. Clear the Unknown Log</h3>
+            <p>
+                As you push deeper into the core repository framework code, treat your Unknown Log as a personal quest log. When you finally discover how Topcoat hooks its internals into Tokio or Axum, flip back to your log, cross out the query, and write a single, definitive “Ah‑ha!” sentence summarizing the reality.
+                <sup><a href="#ref-7" aria-label="Reference 7">[7]</a></sup>
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: topcoat-view Crate Skeleton -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-topcoat-view-crate-skeleton-heading" id="sec-topcoat-view-crate-skeleton">
+            <h2 id="sec-topcoat-view-crate-skeleton-heading">29. <code>topcoat‑view</code> — The Crate Skeleton</h2>
+            <p>
+                The <a href="https://github.com/tokio-rs/topcoat/tree/main/crates/topcoat-view" target="_blank" rel="noopener noreferrer"><code>topcoat‑view</code></a> crate is the crown jewel of the Topcoat framework. Because Topcoat's defining feature is compiling Rust expressions straight to client‑side JavaScript templates without a WebAssembly build step, <code>topcoat‑view</code> is where that heavy lifting lives.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+            </p>
+            <p>
+                When a professional engineer opens an internal rendering crate like <code>crates/topcoat‑view</code>, they use a specific <strong>Top‑Down Structural Mapping</strong> layout to anchor their notes.
+            </p>
+            <p>Open your notebook to a blank spread. Start by breaking the <code>topcoat‑view</code> folder structure down into its core functional responsibilities. Do not read lines of code yet; look exclusively at the folder labels:</p>
+            <pre tabindex="0" role="region" aria-label="topcoat-view folder structure"><code>CRATE ENGINE: topcoat-view
+├── grammar/   --> [Syntax Definition] Tokenizes HTML-like markup written inside Rust.
+├── macro/     --> [Procedural Macro Entry] Intercepts view! {} blocks at compile-time.
+└── src/       --> [Runtime Logic] Evaluates, tracks, and stitches HTML fragments together.</code></pre>
+            <p>
+                <strong>The Architectural Conflict Note:</strong>
+                Write down this core realization at the top of your page: “This crate is a hybrid procedural macro engine. Its goal is to take a single <code>view!</code> macro block, parse it into a structured syntax tree (grammar), and output two things at once: a Rust server‑renderer and raw JavaScript code fragments.”
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Track the Entry Gate -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-track-entry-gate-heading" id="sec-track-entry-gate">
+            <h2 id="sec-track-entry-gate-heading">30. Track the Entry Gate (<code>macro/</code> Module)</h2>
+            <p>
+                A software engineer immediately locates the macro entry points to understand how the compiler forwards raw text down to the internal logic. Look for where the procedural macros are explicitly declared:
+            </p>
+            <ul>
+                <li>The <code>view!</code> macro: The primary declarative template engine.</li>
+                <li>The <code>#[component]</code> macro: The attribute macro that turns an <code>async fn</code> into a reusable, template‑safe UI block.</li>
+                <li>
+                    <strong>What to put in your notebook:</strong> Draw a flowchart tracing a block of code through compilation:
+                </li>
+            </ul>
+            <pre tabindex="0" role="region" aria-label="Flowchart: view! macro compilation"><code>[ Your Code: view! { &lt;h1&gt;"Hello"&lt;/h1&gt; } ]
+                   │
+                   ▼
+       [ topcoat-view/macro ] ───> Intercepts TokenStream
+                   │
+                   ▼
+      [ topcoat-view/grammar ] ──> Validates &amp; parses HTML structural shapes
+                   │
+                   ▼
+        [ Generated Outputs ] ───> Rust Server Render String + JS Runtime Bindings</code></pre>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Map the Grammar Node Types -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-map-grammar-node-types-heading" id="sec-map-grammar-node-types">
+            <h2 id="sec-map-grammar-node-types-heading">31. Map the Grammar Node Types (<code>grammar/</code> Module)</h2>
+            <p>
+                When parsing HTML tags inside Rust, Topcoat cannot rely on standard Rust compiler syntax (<code>syn::Expr</code>). It must build a custom parser. In your notebook, create a glossary tracking the different structural primitives the framework's grammar engine isolates:
+            </p>
+            <ul>
+                <li>
+                    <strong>Static Nodes:</strong> Pure HTML structures (<code>&lt;div&gt;</code>, <code>&lt;h1&gt;</code>) that never alter. Note that the engine handles these with zero runtime memory overhead.
+                </li>
+                <li>
+                    <strong>Dynamic Content Blocks:</strong> Parenthesized expressions like <code>(name)</code>. Note that these evaluate standard server‑side Rust values inline.
+                </li>
+                <li>
+                    <strong>Reactive Expressions:</strong> Expressions flagged with the signature <code>$( ... )</code> syntax. Circle this in your notebook with a bright color. Note that this syntax marks the explicit boundary line where <code>topcoat‑view</code> stops treating Rust as server code and tells the macro generator to spit out vanilla browser JS code.
+                    <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: How to Active-Test Your Map -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-active-test-map-heading" id="sec-active-test-map">
+            <h2 id="sec-active-test-map-heading">32. How to Active‑Test Your Map</h2>
+            <p>
+                Now that you have mapped the structural boundaries of <code>topcoat‑view</code>, use your notes to guide your reading in the codebase:
+            </p>
+            <ol>
+                <li>Open a sample file utilizing a component, like an interactive button template.</li>
+                <li>Identify a <code>$( ... )</code> tracking expression.</li>
+                <li>
+                    Flash back to your notebook diagram: verify how that exact expression maps out to the <code>grammar/</code> parser step, then moves down into the <code>macro/</code> generation pipeline to eventually end up inside the browser's JavaScript runtime engine.
+                    <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+                </li>
+            </ol>
+            <p>
+                The next natural step is to zoom into the <code>grammar/</code> directory to discover the precise custom token parser library (likely <code>syn</code> or a custom lexer) used to tokenize these HTML tags.
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: The Parser Blueprint -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-parser-blueprint-heading" id="sec-parser-blueprint">
+            <h2 id="sec-parser-blueprint-heading">33. The Parser Blueprint (What to Draw)</h2>
+            <p>
+                To map out how <code>topcoat‑view</code> reads and parses HTML‑like syntax embedded inside Rust macros, you must understand the AST (Abstract Syntax Tree) pattern it shares with other crates in the repo.
+                Topcoat isolates its grammar parsing logic into separate <code>*-grammar</code> crates (like <code>topcoat‑view‑grammar</code>). These crates have an <code>ast</code> module containing compile‑time structural definitions that rely heavily on the <a href="https://docs.rs/syn/latest/syn/" target="_blank" rel="noopener noreferrer"><code>syn</code> library</a> (the standard Rust tool for parsing tokens inside macro blocks).
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <p>Draw a sequence layout tracking how an unstructured stream of code characters transforms into strict syntax tree nodes:</p>
+            <pre tabindex="0" role="region" aria-label="Parser sequence"><code>[ Raw TokenStream ] ──> syn::parse::Parse Trait ──> Node AST Matching ──> Macro Codegen</code></pre>
+            <ul>
+                <li>
+                    <strong>The Engineering Concept:</strong> Write down that Topcoat doesn't write a string regex parser. It implements the <code>syn::parse::Parse</code> trait on custom structs. This reads Rust code as a type‑safe stream of structures (like <code>Ident</code>, <code>Punct</code>, or <code>Literal</code>).
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: The Core Node Definitions -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-core-node-definitions-heading" id="sec-core-node-definitions">
+            <h2 id="sec-core-node-definitions-heading">34. The Core Node Definitions</h2>
+            <p>
+                Look for the <code>ast</code> module inside <code>crates/topcoat‑view‑grammar/src/ast/</code>. In your notebook, list the three primary structural enums or structs that define the <code>view!</code> macro template language:
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+
+            <h3>A. Element Node (<code>struct Element</code>)</h3>
+            <p>This matches standard HTML tags (e.g., <code>&lt;div class="container"&gt;</code>).
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    <strong>Parser Logic:</strong> The code looks for an opening angle bracket <code>&lt;</code>, grabs the identifier (<code>div</code>), parses any attribute expressions, and loops through child elements until it hits the matching <code>&lt;/div&gt;</code> tag.
+                    <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+                </li>
+            </ul>
+
+            <h3>B. Interpolation Node (<code>struct Interpolation</code>)</h3>
+            <p>This parses normal server‑rendered data bindings inside standard parentheses <code>(expression)</code>.
+                <sup><a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    <strong>Parser Logic:</strong> It watches for an opening parenthesis token <code>(</code>, lets the <code>syn</code> crate automatically grab whatever valid Rust expression is wrapped inside, and stops at the closing <code>)</code>.
+                </li>
+            </ul>
+
+            <h3>C. Client Signal Node (<code>struct ClientExpression</code>)</h3>
+            <p>This parses the reactive client‑side blocks denoted by the special <code>$( ... )</code> marker. Highlight this block heavily.</p>
+            <ul>
+                <li>
+                    <strong>Parser Logic:</strong> When the grammar engine encounters the <code>$</code> prefix token, it switches modes. It parses the interior expression to flag it for the <code>topcoat‑runtime</code> JavaScript generator, rather than just rendering it directly to a server HTML string.
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: How to Document a Parser Step -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-document-parser-step-heading" id="sec-document-parser-step">
+            <h2 id="sec-document-parser-step-heading">35. How to Document a Parser Step in Your Notes</h2>
+            <p>When you open an AST or Parser file, use this template layout on a blank notebook page to parse the code mentally without drowning in boilerplate:</p>
+            <pre tabindex="0" role="region" aria-label="Parser tracker template"><code>PARSER TRACKER: topcoat-view-grammar / ast / node.rs
+1. PARSING MECHANISM (How does syn ingest tokens?)
+   * Target Struct: Node
+   * Implemented Trait: syn::parse::Parse
+2. THE FORK SWITCH (How does the parser choose what to build?)
+   * If it looks like "&lt;", parse it as a structural Node::Element.
+   * If it looks like "(", parse it as a server-side Node::Interpolation expression.
+   * If it looks like "$", parse it as a client-side Node::Reactive Signal.
+3. ERROR RECOVERY
+   * Note how the parser spits out `syn::Error::new()`.
+   * This is why writing broken HTML inside a view! macro gives you clean, line-numbered compilation errors right inside the cargo terminal.</code></pre>
+            <p>
+                By mapping the grammar engine this way, you can see how Topcoat converts layout tags into an organized tree model.
+            </p>
+            <p>
+                Next, we will want to track how this tree is passed into the <code>macro/</code> folder to be generated into Rust code.
+            </p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: The Codegen Lifecycle -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-codegen-lifecycle-heading" id="sec-codegen-lifecycle">
+            <h2 id="sec-codegen-lifecycle-heading">36. The Codegen Lifecycle (The Sketch)</h2>
+            <p>
+                To map out the code generation step—formally known as the <strong>Codegen</strong> phase—your notebook needs to capture how Topcoat uses the <a href="https://docs.rs/quote/latest/quote/" target="_blank" rel="noopener noreferrer"><code>quote!</code> macro library</a>. This is the mechanism that takes the AST tokens your grammar engine just parsed and emits valid Rust source code that the standard compiler can understand.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a></sup>
+                In Topcoat, the codegen phase performs a unique double‑duty: it writes the Rust HTML rendering instructions for the server, and packs client‑side metadata strings for the browser JavaScript runtime.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <p>Open your notebook and draw a split timeline tracking how a single AST node type branches out during code generation:
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+            </p>
+            <pre tabindex="0" role="region" aria-label="Codegen split timeline"><code>                     ┌───> Generates Server Code (Pre-rendered HTML String)
+                     │
+[ AST Node Type ] ───┤
+                     │
+                     └───> Generates Client Metadata (JS Signal Instructions)</code></pre>
+            <ul>
+                <li>
+                    <strong>The Engineering Insight:</strong> Write down that the macro engine does not just spit out text. It returns a type‑safe <code>proc_macro2::TokenStream</code>.
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: quote! Logic -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-quote-logic-heading" id="sec-quote-logic">
+            <h2 id="sec-quote-logic-heading">37. Tracking the <code>quote!</code> Logic for Node Elements</h2>
+            <p>
+                Open the file within <code>crates/topcoat‑view‑macro</code> (often named <code>codegen.rs</code> or <code>render.rs</code>). Your notebook should focus entirely on how the macro maps back into raw HTML strings.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+            </p>
+
+            <h3>A. For Static HTML Tags</h3>
+            <p>Look for how a normal tag like <code>&lt;div&gt;</code> is processed by the generator.</p>
+            <ul>
+                <li>
+                    <strong>The Code Behind It:</strong> The engine uses <code>quote!</code> to wrap the static content into a buffer write statement:
+                </li>
+            </ul>
+            <pre tabindex="0" role="region" aria-label="quote! for static HTML"><code>quote! {
+    buf.push_str("&lt;div&gt;");
+    // ... render children ...
+    buf.push_str("&lt;/div&gt;");
+}</code></pre>
+            <ul>
+                <li>
+                    <strong>Notebook Entry:</strong> Write down that static segments require zero allocations or evaluations at runtime. They compile down to pure string literal streaming.
+                </li>
+            </ul>
+
+            <h3>B. For Client Expressions: <code>$( ... )</code></h3>
+            <p>Look for where the generator handles reactive signals. This is the core magic of Topcoat.
+                <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+            </p>
+            <ul>
+                <li>
+                    <strong>The Code Behind It:</strong> Instead of rendering just the data value, the code generator embeds metadata flags directly into the markup:
+                </li>
+            </ul>
+            <pre tabindex="0" role="region" aria-label="quote! for client expressions"><code>quote! {
+    buf.push_str(r#"&lt;span data-tc-signal="... "&gt;"#);
+    // ... server output value ...
+    buf.push_str("&lt;/span&gt;");
+}</code></pre>
+            <ul>
+                <li>
+                    <strong>Notebook Entry:</strong> Highlight this block. Note that Topcoat avoids compiling Rust logic to WebAssembly by converting your <code>$( ... )</code> blocks into DOM data attributes. The browser‑side <code>topcoat‑runtime</code> JavaScript library scans for these unique <code>data‑tc‑*</code> fields at runtime and links them to frontend updates.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Codegen Checklist -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-codegen-checklist-heading" id="sec-codegen-checklist">
+            <h2 id="sec-codegen-checklist-heading">38. The Codegen Checklist for Your Notebook</h2>
+            <p>When reading through the macro expansion code, fill out this specific validation card on your page:</p>
+            <pre tabindex="0" role="region" aria-label="Macro generator architecture map"><code>MACRO GENERATOR ARCHITECTURE MAP
+1. PRIMARY OUTPUT TARGETS
+   * Buffer Struct: `&amp;mut String` (Where the server appends rendered HTML text).
+   * Script Metadata Payload: Client state map instructions attached to the DOM.
+2. MACRO UTILITIES UTILIZED
+   * `syn` (For destructured pattern matching against our Grammar AST).
+   * `quote` (The token-generation engine rewriting our final Rust outputs).
+3. PERFORMANCE BOUNDS TO TRACE
+   * [ ] How does it estimate the output buffer size beforehand?
+   * [ ] Does it use compile-time constants for the static HTML segment splits?</code></pre>
+            <p>
+                <strong>The Big Picture Verification</strong>
+                You have now traced the structural pipeline of full‑stack rendering from end to end:
+            </p>
+            <ol>
+                <li><strong>The Entry Point:</strong> Automatically matching paths via file‑system routing.</li>
+                <li><strong>The Parser Engine:</strong> Breaking the markup chunks down into an Abstract Syntax Tree via <code>syn</code>.</li>
+                <li><strong>The Codegen Engine:</strong> Re‑weaving that tree into server‑side streaming buffers and lightweight client‑side metadata attributes.
+                    <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+                </li>
+            </ol>
+            <p>This completes your top‑down architectural map of the <code>topcoat‑view</code> crate engine.</p>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Real-world Application Architecture -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-real-world-app-heading" id="sec-real-world-app">
+            <h2 id="sec-real-world-app-heading">39. Real‑world Application Architecture</h2>
+            <p>
+                A real‑world full‑stack web application built on Topcoat relies on its “batteries‑included” architecture to manage the entire cycle of a production‑grade interactive feature.
+                <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+                A complete, real‑world project scenario requires the following foundational elements to function successfully:
+            </p>
+
+            <h3>1. Data Ingestion &amp; State Management</h3>
+            <ul>
+                <li>
+                    <strong>Database Models via Toasty ORM:</strong> Async database components that query data tables natively on the server without manual REST/GraphQL API serialization.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a></sup>
+                </li>
+                <li>
+                    <strong>Request‑Level Memoization:</strong> A caching layer that prevents the backend from executing redundant SQL queries if multiple sub‑components request identical data during a single render cycle.
+                    <sup><a href="#ref-4" aria-label="Reference 4">[4]</a></sup>
+                </li>
+                <li>
+                    <strong>Session/Cookie Management:</strong> Built‑in state utilities to store secure user identifiers, authentication contexts, and request states between individual HTTP ticks.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-5" aria-label="Reference 5">[5]</a></sup>
+                </li>
+            </ul>
+
+            <h3>2. Server‑Rendered UI Components</h3>
+            <ul>
+                <li>
+                    <strong>File‑System Module Routing:</strong> A strict directory tree inside <code>src/routes/</code> or <code>src/api/</code> that the macro system automatically expands into HTTP path handlers.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+                </li>
+                <li>
+                    <strong>Tailwind Utility Classes:</strong> Layout elements utilizing Topcoat's built‑in, Node.js‑free Tailwind pipeline to process design utilities directly into server‑emitted strings.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+                </li>
+                <li>
+                    <strong>Content‑Hashed Asset Bundling:</strong> Compile‑time <code>asset!</code> macro invocations that verify local images, fonts, or files, calculate their cryptographic hash, and serve them with long‑term browser cache headers.
+                    <sup><a href="#ref-1" aria-label="Reference 1">[1]</a>, <a href="#ref-2" aria-label="Reference 2">[2]</a></sup>
+                </li>
+            </ul>
+
+            <h3>3. Client Interaction Lifecycle</h3>
+            <ul>
+                <li>
+                    <strong>Dual Rust/JS Expression Signals:</strong> Reactive expressions marked inside your macro templates that evaluate instantly on the server and embed descriptive metadata into the DOM for immediate browser evaluation.
+                </li>
+                <li>
+                    <strong>The <code>topcoat‑runtime</code> Script:</strong> A lightweight, client‑side JavaScript engine injected via <code>topcoat::dev::script()</code> that reads metadata attributes and coordinates client interactivity without WebAssembly.
+                </li>
+                <li>
+                    <strong>Isolated Server Shards:</strong> Specific component blocks designated to securely re‑render on the Tokio host when frontend state adjustments require updated markup slices.
+                    <sup><a href="#ref-2" aria-label="Reference 2">[2]</a>, <a href="#ref-3" aria-label="Reference 3">[3]</a>, <a href="#ref-6" aria-label="Reference 6">[6]</a></sup>
+                </li>
+            </ul>
+        </section>
+
+        <hr />
+
+        <!-- ============================================================ -->
+        <!-- REFERENCES -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-references-heading" id="sec-references">
+            <h2 id="sec-references-heading">References</h2>
+            <p style="font-size: 0.9rem; color: #aaa;">The following references are cited throughout the text. They are preserved here for completeness.</p>
+
+            <h3>Program Comprehension &amp; Strategies</h3>
+            <ul>
+                <li id="ref-1"><a href="https://www.sciencedirect.com" target="_blank" rel="noopener noreferrer">[1]</a> ScienceDirect — Program Comprehension</li>
+                <li id="ref-2"><a href="https://baolingfeng.github.io" target="_blank" rel="noopener noreferrer">[2]</a> Baolingfeng — TSE Comprehension Paper</li>
+                <li id="ref-3"><a href="https://www.cs.ubbcluj.ro" target="_blank" rel="noopener noreferrer">[3]</a> CS UBB Cluj — Lecture 3/4</li>
+                <li id="ref-4"><a href="https://www.youtube.com/watch?v=xW5Q0ixJZ9w&t=37" target="_blank" rel="noopener noreferrer">[4]</a> YouTube — Code Tracing</li>
+                <li id="ref-5"><a href="https://developex.com" target="_blank" rel="noopener noreferrer">[5]</a> Developex — Intelligent Codebase Tools</li>
+                <li id="ref-6"><a href="https://www.emerald.com" target="_blank" rel="noopener noreferrer">[6]</a> Emerald — Identifying Code Reading Strategies in Debugging</li>
+            </ul>
+
+            <h3>Top‑Down / Bottom‑Up / Hybrid</h3>
+            <ul>
+                <li id="ref-7"><a href="https://www.simplilearn.com" target="_blank" rel="noopener noreferrer">[7]</a> Simplilearn — Top‑Down vs Bottom‑Up Approach</li>
+                <li id="ref-8"><a href="https://towardsdatascience.com" target="_blank" rel="noopener noreferrer">[8]</a> Towards Data Science — Mastering Dynamic Programming</li>
+                <li id="ref-9"><a href="https://blog.convisoappsec.com" target="_blank" rel="noopener noreferrer">[9]</a> Conviso AppSec — Code Comprehension</li>
+                <li id="ref-10"><a href="https://www.awesomecodereviews.com" target="_blank" rel="noopener noreferrer">[10]</a> Awesome Code Reviews — Code Reading Techniques</li>
+                <li id="ref-11"><a href="https://www.emerald.com" target="_blank" rel="noopener noreferrer">[11]</a> Emerald — Process Mapping</li>
+                <li id="ref-12"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[12]</a> Medium — Bottom‑Up Design in React Apps</li>
+                <li id="ref-13"><a href="https://growth-onomics.com" target="_blank" rel="noopener noreferrer">[13]</a> Growth‑onomics — Revenue Forecasting Models</li>
+                <li id="ref-14"><a href="https://bluedolphin.io" target="_blank" rel="noopener noreferrer">[14]</a> Blue Dolphin — Process Modeling &amp; Maturity Models</li>
+                <li id="ref-15"><a href="https://algocademy.com" target="_blank" rel="noopener noreferrer">[15]</a> Algocademy — Pseudocode for Planning</li>
+                <li id="ref-16"><a href="https://www.acte.in" target="_blank" rel="noopener noreferrer">[16]</a> ACTE — Top‑Down vs Bottom‑Up Investing</li>
+                <li id="ref-17"><a href="https://ieeexplore.ieee.org" target="_blank" rel="noopener noreferrer">[17]</a> IEEE — Code Comprehension Paper</li>
+                <li id="ref-18"><a href="https://www.sciencedirect.com" target="_blank" rel="noopener noreferrer">[18]</a> ScienceDirect — Article S0957417422007072</li>
+                <li id="ref-19"><a href="https://azaidman.github.io" target="_blank" rel="noopener noreferrer">[19]</a> Azaidman — CSMR 2005 Paper</li>
+                <li id="ref-20"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[20]</a> Medium — Pinterest Engineering: Anomaly Detection</li>
+                <li id="ref-21"><a href="https://eqvista.com" target="_blank" rel="noopener noreferrer">[21]</a> Eqvista — Backsolve Valuation Method</li>
+            </ul>
+
+            <h3>Tooling &amp; Practice</h3>
+            <ul>
+                <li id="ref-22"><a href="https://super-productivity.com" target="_blank" rel="noopener noreferrer">[22]</a> Super Productivity — AI Codebase Onboarding</li>
+                <li id="ref-23"><a href="https://wearehypercube.com" target="_blank" rel="noopener noreferrer">[23]</a> Hypercube — Rules of Thumb for Team Decision‑Making</li>
+                <li id="ref-24"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[24]</a> Medium — Google Cloud: From Paralysis to Paved Roads</li>
+                <li id="ref-25"><a href="https://strategicmanagementinsight.com" target="_blank" rel="noopener noreferrer">[25]</a> Strategic Management Insight — Strategy Map</li>
+                <li id="ref-26"><a href="https://www.eimt.edu.eu" target="_blank" rel="noopener noreferrer">[26]</a> EIMT — Top‑Down vs Bottom‑Up Approach</li>
+                <li id="ref-27"><a href="https://strategycase.com" target="_blank" rel="noopener noreferrer">[27]</a> Strategy Case — Brainstorming in a Case Interview</li>
+            </ul>
+
+            <h3>Topcoat &amp; Rust Ecosystem</h3>
+            <ul>
+                <li id="ref-28"><a href="https://www.reddit.com" target="_blank" rel="noopener noreferrer">[28]</a> Reddit — r/ClaudeAI</li>
+                <li id="ref-29"><a href="https://dev.to" target="_blank" rel="noopener noreferrer">[29]</a> Dev.to — Becoming a True Programmer</li>
+                <li id="ref-30"><a href="https://programiz.pro" target="_blank" rel="noopener noreferrer">[30]</a> Programiz — Best Way to Learn Python</li>
+                <li id="ref-31"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[31]</a> Medium — Mindful Coding with LLM Agents</li>
+                <li id="ref-32"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[32]</a> Medium — Learning Rust by Porting Express to Rocket</li>
+                <li id="ref-33"><a href="https://www.reddit.com" target="_blank" rel="noopener noreferrer">[33]</a> Reddit — r/learnrust: To Learn Tokio or Not</li>
+                <li id="ref-34"><a href="https://leapcell.io" target="_blank" rel="noopener noreferrer">[34]</a> Leapcell — Building Modular Web APIs with Axum</li>
+                <li id="ref-35"><a href="https://news.ycombinator.com/item?id=48952067" target="_blank" rel="noopener noreferrer">[35]</a> Hacker News — Topcoat Discussion</li>
+                <li id="ref-36"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[36]</a> Medium — If I Had to Learn DevOps Again</li>
+                <li id="ref-37"><a href="https://medium.com" target="_blank" rel="noopener noreferrer">[37]</a> Medium — Build Your First REST API with Django REST</li>
+                <li id="ref-38"><a href="https://www.reddit.com" target="_blank" rel="noopener noreferrer">[38]</a> Reddit — r/rust: Topcoat Announcement</li>
+                <li id="ref-39"><a href="https://www.instagram.com" target="_blank" rel="noopener noreferrer">[39]</a> Instagram — Topcoat Reel</li>
+                <li id="ref-40"><a href="https://www.ibm.com" target="_blank" rel="noopener noreferrer">[40]</a> IBM — Entering Code‑Centric Mode</li>
+                <li id="ref-41"><a href="https://github.blog" target="_blank" rel="noopener noreferrer">[41]</a> GitHub Blog — Documenting Legacy Code with Copilot</li>
+                <li id="ref-42"><a href="https://www.codementor.io" target="_blank" rel="noopener noreferrer">[42]</a> Codementor — Time‑Saving Hotkeys for Developers</li>
+                <li id="ref-43"><a href="https://levelup.gitconnected.com" target="_blank" rel="noopener noreferrer">[43]</a> Level Up — Rust Starter: First Project with Cargo</li>
+                <li id="ref-44"><a href="https://taidaesal.github.io" target="_blank" rel="noopener noreferrer">[44]</a> taidaesal — Vulkano Tutorial</li>
+                <li id="ref-45"><a href="https://security.stackexchange.com" target="_blank" rel="noopener noreferrer">[45]</a> Security StackExchange — Reverse Engineering</li>
+                <li id="ref-46"><a href="https://blog.lewagon.com" target="_blank" rel="noopener noreferrer">[46]</a> Le Wagon — Fitting a Bootcamp Around Your Life</li>
+                <li id="ref-47"><a href="https://www.parallelhq.com" target="_blank" rel="noopener noreferrer">[47]</a> Parallel HQ — What Are Mental Models</li>
+                <li id="ref-48"><a href="https://antispace.ghost.io" target="_blank" rel="noopener noreferrer">[48]</a> Antispace — Best Note‑Taking App for Coding</li>
+                <li id="ref-49"><a href="https://delvetool.com" target="_blank" rel="noopener noreferrer">[49]</a> Delve Tool — Codebook</li>
+                <li id="ref-50"><a href="https://python.plainenglish.io" target="_blank" rel="noopener noreferrer">[50]</a> Plain English — 5 Techniques to Understand Complex Programming Concepts</li>
+                <li id="ref-51"><a href="https://idratherbewriting.com" target="_blank" rel="noopener noreferrer">[51]</a> I'd Rather Be Writing — Csikszentmihalyi Dynamics of Flow</li>
+            </ul>
+
+            <h3>Topcoat Official</h3>
+            <ul>
+                <li id="ref-52"><a href="https://github.com/tokio-rs/topcoat" target="_blank" rel="noopener noreferrer">[52]</a> GitHub — tokio‑rs/topcoat</li>
+                <li id="ref-53"><a href="https://tokio.rs/blog/2026-07-22-announcing-topcoat" target="_blank" rel="noopener noreferrer">[53]</a> Tokio Blog — Announcing Topcoat</li>
+                <li id="ref-54"><a href="https://daily.dev" target="_blank" rel="noopener noreferrer">[54]</a> Daily.dev — Announcing Topcoat: Full‑Stack Reactive Web Apps with Rust</li>
+                <li id="ref-55"><a href="https://dev.to" target="_blank" rel="noopener noreferrer">[55]</a> Dev.to — I Tried Topcoat: Rust's New Full‑Stack Web Framework</li>
+                <li id="ref-56"><a href="https://x.com" target="_blank" rel="noopener noreferrer">[56]</a> X.com — FrancescoCiull4 on Topcoat</li>
+                <li id="ref-57"><a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer">[57]</a> YouTube — Topcoat Overview</li>
+                <li id="ref-58"><a href="https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/app_context.md" target="_blank" rel="noopener noreferrer">[58]</a> Topcoat Docs — app_context.md</li>
+                <li id="ref-59"><a href="https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/runtime.md" target="_blank" rel="noopener noreferrer">[59]</a> Topcoat Docs — runtime.md</li>
+                <li id="ref-60"><a href="https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat/docs/getting_started.md" target="_blank" rel="noopener noreferrer">[60]</a> Topcoat Docs — Getting Started</li>
+                <li id="ref-61"><a href="https://github.com/tokio-rs/topcoat/blob/main/release-plz.toml" target="_blank" rel="noopener noreferrer">[61]</a> Topcoat — release‑plz.toml</li>
+                <li id="ref-62"><a href="https://github.com/tokio-rs/topcoat/blob/main/Cargo.toml" target="_blank" rel="noopener noreferrer">[62]</a> Topcoat — Cargo.toml</li>
+                <li id="ref-63"><a href="https://github.com/tokio-rs/topcoat/blob/main/AGENTS.md" target="_blank" rel="noopener noreferrer">[63]</a> Topcoat — AGENTS.md</li>
+                <li id="ref-64"><a href="https://apiiro.com" target="_blank" rel="noopener noreferrer">[64]</a> Apiiro — Code Parsing Glossary</li>
+                <li id="ref-65"><a href="https://www.geeksforgeeks.org" target="_blank" rel="noopener noreferrer">[65]</a> GeeksforGeeks — HTML Parsing and Processing</li>
+                <li id="ref-66"><a href="https://github.com/tokio-rs/topcoat/issues/198" target="_blank" rel="noopener noreferrer">[66]</a> Topcoat Issue #198</li>
+                <li id="ref-67"><a href="https://docs.rs/crate/topcoat-view/latest" target="_blank" rel="noopener noreferrer">[67]</a> docs.rs — topcoat‑view</li>
+                <li id="ref-68"><a href="https://github.com/tokio-rs/topcoat/blob/main/crates/topcoat-runtime/macro/docs/shard.md" target="_blank" rel="noopener noreferrer">[68]</a> Topcoat Docs — shard.md</li>
+            </ul>
+        </section>
+
+    </main>
+
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
