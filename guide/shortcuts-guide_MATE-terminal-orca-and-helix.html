@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATE Terminal, Orca, and Helix — Shortcuts Guide</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 2px;
+            padding: 0 0.2rem;
+        }
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #f0f0f0;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 {
+            font-size: 2.2rem;
+        }
+        h2 {
+            font-size: 1.8rem;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.3rem;
+        }
+        h3 {
+            font-size: 1.4rem;
+        }
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 1.2em;
+        }
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2rem 0;
+        }
+        code,
+        .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            color: #d4d4d4;
+        }
+        kbd {
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 0.1rem 0.6rem;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.9em;
+            color: #e0e0e0;
+            box-shadow: 0 1px 0 #333;
+        }
+        /* ----- KEYBOARD-ACCESSIBLE <pre> ----- */
+        pre {
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 400px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.1s;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* lists in TOC and content */
+        ul,
+        ol {
+            padding-left: 1.8rem;
+        }
+        li {
+            margin-bottom: 0.3rem;
+        }
+
+        /* definition lists for shortcut key/value pairs */
+        dl {
+            margin: 0.8rem 0 1.2rem 0;
+        }
+        dt {
+            font-weight: 600;
+            margin-top: 0.6rem;
+            color: #f0f0f0;
+        }
+        dd {
+            margin-left: 1.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #eee;
+            color: #111;
+        }
+        body.light-mode pre {
+            background: #eee;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+        }
+        body.light-mode kbd {
+            background: #e6e6e6;
+            border-color: #aaa;
+            color: #111;
+            box-shadow: 0 1px 0 #ccc;
+        }
+        body.light-mode dt {
+            color: #111;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .theme-toggle:hover {
+            background: #777;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* Skip link */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* TOC list style */
+        .toc-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .toc-list li {
+            margin-bottom: 0.4rem;
+        }
+        .toc-list ul {
+            list-style: none;
+            padding-left: 1.8rem;
+            margin-top: 0.2rem;
+        }
+        .toc-list a {
+            text-decoration: none;
+        }
+        .toc-list a:hover,
+        .toc-list a:focus {
+            text-decoration: underline;
+        }
+
+        /* section spacing */
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        /* note / tip / warning styling */
+        .note {
+            background: #1e2a3a;
+            border-left: 4px solid #88c0ff;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0 4px 4px 0;
+            margin: 1rem 0;
+        }
+        .note strong {
+            color: #aaccff;
+        }
+        body.light-mode .note {
+            background: #eef4fb;
+            border-left-color: #0055cc;
+        }
+        body.light-mode .note strong {
+            color: #003399;
+        }
+
+        /* inline shortcut lists */
+        .shortcut-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.3rem 1.2rem;
+            margin: 0.6rem 0 1.2rem 0;
+            align-items: baseline;
+        }
+        .shortcut-grid .key {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .shortcut-grid .desc {
+            color: #d0d0d0;
+        }
+        body.light-mode .shortcut-grid .desc {
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link for keyboard users -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Toggle button (scrolls with page) -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <h1>MATE Terminal, Orca, and Helix</h1>
+        <h2>Shortcuts Guide</h2>
+        <p><strong>Keyboard shortcuts for terminal productivity, screen reading, and modern editing</strong></p>
+        <p>A practical reference for developers and power users</p>
+    </header>
+
+    <hr>
+
+    <!-- Navigation: Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul class="toc-list" aria-labelledby="toc-heading">
+            <li><a href="#part1">1. MATE Terminal</a>
+                <ul>
+                    <li><a href="#sec1-1">1.1 Copy and Paste</a></li>
+                    <li><a href="#sec1-2">1.2 Tabs and Windows</a></li>
+                    <li><a href="#sec1-3">1.3 View</a></li>
+                    <li><a href="#sec1-4">1.4 MATE Terminal Find</a></li>
+                    <li><a href="#sec1-5">1.5 Bash Line Editing (Readline)</a></li>
+                </ul>
+            </li>
+            <li><a href="#part2">2. ORCA in the Terminal</a>
+                <ul>
+                    <li><a href="#sec2-1">2.1 Modifier Key</a></li>
+                    <li><a href="#sec2-2">2.2 Flat Review</a></li>
+                </ul>
+            </li>
+            <li><a href="#part3">3. HELIX</a>
+                <ul>
+                    <li><a href="#sec3-1">3.1 Modes</a></li>
+                    <li><a href="#sec3-2">3.2 Save and Quit</a></li>
+                    <li><a href="#sec3-3">3.3 Undo and Redo</a></li>
+                    <li><a href="#sec3-4">3.4 Basic Movement</a></li>
+                    <li><a href="#sec3-5">3.5 Goto Menu</a></li>
+                    <li><a href="#sec3-6">3.6 Scrolling</a></li>
+                    <li><a href="#sec3-7">3.7 Editing</a></li>
+                    <li><a href="#sec3-8">3.8 Space Menu</a></li>
+                    <li><a href="#sec3-9">3.9 Multiple Cursors</a></li>
+                    <li><a href="#sec3-10">3.10 View Mode</a></li>
+                    <li><a href="#sec3-11">3.11 Window Splits</a></li>
+                    <li><a href="#sec3-12">3.12 Search Inside the File</a></li>
+                </ul>
+            </li>
+            <li><a href="#part4">4. The Jump List in Helix</a></li>
+            <li><a href="#part5">5. Buffer Management in Helix</a></li>
+            <li><a href="#part6">6. One‑Liner for Quick Inspection</a></li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- Main content -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- PART 1: MATE TERMINAL                                          -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part1-heading" id="part1">
+            <h2 id="part1-heading">1. MATE Terminal</h2>
+
+            <!-- 1.1 Copy and Paste -->
+            <section aria-labelledby="sec1-1-heading" id="sec1-1">
+                <h3 id="sec1-1-heading">1.1 Copy and Paste</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></span>
+                    <span class="desc">Copy the selection</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></span>
+                    <span class="desc">Paste</span>
+                </div>
+            </section>
+
+            <!-- 1.2 Tabs and Windows -->
+            <section aria-labelledby="sec1-2-heading" id="sec1-2">
+                <h3 id="sec1-2-heading">1.2 Tabs and Windows</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd></span>
+                    <span class="desc">Open a new tab</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd></span>
+                    <span class="desc">Open a new terminal window</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd></span>
+                    <span class="desc">Close the current tab</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Q</kbd></span>
+                    <span class="desc">Close the window</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Page Up</kbd></span>
+                    <span class="desc">Switch to the previous tab</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Page Down</kbd></span>
+                    <span class="desc">Switch to the next tab</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Page Up</kbd></span>
+                    <span class="desc">Move the current tab left</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Page Down</kbd></span>
+                    <span class="desc">Move the current tab right</span>
+                </div>
+            </section>
+
+            <!-- 1.3 View -->
+            <section aria-labelledby="sec1-3-heading" id="sec1-3">
+                <h3 id="sec1-3-heading">1.3 View</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>+</kbd></span>
+                    <span class="desc">Zoom in</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>-</kbd></span>
+                    <span class="desc">Zoom out</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>0</kbd></span>
+                    <span class="desc">Reset zoom to normal</span>
+                    <span class="key"><kbd>F11</kbd></span>
+                    <span class="desc">Toggle full screen</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></span>
+                    <span class="desc">Find (confirm in the Search menu on your system, since this one varies by version)</span>
+                    <span class="key"><kbd>F1</kbd></span>
+                    <span class="desc">Open MATE Terminal help</span>
+                </div>
+            </section>
+
+            <!-- 1.4 MATE Terminal Find -->
+            <section aria-labelledby="sec1-4-heading" id="sec1-4">
+                <h3 id="sec1-4-heading">1.4 MATE Terminal Find</h3>
+                <p><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> opens Find in most GTK‑based terminals including MATE Terminal.</p>
+            </section>
+
+            <!-- 1.5 Bash Line Editing -->
+            <section aria-labelledby="sec1-5-heading" id="sec1-5">
+                <h3 id="sec1-5-heading">1.5 Bash Line Editing (Readline)</h3>
+                <p>These shortcuts come from Bash, not MATE Terminal itself, but they matter for the same workflow. They work at any Bash prompt, whether you are in MATE Terminal, over SSH, or anywhere else Bash is running.</p>
+
+                <h4>Moving the cursor</h4>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>A</kbd></span>
+                    <span class="desc">Move to the start of the line</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>E</kbd></span>
+                    <span class="desc">Move to the end of the line</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>B</kbd></span>
+                    <span class="desc">Move back one character</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>F</kbd></span>
+                    <span class="desc">Move forward one character</span>
+                    <span class="key"><kbd>Alt</kbd>+<kbd>B</kbd></span>
+                    <span class="desc">Move back one word</span>
+                    <span class="key"><kbd>Alt</kbd>+<kbd>F</kbd></span>
+                    <span class="desc">Move forward one word</span>
+                </div>
+
+                <h4>Deleting and recovering text</h4>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>U</kbd></span>
+                    <span class="desc">Delete everything from the cursor back to the start of the line</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>K</kbd></span>
+                    <span class="desc">Delete everything from the cursor forward to the end of the line</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>W</kbd></span>
+                    <span class="desc">Delete the word before the cursor</span>
+                    <span class="key"><kbd>Alt</kbd>+<kbd>D</kbd></span>
+                    <span class="desc">Delete the word after the cursor</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Y</kbd></span>
+                    <span class="desc">Paste back the last thing you deleted with <kbd>Ctrl</kbd>+<kbd>U</kbd>, <kbd>Ctrl</kbd>+<kbd>K</kbd>, <kbd>Ctrl</kbd>+<kbd>W</kbd>, or <kbd>Alt</kbd>+<kbd>D</kbd></span>
+                </div>
+
+                <h4>Command history</h4>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>R</kbd></span>
+                    <span class="desc">Search backward through your command history as you type</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>G</kbd></span>
+                    <span class="desc">Cancel a history search and return to an empty prompt</span>
+                    <span class="key"><kbd>↑</kbd> or <kbd>Ctrl</kbd>+<kbd>P</kbd></span>
+                    <span class="desc">Recall the previous command</span>
+                    <span class="key"><kbd>↓</kbd> or <kbd>Ctrl</kbd>+<kbd>N</kbd></span>
+                    <span class="desc">Recall the next command</span>
+                </div>
+
+                <h4>Process and screen control</h4>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>C</kbd></span>
+                    <span class="desc">Interrupt (kill) the currently running command</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>Z</kbd></span>
+                    <span class="desc">Suspend the currently running command (resume later with <code>fg</code>)</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>D</kbd></span>
+                    <span class="desc">On an empty line, logs you out or closes the terminal tab. On a line with text, deletes the character under the cursor instead.</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>L</kbd></span>
+                    <span class="desc">Clear the screen without affecting your command history</span>
+                </div>
+
+                <h4>Completion</h4>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Tab</kbd></span>
+                    <span class="desc">Autocomplete a command or file name</span>
+                    <span class="key"><kbd>Tab</kbd> <kbd>Tab</kbd></span>
+                    <span class="desc">If the first <kbd>Tab</kbd> does not complete uniquely, pressing it again lists the possible matches</span>
+                </div>
+
+                <div class="note">
+                    <p><strong>💡 Tip:</strong> Put <code>stty -ixon</code> in your <code>.bashrc</code> so you can use <kbd>Ctrl</kbd>+<kbd>S</kbd> without freezing the terminal.</p>
+                </div>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART 2: ORCA IN THE TERMINAL                                   -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part2-heading" id="part2">
+            <h2 id="part2-heading">2. ORCA in the Terminal</h2>
+
+            <section aria-labelledby="sec2-1-heading" id="sec2-1">
+                <h3 id="sec2-1-heading">2.1 Modifier Key</h3>
+                <p><strong>Modifier key:</strong> <kbd>Caps Lock</kbd> (laptop layout).</p>
+            </section>
+
+            <section aria-labelledby="sec2-2-heading" id="sec2-2">
+                <h3 id="sec2-2-heading">2.2 Flat Review</h3>
+                <p>Flat Review reads text without moving your place in the terminal.</p>
+
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>Ctrl</kbd>+<kbd>U</kbd></span>
+                    <span class="desc">Jump to the top line visible on screen</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>U</kbd></span>
+                    <span class="desc">Move up one line</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>I</kbd></span>
+                    <span class="desc">Re‑read the current line</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>O</kbd></span>
+                    <span class="desc">Move down one line</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>J</kbd></span>
+                    <span class="desc">Review the previous word</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>K</kbd></span>
+                    <span class="desc">Re‑read the current word</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>L</kbd></span>
+                    <span class="desc">Review the next word</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>M</kbd></span>
+                    <span class="desc">Review the previous character</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>,</kbd></span>
+                    <span class="desc">Re‑read the current character</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>.</kbd></span>
+                    <span class="desc">Review the next character</span>
+                    <span class="key"><kbd>Caps Lock</kbd>+<kbd>P</kbd></span>
+                    <span class="desc">Toggle Flat Review on or off</span>
+                </div>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART 3: HELIX                                                 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part3-heading" id="part3">
+            <h2 id="part3-heading">3. HELIX</h2>
+
+            <section aria-labelledby="sec3-1-heading" id="sec3-1">
+                <h3 id="sec3-1-heading">3.1 Modes</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>I</kbd></span>
+                    <span class="desc">Enter insert mode</span>
+                    <span class="key"><kbd>Esc</kbd></span>
+                    <span class="desc">Return to normal mode (always safe)</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-2-heading" id="sec3-2">
+                <h3 id="sec3-2-heading">3.2 Save and Quit</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>:</kbd> <kbd>W</kbd></span>
+                    <span class="desc">Save</span>
+                    <span class="key"><kbd>:</kbd> <kbd>Q</kbd></span>
+                    <span class="desc">Quit (only if there are no unsaved changes)</span>
+                    <span class="key"><kbd>:</kbd> <kbd>W</kbd> <kbd>Q</kbd></span>
+                    <span class="desc">Save and quit</span>
+                    <span class="key"><kbd>:</kbd> <kbd>Q</kbd> <kbd>!</kbd></span>
+                    <span class="desc">Quit without saving</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-3-heading" id="sec3-3">
+                <h3 id="sec3-3-heading">3.3 Undo and Redo</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>U</kbd></span>
+                    <span class="desc">Undo</span>
+                    <span class="key"><kbd>Shift</kbd>+<kbd>U</kbd> (capital U)</span>
+                    <span class="desc">Redo</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-4-heading" id="sec3-4">
+                <h3 id="sec3-4-heading">3.4 Basic Movement</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>H</kbd></span>
+                    <span class="desc">Left</span>
+                    <span class="key"><kbd>J</kbd></span>
+                    <span class="desc">Down</span>
+                    <span class="key"><kbd>K</kbd></span>
+                    <span class="desc">Up</span>
+                    <span class="key"><kbd>L</kbd></span>
+                    <span class="desc">Right</span>
+                    <span class="key"><kbd>W</kbd></span>
+                    <span class="desc">Select to next word start</span>
+                    <span class="key"><kbd>B</kbd></span>
+                    <span class="desc">Select to previous word start</span>
+                    <span class="key"><kbd>E</kbd></span>
+                    <span class="desc">Select to end of current word</span>
+                    <span class="key"><kbd>F</kbd> + <em>char</em></span>
+                    <span class="desc">Select up to and including that character (not confined to the current line)</span>
+                    <span class="key"><kbd>T</kbd> + <em>char</em></span>
+                    <span class="desc">Select up to but not including that character</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-5-heading" id="sec3-5">
+                <h3 id="sec3-5-heading">3.5 Goto Menu</h3>
+                <p>Press <kbd>G</kbd> then a second key.</p>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>G</kbd> <kbd>G</kbd></span>
+                    <span class="desc">Start of file</span>
+                    <span class="key"><kbd>G</kbd> <kbd>E</kbd></span>
+                    <span class="desc">End of file</span>
+                    <span class="key"><kbd>G</kbd> <kbd>H</kbd></span>
+                    <span class="desc">Start of the current line</span>
+                    <span class="key"><kbd>G</kbd> <kbd>L</kbd></span>
+                    <span class="desc">End of the current line</span>
+                    <span class="key"><kbd>G</kbd> <kbd>D</kbd></span>
+                    <span class="desc">Go to definition (needs rust‑analyzer)</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-6-heading" id="sec3-6">
+                <h3 id="sec3-6-heading">3.6 Scrolling</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>B</kbd></span>
+                    <span class="desc">Page up</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>F</kbd></span>
+                    <span class="desc">Page down</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>U</kbd></span>
+                    <span class="desc">Half page up</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>D</kbd></span>
+                    <span class="desc">Half page down</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-7-heading" id="sec3-7">
+                <h3 id="sec3-7-heading">3.7 Editing</h3>
+                <p><em>Select first, then act.</em></p>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>D</kbd></span>
+                    <span class="desc">Delete the selection</span>
+                    <span class="key"><kbd>Y</kbd></span>
+                    <span class="desc">Yank (copy) the selection</span>
+                    <span class="key"><kbd>P</kbd></span>
+                    <span class="desc">Paste after</span>
+                    <span class="key"><kbd>Shift</kbd>+<kbd>P</kbd></span>
+                    <span class="desc">Paste before</span>
+                    <span class="key"><kbd>C</kbd></span>
+                    <span class="desc">Change the selection (deletes and enters insert mode)</span>
+                    <span class="key"><kbd>R</kbd></span>
+                    <span class="desc">Replace the selection with one typed character</span>
+                    <span class="key"><kbd>X</kbd></span>
+                    <span class="desc">Select the current line (repeat to extend to more lines)</span>
+                    <span class="key"><kbd>%</kbd></span>
+                    <span class="desc">Select the entire file</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-8-heading" id="sec3-8">
+                <h3 id="sec3-8-heading">3.8 Space Menu</h3>
+                <p>Press <kbd>Space</kbd> then a key.</p>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Space</kbd> <kbd>F</kbd></span>
+                    <span class="desc">File picker</span>
+                    <span class="key"><kbd>Space</kbd> <kbd>B</kbd></span>
+                    <span class="desc">Buffer picker</span>
+                    <span class="key"><kbd>Space</kbd> <kbd>/</kbd></span>
+                    <span class="desc">Global search across the project</span>
+                    <span class="key"><kbd>Space</kbd> <kbd>K</kbd></span>
+                    <span class="desc">Hover documentation</span>
+                    <span class="key"><kbd>Space</kbd> <kbd>A</kbd></span>
+                    <span class="desc">Code actions</span>
+                    <span class="key"><kbd>Space</kbd> <kbd>S</kbd></span>
+                    <span class="desc">Symbol picker</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-9-heading" id="sec3-9">
+                <h3 id="sec3-9-heading">3.9 Multiple Cursors</h3>
+                <p>Make a selection first, then press <kbd>Shift</kbd>+<kbd>C</kbd> (capital C) to copy that selection onto the line below and add a cursor there. Press <kbd>C</kbd> again to keep stacking cursors downward.</p>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Shift</kbd>+<kbd>C</kbd></span>
+                    <span class="desc">Copy selection onto the line below and add a cursor (press again to stack downward)</span>
+                    <span class="key"><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></span>
+                    <span class="desc">Same thing but upward</span>
+                </div>
+                <p>To edit every match of a term inside a chosen scope, select the scope first (e.g. the whole file with <kbd>%</kbd>), then press <kbd>S</kbd> and type the pattern. This sub‑selects every match inside your selection so you can edit them together.</p>
+            </section>
+
+            <section aria-labelledby="sec3-10-heading" id="sec3-10">
+                <h3 id="sec3-10-heading">3.10 View Mode</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Z</kbd> <kbd>Z</kbd> or <kbd>Z</kbd> <kbd>C</kbd></span>
+                    <span class="desc">Center the current line in the view (two keys for the same action)</span>
+                    <span class="key"><kbd>Z</kbd> <kbd>T</kbd></span>
+                    <span class="desc">Move the current line to the top of the screen</span>
+                    <span class="key"><kbd>Z</kbd> <kbd>B</kbd></span>
+                    <span class="desc">Move the current line to the bottom of the screen</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-11-heading" id="sec3-11">
+                <h3 id="sec3-11-heading">3.11 Window Splits</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>W</kbd> <kbd>V</kbd></span>
+                    <span class="desc">Vertical split</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>W</kbd> <kbd>S</kbd></span>
+                    <span class="desc">Horizontal split (<em>not</em> <kbd>Ctrl</kbd>+<kbd>W</kbd> <kbd>H</kbd> — that moves focus left)</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>W</kbd> <kbd>W</kbd></span>
+                    <span class="desc">Cycle to the next split</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>W</kbd> + <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd></span>
+                    <span class="desc">Move focus to the split in that direction</span>
+                    <span class="key"><kbd>Ctrl</kbd>+<kbd>W</kbd> <kbd>Q</kbd></span>
+                    <span class="desc">Close the current split</span>
+                </div>
+            </section>
+
+            <section aria-labelledby="sec3-12-heading" id="sec3-12">
+                <h3 id="sec3-12-heading">3.12 Search Inside the File</h3>
+                <div class="shortcut-grid">
+                    <span class="key"><kbd>/</kbd></span>
+                    <span class="desc">Search forward</span>
+                    <span class="key"><kbd>?</kbd></span>
+                    <span class="desc">Search backward</span>
+                    <span class="key"><kbd>N</kbd></span>
+                    <span class="desc">Next match</span>
+                    <span class="key"><kbd>Shift</kbd>+<kbd>N</kbd></span>
+                    <span class="desc">Previous match</span>
+                    <span class="key"><kbd>Esc</kbd></span>
+                    <span class="desc">Clear the search highlight</span>
+                </div>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART 4: THE JUMP LIST IN HELIX                                -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part4-heading" id="part4">
+            <h2 id="part4-heading">4. The Jump List in Helix</h2>
+
+            <p>The jump list is an automatic trail of breadcrumbs. It records exactly where your cursor has been, allowing you to hop back and forth between different lines or even different files without losing your place.</p>
+
+            <h3>How the Jump List Grows</h3>
+            <p>Helix automatically saves a "jump point" to the list whenever you make a major movement. These movements include:</p>
+            <ul>
+                <li>Searching for a word using <kbd>/</kbd></li>
+                <li>Jumping to the top or bottom of a file using <kbd>gg</kbd> or <kbd>ge</kbd></li>
+                <li>Jumping to a specific line using <kbd>:</kbd> followed by a line number</li>
+                <li>Manually dropping a pin using <kbd>Ctrl</kbd>+<kbd>S</kbd> (which you just freed up!)</li>
+            </ul>
+
+            <h3>🚀 The Core Shortcuts</h3>
+            <p>Once Helix tracks your movements, use these commands in Normal Mode to travel along your history trail:</p>
+            <div class="shortcut-grid">
+                <span class="key"><kbd>Ctrl</kbd>+<kbd>O</kbd></span>
+                <span class="desc">Jump backward to your previous location (older)</span>
+                <span class="key"><kbd>Ctrl</kbd>+<kbd>I</kbd></span>
+                <span class="desc">Jump forward to your next location (newer)</span>
+                <span class="key"><kbd>Space</kbd> <kbd>J</kbd></span>
+                <span class="desc">Open the visual Jump List Picker</span>
+            </div>
+
+            <h3>🦉 Using the Jump List with Orca</h3>
+            <p>The Jump List Picker is highly accessible for screen reader users. When you press <kbd>Space</kbd> <kbd>J</kbd>, a small menu opens at the bottom of the screen showing your entire jump history.</p>
+            <ol>
+                <li>Press <kbd>Space</kbd> <kbd>J</kbd> to open the list.</li>
+                <li>Use <kbd>↑</kbd> and <kbd>↓</kbd> to move through your saved points. Orca will read the line number and the snippet of text at that location.</li>
+                <li>Press <kbd>Enter</kbd> to snap instantly to that file and line.</li>
+                <li>Press <kbd>Esc</kbd> if you change your mind and want to close the picker without moving.</li>
+            </ol>
+
+            <h3>Clearing the Jump List</h3>
+            <p>To clear the jump list when it gets too cluttered, use the <code>:jclear</code> (jump clear) command.</p>
+            <ol>
+                <li>Ensure you are in Normal Mode by pressing <kbd>Esc</kbd>.</li>
+                <li>Type the command: <code>:jclear</code></li>
+                <li>Press <kbd>Enter</kbd>.</li>
+            </ol>
+            <p>This instantly wipes out your entire jump history for the current session. Pressing <kbd>Ctrl</kbd>+<kbd>O</kbd> or <kbd>Ctrl</kbd>+<kbd>I</kbd> right after will do nothing until you start making new jumps or dropping fresh pins with <kbd>Ctrl</kbd>+<kbd>S</kbd>.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART 5: BUFFER MANAGEMENT IN HELIX                            -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part5-heading" id="part5">
+            <h2 id="part5-heading">5. Buffer Management in Helix</h2>
+
+            <p>To quickly switch between multiple open files (called "buffers") in Helix, you use the Buffer Picker or the next/previous shortcut commands in Normal Mode.</p>
+
+            <h3>🥞 Method 1: The Buffer Picker (Most Visual &amp; Screen‑Reader Friendly)</h3>
+            <p>If you have several files open, you can view them all in an interactive list.</p>
+            <ol>
+                <li>Press <kbd>Space</kbd> <kbd>B</kbd>.</li>
+                <li>A menu opens at the bottom listing all open files.</li>
+                <li>Use <kbd>↑</kbd> and <kbd>↓</kbd> to cycle through the files. Orca will read the file names out loud as you move.</li>
+                <li>Press <kbd>Enter</kbd> to open the selected file.</li>
+            </ol>
+
+            <h3>⏭️ Method 2: Fast Cycle Shortcuts (Fastest)</h3>
+            <p>If you only have two or three files open, you can cycle through them instantly with single keystrokes without opening a menu.</p>
+            <div class="shortcut-grid">
+                <span class="key"><kbd>]</kbd> <kbd>B</kbd></span>
+                <span class="desc">Switch to the next open file</span>
+                <span class="key"><kbd>[</kbd> <kbd>B</kbd></span>
+                <span class="desc">Switch to the previous open file</span>
+            </div>
+
+            <h3>🚪 Method 3: Closing a File</h3>
+            <p>When you are done with a file and want to remove it from your active list:</p>
+            <ol>
+                <li>Type <code>:bc</code> (buffer close) and press <kbd>Enter</kbd>.</li>
+                <li>Helix will close that specific file and automatically snap your view to the next open buffer.</li>
+            </ol>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART 6: ONE‑LINER FOR QUICK INSPECTION                       -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part6-heading" id="part6">
+            <h2 id="part6-heading">6. One‑Liner for Quick Inspection</h2>
+
+            <p>To fetch a web page and obtain clean, well‑structured Markdown output, run:</p>
+
+            <pre tabindex="0" role="region" aria-label="Bash command: obscura fetch"><code>obscura fetch "https://docs.rs/topcoat/latest/topcoat/" --dump markdown &gt; guide.md</code></pre>
+
+            <p>If you only need to read the page without saving a file, you can pipe the output directly to <code>less</code> or to Helix's standard input:</p>
+
+            <pre tabindex="0" role="region" aria-label="Bash command: obscura fetch piped to less"><code>obscura fetch "https://docs.rs/topcoat/latest/topcoat/" --dump markdown | less</code></pre>
+
+            <p>Or, if you prefer to open it in Helix immediately without creating a permanent file:</p>
+
+            <pre tabindex="0" role="region" aria-label="Bash command: obscura fetch piped to helix"><code>obscura fetch "https://docs.rs/topcoat/latest/topcoat/" --dump markdown | hx -</code></pre>
+
+            <p>The <code>-</code> argument tells Helix to read from standard input. This is useful for quick lookups.</p>
+        </section>
+
+    </main>
+
+    <hr>
+    <footer role="contentinfo">
+        <p><small>MATE Terminal, Orca, and Helix — Shortcuts Guide &bull; Accessible Edition</small></p>
+    </footer>
+
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
+
