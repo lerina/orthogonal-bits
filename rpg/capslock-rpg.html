@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CAPSLOCK — A No‑Dice, No‑Sheet Cyberpunk RPG</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 960px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.5em;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.25em;
+        }
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 1.6em;
+        }
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 1.3em;
+        }
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2.5rem 0;
+        }
+        code,
+        .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.92em;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 1rem 1.2rem;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 420px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.12s;
+            margin: 1.2rem 0;
+            border-left: 4px solid #3a3a3a;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #d4d4d4;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+            font-size: 0.95rem;
+        }
+        th,
+        td {
+            border: 1px solid #444;
+            padding: 0.5rem 0.8rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-weight: 600;
+        }
+        td {
+            background: #1a1a1a;
+        }
+        caption {
+            caption-side: bottom;
+            margin-top: 0.4rem;
+            font-size: 0.9rem;
+            color: #aaa;
+            font-style: italic;
+        }
+
+        ul,
+        ol {
+            padding-left: 1.8rem;
+            margin: 0.6rem 0 1rem 0;
+        }
+        li {
+            margin-bottom: 0.3rem;
+        }
+
+        .note {
+            background: #1e2a3a;
+            border-left: 4px solid #88c0ff;
+            padding: 0.8rem 1.2rem;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .tip {
+            background: #1e3a2a;
+            border-left: 4px solid #5cb87a;
+            padding: 0.8rem 1.2rem;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .warning {
+            background: #3a2a1e;
+            border-left: 4px solid #d4a05a;
+            padding: 0.8rem 1.2rem;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .example {
+            background: #1a2a2a;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            margin: 1.2rem 0;
+            border: 1px solid #3a4a4a;
+        }
+
+        body.light-mode {
+            background-color: #f7f7f7;
+            color: #1a1a1a;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e0e0e0;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #bbb;
+        }
+        body.light-mode hr {
+            border-top-color: #bbb;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #e8e8e8;
+            color: #1a1a1a;
+        }
+        body.light-mode pre {
+            background: #e8e8e8;
+            border-left-color: #aaa;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            color: #1a1a1a;
+        }
+        body.light-mode th {
+            background: #d8d8d8;
+            color: #111;
+        }
+        body.light-mode td {
+            background: #efefef;
+        }
+        body.light-mode table th,
+        body.light-mode table td {
+            border-color: #bbb;
+        }
+        body.light-mode .note {
+            background: #e3ecf7;
+            border-left-color: #0055cc;
+        }
+        body.light-mode .tip {
+            background: #e3f5ea;
+            border-left-color: #2a7a4a;
+        }
+        body.light-mode .warning {
+            background: #f5ede3;
+            border-left-color: #b0803a;
+        }
+        body.light-mode .example {
+            background: #eaeaea;
+            border-color: #bbb;
+        }
+
+        .theme-toggle-wrap {
+            margin-bottom: 1.2rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .theme-toggle:hover {
+            background: #777;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1.2rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+            font-weight: 600;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        body.light-mode .skip-link {
+            background: #333;
+            color: #fff;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        nav ul ul {
+            padding-left: 1.5rem;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0;
+        }
+
+        figure {
+            margin: 1.5rem 0;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #333;
+        }
+        body.light-mode figure {
+            background: #eee;
+            border-color: #ccc;
+        }
+        figcaption {
+            font-style: italic;
+            color: #aaa;
+            margin-top: 0.4rem;
+            font-size: 0.92rem;
+        }
+        body.light-mode figcaption {
+            color: #555;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            display: block;
+            margin: 0.5rem 0;
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem 0.8rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            h3 {
+                font-size: 1.25rem;
+            }
+            table {
+                font-size: 0.85rem;
+            }
+            th,
+            td {
+                padding: 0.3rem 0.5rem;
+            }
+            pre {
+                padding: 0.6rem 0.8rem;
+                max-height: 300px;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+        @media print {
+            .theme-toggle-wrap {
+                display: none;
+            }
+            .skip-link {
+                display: none;
+            }
+            body,
+            body.light-mode {
+                background: #fff !important;
+                color: #000 !important;
+            }
+            pre {
+                max-height: none !important;
+                border: 1px solid #aaa !important;
+                background: #f4f4f4 !important;
+            }
+            table th,
+            table td {
+                border-color: #aaa !important;
+            }
+            th {
+                background: #ddd !important;
+            }
+            td {
+                background: #f9f9f9 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark or light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header role="banner" aria-label="Book header">
+        <h1>CAPSLOCK</h1>
+        <h2>A No‑Dice, No‑Sheet Cyberpunk RPG</h2>
+        <p><strong>A parlor RPG built for walks, drives, and idle moments — no dice, no paper, no rulebook. Just conversation, memory, and a handful of mental rules.</strong></p>
+    </header>
+
+    <hr />
+
+    <!-- Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#sec-philosophy">1. Core Philosophy</a></li>
+            <li><a href="#sec-resolution">2. Core Resolution System</a></li>
+            <li><a href="#sec-character">3. Character Creation</a>
+                <ul>
+                    <li><a href="#sec-rule-of-three">The Rule of Three</a></li>
+                    <li><a href="#sec-archetypes">Archetypes</a></li>
+                    <li><a href="#sec-style">Style — Give Your Character a Voice</a></li>
+                    <li><a href="#sec-always-on">The "Always On" Rule</a></li>
+                    <li><a href="#sec-burn-out">Burn‑Out Slots</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-netrunning">4. NEW: The Netrunning Rig</a></li>
+            <li><a href="#sec-world">5. World &amp; Lore Rules</a>
+                <ul>
+                    <li><a href="#sec-rule-one">Rule 1 — One Corp, One Gang, One Bar</a></li>
+                    <li><a href="#sec-rule-two">Rule 2 — The Rule of Threes (Sensory Anchors)</a></li>
+                    <li><a href="#sec-rule-three">Rule 3 — Progressive Generation (Fog of War)</a></li>
+                    <li><a href="#sec-rule-four">Rule 4 — "Who Profits?" (Instant Lore)</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-gear">6. Gear — Expanded Ideas</a></li>
+            <li><a href="#sec-adversaries">7. Adversaries</a></li>
+            <li><a href="#sec-obstacles">8. Environmental Obstacles</a></li>
+            <li><a href="#sec-hooks">9. Story Hooks</a></li>
+            <li><a href="#sec-session">10. Quick Session Setup</a></li>
+            <li><a href="#sec-scene">11. Running the Scene — The Storytelling Backbone</a></li>
+            <li><a href="#sec-quest">12. Quest Deconstruction</a></li>
+        </ul>
+    </nav>
+
+    <hr />
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 1: Core Philosophy                                     -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-philosophy-heading">
+            <h2 id="sec-philosophy-heading">1. Core Philosophy</h2>
+            <p>CAPSLOCK runs on three principles:</p>
+            <ul>
+                <li><strong>Everything fits in your head.</strong> No stat blocks, no tracking sheets. If it can't be remembered in a sentence, it's too complicated.</li>
+                <li><strong>Consequences over numbers.</strong> Nothing has hit points. Things are either <em>fine</em>, <em>Glitched</em>, or <em>gone</em> — and failure always pushes the story forward instead of stopping it.</li>
+                <li><strong>The world only exists where you're looking.</strong> Nothing is planned in advance. You invent the next room the moment you turn the corner.</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 2: Core Resolution System                              -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-resolution-heading">
+            <h2 id="sec-resolution-heading">2. Core Resolution System</h2>
+            <p>CAPSLOCK borrows its randomizer from classic diceless play (à la <em>Sherpa</em>) and its stakes-betting spirit from <em>Baron Munchausen</em>, filtered through a simple "Yes, But / No, And" engine.</p>
+
+            <h3>The Watch Method (your random number generator)</h3>
+            <ol>
+                <li>The player states their action. <q>I try to hack the terminal before the guard rounds the corner.</q></li>
+                <li>The GM silently picks a <strong>Difficulty</strong> from 1–3 (Easy / Medium / Hard) and thinks of a <strong>secret number</strong> in that range.</li>
+                <li>The player calls a number in the same range.</li>
+                <li>Resolve:
+                    <ul>
+                        <li><strong>Match →</strong> Clean success.</li>
+                        <li><strong>Miss, low stakes →</strong> <q>Yes, but…</q> — success with a complication.</li>
+                        <li><strong>Miss, high stakes →</strong> <q>No, and…</q> — failure that escalates the scene.</li>
+                    </ul>
+                </li>
+            </ol>
+            <p>No sheet, no dice — just a number held in your head for three seconds.</p>
+
+            <div class="tip" role="note" aria-label="Optional variant">
+                <p><strong>Optional variant:</strong> use the second hand of a digital watch or phone clock instead of a "secret number" — call whether it'll land in the first, second, or third 20‑second band of the minute.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3: Character Creation                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-character-heading">
+            <h2 id="sec-character-heading">3. Character Creation</h2>
+            <p>Characters are built from three portable pieces: <strong>Archetype, Gear, and Cyberware</strong> — plus a new fourth piece, <strong>Style</strong>, which gives every character a distinct voice without adding anything to track.</p>
+
+            <h3 id="sec-rule-of-three">The Rule of Three</h3>
+            <p>Every character carries:</p>
+            <ul>
+                <li><strong>3 Gear Slots</strong></li>
+                <li><strong>2 Cyberware Tags</strong></li>
+                <li><strong>1 Style</strong></li>
+            </ul>
+            <p>That's it. If you can't remember your whole character in one breath, trim it down.</p>
+
+            <h3 id="sec-archetypes">Archetypes</h3>
+            <table aria-label="Archetype reference table">
+                <caption>Core archetypes with memory anchor, gear, and cyberware</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Archetype</th>
+                        <th scope="col">Memory Anchor</th>
+                        <th scope="col">Gear (3)</th>
+                        <th scope="col">Cyberware (2)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">The Infiltrator</th>
+                        <td><em>Ghost in the system</em></td>
+                        <td>Monowire garrote · Encrypted cyberdeck · Sound‑dampening stealth suit</td>
+                        <td>Optical Camouflage (blend into shadows when still) · Subdermal Uplink (interface with systems silently)</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">The Street Samurai</th>
+                        <td><em>Chrome and steel</em></td>
+                        <td>Smart pistol · Heavy armored trenchcoat · Pocketful of smoke grenades</td>
+                        <td>Reflex Booster (always react first) · Kereznikov Subdermal Armor (shrug off minor hits)</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">The Face</th>
+                        <td><em>Smooth talking, sharp suit</em></td>
+                        <td>Concealed holdout pistol · Forged corporate ID badges · Custom tailored armored suit</td>
+                        <td>Voice Modulator (mimic anyone) · Ocular HUD (read heart rate and truthfulness)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 id="sec-style">Style — Give Your Character a Voice</h3>
+            <p>Style is one phrase describing <em>how</em> your character does things, not <em>what</em> they do. It costs nothing to track and colors every roll.</p>
+            <p>Pick one, or invent your own:</p>
+            <ul>
+                <li><strong>Reckless</strong> — you narrate your successes bigger and louder than they need to be.</li>
+                <li><strong>Cold &amp; Calculated</strong> — you narrate failures as "part of the plan."</li>
+                <li><strong>Charismatic Wreck</strong> — every social success comes with a self‑inflicted complication.</li>
+                <li><strong>Old‑School</strong> — you distrust chrome; you solve problems with skill before cyberware.</li>
+                <li><strong>Corpo Defector</strong> — you always know the correct jargon, badge, or protocol to fake your way past something.</li>
+            </ul>
+            <p>Mechanically, Style earns you exactly one thing: <strong>once per session</strong>, if your narration truly embodies your Style, the GM upgrades a "Yes, but" into a clean "Yes."</p>
+
+            <h3 id="sec-always-on">The "Always On" Rule</h3>
+            <p>Cyberware never burns resources. It's a permanent narrative advantage — always active, no charge to track.</p>
+
+            <h3 id="sec-burn-out">Burn‑Out Slots</h3>
+            <p>Gear and cyberware have one state each: <strong>Functional</strong> or <strong>Glitched</strong>. A bad hit or a pushed‑too‑hard use flips it to Glitched. It stays useless until a narrative fix — a back‑alley ripperdoc, a scavenged part, a quiet hour of repair.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 4: The Netrunning Rig                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-netrunning-heading">
+            <h2 id="sec-netrunning-heading">4. NEW: The Netrunning Rig</h2>
+            <p>Hacking gets its own lightweight mini‑system so digital infiltration feels distinct from physical action, without adding tracking.</p>
+
+            <p><strong>Your Rig</strong> is one sentence, chosen at character creation (Infiltrators start with one free; anyone can jack a rig from a corpse or black market for a Gear slot):</p>
+            <ul>
+                <li><q>A scavenged military cyberdeck — brutal and fast, but loud.</q></li>
+                <li><q>A boutique stealth deck — quiet, but underpowered against military ICE.</q></li>
+                <li><q>A jury‑rigged street deck — cheap, glitchy, and impossible to trace.</q></li>
+            </ul>
+
+            <p>Your Rig's flavor determines what a "Yes, but" costs you when netrunning:</p>
+            <ul>
+                <li><strong>Loud rigs</strong> → complications draw attention (a nearby Watcher notices).</li>
+                <li><strong>Underpowered rigs</strong> → complications take time (the guard patrol gets closer).</li>
+                <li><strong>Untraceable rigs</strong> → complications hit <em>you</em> physically (feedback burns your neural port).</li>
+            </ul>
+
+            <p><strong>Diving In:</strong> Entering a system is a single roll against the Watch Method. Success gets you in. A "No, and" means the ICE spots you immediately — treat it as waking a Hunter.</p>
+
+            <p><strong>Inside the Net:</strong> Don't map the system. Describe only the one node you're touching right now (a door, a camera feed, a data cache) — Fog of War applies to cyberspace exactly like the street.</p>
+
+            <p><strong>Burning Out:</strong> Your Rig can Glitch like any other gear. A Glitched Rig doesn't just stop working — it locks you out of your own head for a beat: describe a jarring sensory blackout before you can act again.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 5: World & Lore Rules                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-world-heading">
+            <h2 id="sec-world-heading">5. World &amp; Lore Rules</h2>
+            <p>You don't need a setting bible. Build the world exactly as far as your character can currently see.</p>
+
+            <h3 id="sec-rule-one">Rule 1 — One Corp, One Gang, One Bar</h3>
+            <p>Your entire setting only needs three standing entities:</p>
+            <ul>
+                <li><strong>The Megacorp</strong> — the faceless, city‑spanning enemy (Arasaka, Weyland, Tyrell — pick a vibe).</li>
+                <li><strong>The Street Gang</strong> — the immediate local threat (The Neon Skulls, The Chromers).</li>
+                <li><strong>The Safe Zone</strong> — the one place your character can breathe (The Noodle Bar, The Safehouse).</li>
+            </ul>
+
+            <h3 id="sec-rule-two">Rule 2 — The Rule of Threes (Sensory Anchors)</h3>
+            <p>Any new location gets exactly three sensory details: one light, one sound, one smell. <q>A neon pink sign flickering, the hum of a server rack, the smell of cheap synthetic noodles.</q> Your brain fills in the rest automatically.</p>
+
+            <h3 id="sec-rule-three">Rule 3 — Progressive Generation (Fog of War)</h3>
+            <p>Nothing exists until it's looked at. Don't pre‑plan a building's layout. When your character turns a corner, decide <em>then</em> what's there — camera, guard, or empty hallway.</p>
+
+            <h3 id="sec-rule-four">Rule 4 — "Who Profits?" (Instant Lore)</h3>
+            <p>Any lore question — how the internet works, how policing works, why the sky is smog‑orange — gets answered by asking which Megacorp profits from the current state of things. <q>Why is the air toxic? Because BioGen sells the masks.</q></p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 6: Gear — Expanded Ideas                              -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-gear-heading">
+            <h2 id="sec-gear-heading">6. Gear — Expanded Ideas</h2>
+            <p>Gear should be evocative, not itemized. A few extra options beyond the archetype defaults, sortable by Slot:</p>
+
+            <ul>
+                <li><strong>Weapon Slot:</strong> railgun pistol · monofilament whip · EMP grenade (shuts down one piece of tech, no roll needed) · improvised molotov</li>
+                <li><strong>Utility Slot:</strong> grapple‑hook launcher · portable signal jammer · black‑market med‑stim (clears one Glitch instantly, once) · lockpick multitool</li>
+                <li><strong>Disguise/Social Slot:</strong> stolen corp uniform · forged biometric patch · a favor owed by a fixer · a convincing sob story</li>
+            </ul>
+
+            <p>Keep the total at three. Swapping gear mid‑session means narrating how you lost or traded the old piece.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 7: Adversaries                                         -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-adversaries-heading">
+            <h2 id="sec-adversaries-heading">7. Adversaries</h2>
+            <p>Track adversaries by <em>behavior</em>, not stats.</p>
+
+            <table aria-label="Adversary types table">
+                <caption>Adversaries categorized by behavior and consequence</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Type</th>
+                        <th scope="col">Examples</th>
+                        <th scope="col">Behavior</th>
+                        <th scope="col">Consequence of a Miss</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">Watchers</th>
+                        <td>Cameras, drones, laser grids, informants</td>
+                        <td>Don't fight — only alert</td>
+                        <td>Triggers an alarm or summons a harder threat</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Enforcers</th>
+                        <td>Corp guards, gang members, defense turrets</td>
+                        <td>Block your path with force</td>
+                        <td>Your Gear/Cyberware Glitches, or you're forced to flee</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Hunters</th>
+                        <td>Corporate Solo, elite Netrunner, assault mech</td>
+                        <td>Cannot be beaten head‑on</td>
+                        <td>You must use the environment, exploit a weakness, or run</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 8: Environmental Obstacles                             -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-obstacles-heading">
+            <h2 id="sec-obstacles-heading">8. Environmental Obstacles</h2>
+
+            <table aria-label="Environmental obstacles table">
+                <caption>Obstacle types and their consequences</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Type</th>
+                        <th scope="col">Examples</th>
+                        <th scope="col">Consequence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th scope="row">ICE</th>
+                        <td>Firewalls, biometric doors, encrypted drives</td>
+                        <td>Permanent lockout, fried cyberdeck, or your location is pinged to a Netrunner</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">The Environmental Slum</th>
+                        <td>Acid rain, smog, collapsing walkways, blackouts</td>
+                        <td>Senses are cut off (HUD dies) or you're forced onto a longer, riskier route</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Corporate Paywall</th>
+                        <td>Checkpoints, guest lists, genetic scanners</td>
+                        <td>Tests your resources — fake ID, a bribe, or a dirty vent shaft</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 9: Story Hooks                                         -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-hooks-heading">
+            <h2 id="sec-hooks-heading">9. Story Hooks</h2>
+            <p>Pick one, or draw from all three across a session:</p>
+
+            <div class="example">
+                <p><strong>1. The Broken Uplink</strong> — Trapped in a Megacorp server room's maintenance shaft with a data drive overheating your neural port on a mental timer, you must bluff past a patrol drone with a stolen uniform and a glitching voice modulator.</p>
+            </div>
+
+            <div class="example">
+                <p><strong>2. The Black Market Drop</strong> — Mid‑deal for a prototype cyber‑eye in a crowded noodle bar, a warning flashes across your vision: armed corporate agents just walked in the front door. Escape without drawing attention.</p>
+            </div>
+
+            <div class="example">
+                <p><strong>3. The Neon Chase</strong> — You've stolen a luxury flying vehicle, but its autopilot is fighting your controls while interceptor drones close in through smog‑choked skyscraper gaps.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 10: Quick Session Setup                                -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-session-heading">
+            <h2 id="sec-session-heading">10. Quick Session Setup</h2>
+            <p>Fill in these four blanks before you start walking/driving, and the whole game is loaded in your head:</p>
+
+            <ul>
+                <li><strong>Archetype:</strong> Infiltrator / Street Samurai / Face / custom</li>
+                <li><strong>Style:</strong> one phrase</li>
+                <li><strong>Rig flavor:</strong> loud / underpowered / untraceable</li>
+                <li><strong>Story Hook:</strong> The Broken Uplink / The Black Market Drop / The Neon Chase / custom</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 11: Running the Scene                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-scene-heading">
+            <h2 id="sec-scene-heading">11. Running the Scene — The Storytelling Backbone</h2>
+            <p>This is the mental shape that turns a Story Hook into an actual scene, without any prep. Use it as the GM's internal skeleton while you narrate.</p>
+
+            <p><strong>The idea:</strong> The Hook gives you a beginning and an ending. Everything that makes it a <em>story</em> — why the player cares, the twist, the moment the plan breaks — lives in the middle. Don't think of the middle as something to "fill." Think of it as pressure you build through, one decision at a time.</p>
+
+            <p><strong>The shape (used at two zoom levels):</strong></p>
+            <ul>
+                <li><strong>Whole session:</strong> Premise → Intrigue → Conflict → Outcome</li>
+                <li><strong>Any single beat, zoomed in:</strong> Attention → Tension → Transformation → Outcome</li>
+            </ul>
+            <p>Same four steps, twice. If one moment in a scene needs more weight, zoom into it and run the four steps again inside it — that's the only "trick" to the whole system.</p>
+
+            <h3>Five questions for when a scene stalls</h3>
+            <ol>
+                <li><em>What do they stand to lose that isn't their life?</em> — dignity, a promise, a contact, not just survival.</li>
+                <li><em>What's their best flaw and their worst virtue?</em> — force a choice between two good things; whatever they don't pick comes back later in the run.</li>
+                <li><em>What can't be solved by the skill they're proudest of?</em> — let the plan work exactly as intended, then let the <em>side effect</em> of that success be the real problem.</li>
+                <li><em>What truth would end things if said out loud?</em> — trap two characters in a small space right after it almost got said (an elevator, a getaway car).</li>
+                <li><em>What trope are you already running?</em> (Heist gone wrong, chosen one, found family…) — break one rule of it on purpose.</li>
+            </ol>
+
+            <h3>How to connect scenes instead of "and then"</h3>
+            <ul>
+                <li><strong>Cause:</strong> <q>Which meant that…</q> / <q>What nobody saw coming was…</q></li>
+                <li><strong>Feeling:</strong> <q>Because she couldn't bear to…</q> / <q>The thing he'd never told anyone was…</q></li>
+                <li><strong>Echo:</strong> <q>Which was exactly like the time…</q> — bring a small detail back later, changed.</li>
+                <li><strong>Irony:</strong> <q>The very thing that saved her then would destroy her now.</q></li>
+                <li><strong>Pace:</strong> <q>One heartbeat. Two. Then—</q> or <q>Just when she thought it was over, it began again.</q></li>
+                <li><strong>The one that does everything at once:</strong> <q>Which is why, later, when…</q></li>
+            </ul>
+
+            <p><strong>One rule for sensory detail:</strong> this folds directly into Rule 2 (Sensory Anchors) from Section 5 — pick exactly <strong>one</strong> dominant sense per scene (sound, body/tension, temperature, internal/heartbeat, overload‑noise, or touch), plus at most one small secondary touch. Never stack more than that.</p>
+
+            <p>That's the whole narration layer: a repeating four‑step shape, five questions for when you're stuck, six ways to link scenes, and one sense per scene.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 12: Quest Deconstruction                               -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-quest-heading">
+            <h2 id="sec-quest-heading">12. Quest Deconstruction — Turning Any Target into a Quest</h2>
+            <p>This is the utility method underneath every Story Hook: a six‑step way to take <em>any</em> activity or target — an NPC's goal, a session objective, or something in real life you're gamifying on the walk itself — and shape it into something with actual pull. It reuses the Adversary vocabulary from Section 7, so a fictional obstacle and a real one get sorted the same way.</p>
+
+            <ol>
+                <li><strong>Name the Target.</strong> State it as one concrete sentence with a checkable end state. Not <q>clean the apartment,</q> but <q>the kitchen counter is clear and the sink is empty.</q> Not <q>steal the data,</q> but <q>the drive is in your pocket and the terminal shows no alert.</q></li>
+                <li><strong>Find the Obstacle.</strong> Ask why this hasn't already happened. There's always something in the way — low energy, a missing tool, a locked door, a guard rotation. Name it explicitly. No obstacle means it isn't a quest, it's just a fact.</li>
+                <li><strong>Set the Stakes.</strong> What actually gets worse if this is skipped? Not doom — a real cost (the dishes pile up, the patrol tightens, the trust erodes). If you can't name a cost, the target isn't worth questing over — shrink it or drop it.</li>
+                <li><strong>Pick One Adversary Type.</strong> Cast the obstacle as a <strong>Watcher</strong> (something to avoid or slip past quietly), an <strong>Enforcer</strong> (something to push through with effort or Gear), or a <strong>Hunter</strong> (something too big to face head‑on — needs a workaround). This single choice tells you what kind of approach the quest calls for.</li>
+                <li><strong>Define the First Move.</strong> Not the whole plan — just the next physical action, small enough to start in under two minutes. Open the terminal. Put on the stealth suit. Pick up the first dish. It's the only step you're required to know before you begin.</li>
+                <li><strong>Attach a Reward.</strong> Something delivered the instant the target is hit — a scene resolved, a Glitch cleared, a coffee, a mental checkmark. It doesn't need to be big, just immediate, so it registers as <em>done</em> rather than <em>still open.</em></li>
+            </ol>
+
+            <div class="example">
+                <p><strong>Quick example — real life:</strong> <q>Reply to that overdue email.</q> Target: reply sent, thread closed. Obstacle: it's awkward, so you keep avoiding it. Stakes: the longer it sits, the more awkward the reply gets. Adversary type: Watcher — nothing to fight, just something to face and get past quietly. First move: open the draft. Reward: archive the thread the second it sends.</p>
+            </div>
+
+            <div class="example">
+                <p><strong>Quick example — in‑fiction:</strong> <q>Get past the rooftop patrol drone.</q> Target: you're on the far ledge, undetected. Obstacle: the drone's scan sweep every 20 seconds. Stakes: getting spotted wakes the building's Hunter. Adversary type: Watcher. First move: time the sweep. Reward: the scene cuts straight to the next room, no roll needed for the crossing itself.</p>
+            </div>
+        </section>
+
+    </main>
+    <!-- end main-content -->
+
+    <!-- ============================================================ -->
+    <!-- JavaScript: theme toggle                                       -->
+    <!-- ============================================================ -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
