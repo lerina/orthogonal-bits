@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding the Levels of Software Design — Accessible Edition</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 920px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.15s, background-color 0.15s;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.6em;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.3em;
+        }
+        h3 {
+            font-size: 1.5rem;
+        }
+        h4 {
+            font-size: 1.25rem;
+            margin-top: 1.4em;
+        }
+        h5 {
+            font-size: 1.1rem;
+            margin-top: 1.2em;
+        }
+        h6 {
+            font-size: 1rem;
+            margin-top: 1em;
+        }
+
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2.5rem 0;
+        }
+
+        p {
+            margin: 0 0 1.2rem 0;
+        }
+
+        ul,
+        ol {
+            margin: 0.5rem 0 1.2rem 1.8rem;
+            padding-left: 0.5rem;
+        }
+        li {
+            margin-bottom: 0.4rem;
+        }
+
+        code,
+        .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.92em;
+        }
+
+        /* ----- KEYBOARD-ACCESSIBLE <pre> ----- */
+        pre {
+            background: #1e1e1e;
+            padding: 1.2rem 1.5rem;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 400px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.12s;
+            margin: 1.2rem 0 1.6rem 0;
+            border: 1px solid #2a2a2a;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #d4d4d4;
+            font-size: 0.92em;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #eee;
+            color: #111;
+        }
+        body.light-mode pre {
+            background: #eee;
+            border-color: #ddd;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+            color: #111;
+        }
+
+        /* ----- TOGGLE BUTTON (scrolls with page) ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.2rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #444;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+        .theme-toggle:hover {
+            background: #666;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* ----- Skip link ----- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            z-index: 1000;
+            border-radius: 0 0 10px 10px;
+            font-weight: 500;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        body.light-mode .skip-link {
+            background: #222;
+            color: #fff;
+        }
+
+        /* ----- Screen reader only ----- */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* ----- TOC styling ----- */
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0.5rem 0 1rem 0;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav ul ul {
+            padding-left: 1.5rem;
+            margin-top: 0.15rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0.2rem;
+        }
+
+        /* ----- Section spacing ----- */
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        /* ----- Small screens ----- */
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            h3 {
+                font-size: 1.25rem;
+            }
+            pre {
+                padding: 0.8rem 1rem;
+                max-height: 300px;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* ----- Focus indicators for all interactive ----- */
+        :focus-visible {
+            outline: 3px solid #88c0ff;
+            outline-offset: 2px;
+        }
+        body.light-mode :focus-visible {
+            outline-color: #0055cc;
+        }
+
+        /* TOC heading style */
+        #toc-heading {
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.3em;
+        }
+        body.light-mode #toc-heading {
+            border-bottom-color: #ccc;
+        }
+
+        /* Book header spacing */
+        header p {
+            margin-bottom: 0.2rem;
+        }
+        header h1 {
+            margin-bottom: 0.1rem;
+        }
+        header h2 {
+            border-bottom: none;
+            font-size: 1.4rem;
+            font-weight: 400;
+            color: #b0b0b0;
+            margin-top: 0.1rem;
+            padding-bottom: 0;
+        }
+        body.light-mode header h2 {
+            color: #444;
+        }
+
+        /* Strong in light mode */
+        body.light-mode strong {
+            color: #000;
+        }
+
+        /* Code inline in light mode */
+        body.light-mode code {
+            background: #eee;
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Skip link for keyboard users -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle (scrolls with page) -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- ===== HEADER ===== -->
+    <header role="banner" aria-label="Book header">
+        <h1>Understanding the Levels of Software Design</h1>
+        <h2>A Textbook on Architecture, Design, Structure, and Code</h2>
+        <p style="margin-top:0.5rem;"><em>—&nbsp;An open educational resource</em></p>
+    </header>
+
+    <hr>
+
+    <!-- ===== TABLE OF CONTENTS ===== -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#introduction">Introduction</a></li>
+            <li>
+                <a href="#part-one">Part One: The Big Picture</a>
+                <ul>
+                    <li><a href="#the-design-stack">The Design Stack</a></li>
+                    <li><a href="#a-short-comparison">A Short Comparison of the Levels</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#part-two">Part Two: Each Level in Detail</a>
+                <ul>
+                    <li><a href="#software-architecture">Software Architecture: The Macro Blueprint</a></li>
+                    <li><a href="#software-design-bridge">Software Design: The Bridge</a></li>
+                    <li><a href="#low-level-structural-design">Low-Level Structural Design: The Blueprint for Construction</a></li>
+                    <li><a href="#code-design-micro-craft">Code Design: The Micro-Craft</a></li>
+                    <li><a href="#bringing-the-levels-together">Bringing the Levels Together</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#part-three">Part Three: A Worked Example — The Paintball Reservation System</a>
+                <ul>
+                    <li><a href="#level-one-requirements">Level One: Requirements — What Are We Building?</a></li>
+                    <li><a href="#level-two-architecture">Level Two: Architecture — What Are the Major Parts?</a></li>
+                    <li><a href="#level-three-software-design">Level Three: Software Design — How Do the Parts Cooperate?</a></li>
+                    <li><a href="#level-four-structural-design">Level Four: Structural or Low-Level Design — What Does Each Module Actually Look Like?</a></li>
+                    <li><a href="#level-five-code-design">Level Five: Code Design — How Do We Express It in the Language?</a></li>
+                    <li><a href="#dependencies-across-levels">Dependencies Across the Levels</a></li>
+                    <li><a href="#file-structure-communication">File Structure as a Communication Device</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#part-four">Part Four: The Developer's Actual Job</a>
+                <ul>
+                    <li><a href="#step-one-understand">Step One: Understand the Problem</a></li>
+                    <li><a href="#step-two-concepts">Step Two: Identify the Important Concepts</a></li>
+                    <li><a href="#step-three-relationships">Step Three: Discover the Relationships</a></li>
+                    <li><a href="#step-four-responsibilities">Step Four: Establish Responsibilities</a></li>
+                    <li><a href="#step-five-boundaries">Step Five: Establish Boundaries</a></li>
+                    <li><a href="#step-six-communicate">Step Six: Decide How the Parts Communicate</a></li>
+                    <li><a href="#step-seven-architecture">Step Seven: Choose the System's Architecture</a></li>
+                    <li><a href="#step-eight-internal-structure">Step Eight: Design the Internal Structure</a></li>
+                    <li><a href="#step-nine-organize">Step Nine: Organize the Codebase</a></li>
+                    <li><a href="#step-ten-dependencies">Step Ten: Choose Dependencies and Tools</a></li>
+                    <li><a href="#step-eleven-data">Step Eleven: Define the Data</a></li>
+                    <li><a href="#step-twelve-rules">Step Twelve: Define the Rules</a></li>
+                    <li><a href="#step-thirteen-implement">Step Thirteen: Implement the Design</a></li>
+                    <li><a href="#step-fourteen-test">Step Fourteen: Test the Result</a></li>
+                    <li><a href="#step-fifteen-refine">Step Fifteen: Refine the Design</a></li>
+                    <li><a href="#continuous-loop">The Developer's Continuous Loop</a></li>
+                </ul>
+            </li>
+            <li><a href="#part-five">Part Five: Reading Existing Code as Reconstructing Decisions</a></li>
+            <li>
+                <a href="#part-six">Part Six: Why the Levels Overlap</a>
+                <ul>
+                    <li><a href="#levels-not-phases">These Are Levels, Not Sequential Phases</a></li>
+                    <li><a href="#one-problem-several-levels">One Problem, Viewed at Several Levels of Detail</a></li>
+                    <li><a href="#architecture-design-overlap">Architecture and Design Overlap the Most</a></li>
+                    <li><a href="#architecture-changed-by-implementation">Even Architecture Can Be Changed by Implementation</a></li>
+                    <li><a href="#file-structure-fits">Where File Structure Really Fits</a></li>
+                    <li><a href="#dependencies-same">The Same Applies to Dependencies</a></li>
+                    <li><a href="#practical-mental-model">A Practical Mental Model</a></li>
+                    <li><a href="#moving-up-down">Moving Up and Down Constantly</a></li>
+                </ul>
+            </li>
+            <li><a href="#developers-actual-job-summary">The Developer's Actual Job (Summary)</a></li>
+            <li><a href="#typical-questions">Typical Questions &amp; Answers You Would Ask Yourself</a></li>
+            <li><a href="#summary">Summary</a></li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- INTRODUCTION -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="introduction-heading" id="introduction">
+            <h2 id="introduction-heading">Introduction</h2>
+            <p>When people write software, they are not simply typing code into a file. Before any code exists, a long chain of decisions has already been made: what the system needs to do, how its major parts are organized, how those parts relate to one another, what modules and types will represent those relationships, and finally how all of this is expressed in a specific programming language.</p>
+            <p>This textbook explains that chain of decisions. It answers a question that many developers ask at some point in their career: when I organize my code, arrange my files, choose my dependencies, and split my program into modules, what exactly am I doing? Is that architecture? Is it design? Is it something else?</p>
+            <p>The short answer is that these activities span several related but distinct levels of thinking. This book walks through each level, explains how they differ, and then shows how they overlap in real practice using a single running example: a web application for a paintball reservation business.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART ONE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part-one-heading" id="part-one">
+            <h2 id="part-one-heading">Part One: The Big Picture</h2>
+
+            <!-- The Design Stack -->
+            <section aria-labelledby="the-design-stack-heading" id="the-design-stack">
+                <h3 id="the-design-stack-heading">The Design Stack</h3>
+                <p>It helps to think of software development as a stack of levels, moving from the most abstract to the most concrete:</p>
+                <ul>
+                    <li><strong>Requirements</strong> comes first. This is where you figure out what problem the software must solve.</li>
+                    <li><strong>Architecture</strong> comes next. This is where you decide the major parts of the system and the boundaries between them.</li>
+                    <li><strong>Software Design</strong> follows. This is where you decide what responsibilities and relationships exist among the parts that architecture established.</li>
+                    <li><strong>Structural Design</strong>, sometimes called low-level design, comes after that. This is where you decide what modules, interfaces, types, and concrete structures will realize the design.</li>
+                    <li><strong>Code Design</strong> sits close to structural design. It is concerned with the immediate quality, readability, and idiomatic correctness of the source code itself.</li>
+                    <li><strong>Implementation</strong> is last. This is where all of the above becomes actual, executable code.</li>
+                </ul>
+                <p>It is important to understand from the very beginning that these are not strict, sequential phases that you complete one at a time. They are better understood as levels of abstraction that you move between constantly, sometimes within the same five minutes of work. Later sections of this book will return to this point in detail, because it is one of the most important ideas in the entire subject.</p>
+            </section>
+
+            <!-- A Short Comparison of the Levels -->
+            <section aria-labelledby="a-short-comparison-heading" id="a-short-comparison">
+                <h3 id="a-short-comparison-heading">A Short Comparison of the Levels</h3>
+                <p>Before going deeper, here is a plain-language comparison of the levels, described one at a time rather than in a table.</p>
+                <p><strong>Software Architecture</strong> operates at the scale of the entire system. It focuses on questions like: what are the major components, and how do they scale? Its typical outputs include decisions about microservices versus monoliths, event-driven communication, database choices, and API gateways. Because architectural decisions affect the whole system, they are the most expensive to change later.</p>
+                <p><strong>Software Design</strong> operates at the scale of individual features or modules. It focuses on questions like: how do we solve a specific business problem cleanly? Its typical outputs include domain models and the breakdown of a feature into smaller components. Changing a design decision is usually less expensive than changing an architectural one, but it is still a meaningful cost.</p>
+                <p><strong>Low-Level Structural Design</strong> operates at the scale of a single module or component. It focuses on questions like: which classes, interfaces, and data tables do we actually build? Its typical outputs include class diagrams, database schemas, and the application of well-known design patterns. Changes here are relatively cheap.</p>
+                <p><strong>Code Design</strong> operates at the scale of the written source text itself. It focuses on questions like: how do we write clear, maintainable logic? Its typical outputs include applying principles such as SOLID and DRY, and performing refactoring to keep code tidy. Changes at this level are usually very cheap and can often be done safely through automated tools.</p>
+                <p>In short, moving down this list means moving from strategic, expensive, system-wide decisions toward tactical, cheap, local decisions.</p>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART TWO -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part-two-heading" id="part-two">
+            <h2 id="part-two-heading">Part Two: Each Level in Detail</h2>
+
+            <!-- Software Architecture: The Macro Blueprint -->
+            <section aria-labelledby="software-architecture-heading" id="software-architecture">
+                <h3 id="software-architecture-heading">Software Architecture: The Macro Blueprint</h3>
+                <p>Software architecture deals with the highest level of abstraction in a system. It is primarily concerned with what are sometimes called non-functional requirements: scalability, security, availability, and performance. Architectural decisions are strategic. They depend heavily on the specific context of the project, and they are usually very costly to reverse once the system has grown around them.</p>
+                <p>A concrete example of an architectural decision is choosing to build an e-commerce platform using a microservices architecture, where payments, inventory, and user profiles are separated into independent applications that communicate through asynchronous message queues. Notice that this decision says nothing yet about how any single one of those services is built internally. It only establishes the large shape of the system.</p>
+            </section>
+
+            <!-- Software Design: The Bridge -->
+            <section aria-labelledby="software-design-bridge-heading" id="software-design-bridge">
+                <h3 id="software-design-bridge-heading">Software Design: The Bridge</h3>
+                <p>Software design is the tactical counterpart to architecture. It takes the broad rules that architecture has established and translates them into an implementation plan for individual modules or features. Software design determines how data flows inside the boundaries that architecture created, and it establishes the finer boundaries between sub-systems within those larger boundaries.</p>
+                <p>For example, once architecture has established that there will be a Payment service, software design is where you decide to break that service down into a Fraud Detection module, a Ledger module, and a Gateway Integration module. Architecture said "there is a Payment service." Design says "and inside it, these are the responsibilities."</p>
+            </section>
+
+            <!-- Low-Level Structural Design -->
+            <section aria-labelledby="low-level-structural-design-heading" id="low-level-structural-design">
+                <h3 id="low-level-structural-design-heading">Low-Level Structural Design: The Blueprint for Construction</h3>
+                <p>Low-level structural design, often abbreviated LLD, is the bridge between system-level diagrams and actual source code. At this level, there is almost no discussion of infrastructure. Instead, the focus is on data models, the relationships between classes, function signatures, and the exact algorithms that will be used.</p>
+                <p>A concrete example is creating a class diagram for the Payment module that shows a PaymentProcessor interface, a concrete StripeProcessor class that implements it, and a PaymentObserver responsible for listening to status changes. This is far more concrete than software design, but it is still not the actual code.</p>
+            </section>
+
+            <!-- Code Design: The Micro-Craft -->
+            <section aria-labelledby="code-design-micro-craft-heading" id="code-design-micro-craft">
+                <h3 id="code-design-micro-craft-heading">Code Design: The Micro-Craft</h3>
+                <p>Code design is concerned with the immediate quality, readability, and idiomatic correctness of the text that makes up the program. It draws heavily on universal clean-code conventions and on the conventions of whatever programming paradigm is in use, whether that is functional programming, object-oriented programming, or something else. Because it operates on the smallest scale, changes here are usually inexpensive and can often be made safely through automated refactoring tools.</p>
+                <p>A concrete example is taking a method that contains five nested if-else blocks and refactoring it into a concise set of guard clauses, in order to satisfy the Don't Repeat Yourself principle and the Single Responsibility Principle.</p>
+            </section>
+
+            <!-- Bringing the Levels Together -->
+            <section aria-labelledby="bringing-the-levels-together-heading" id="bringing-the-levels-together">
+                <h3 id="bringing-the-levels-together-heading">Bringing the Levels Together</h3>
+                <p>When you organize code, arrange files, select dependencies, and split functionality into modules, you are making structured engineering decisions about how the software will be built, maintained, and scaled. You are not deciding what features the software offers. That question belongs to requirements. You are deciding how those features will be realized, and that decision touches every level described above, from architecture down to code design.</p>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART THREE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part-three-heading" id="part-three">
+            <h2 id="part-three-heading">Part Three: A Worked Example — The Paintball Reservation System</h2>
+            <p>To make these ideas concrete, this section walks through a single example project: a web application, built using a hypothetical Rust web framework, for a paintball reservation business. The mission statement for the project is this: build a system where users can create teams, reserve a room and hardware such as guns and protective gear, and buy reload paint.</p>
+            <p>We will trace this single mission through every level of the design stack.</p>
+
+            <!-- Level One: Requirements -->
+            <section aria-labelledby="level-one-requirements-heading" id="level-one-requirements">
+                <h4 id="level-one-requirements-heading">Level One: Requirements — What Are We Building?</h4>
+                <p>Requirements come before architecture. At this stage, you are not yet deciding anything about files, modules, or technology. You are simply asking what the system needs to do.</p>
+                <p>From the mission statement, you can derive a list of capabilities the system needs: users, teams, rooms, reservations, guns, protective equipment, paint inventory, purchases, payments, availability, and scheduling.</p>
+                <p>At this level, the guiding question is simply: what does the system need to do? You are not yet asking whether there will be a file called teams-dot-r-s.</p>
+            </section>
+
+            <!-- Level Two: Architecture -->
+            <section aria-labelledby="level-two-architecture-heading" id="level-two-architecture">
+                <h4 id="level-two-architecture-heading">Level Two: Architecture — What Are the Major Parts?</h4>
+                <p>Now you decide the large-scale shape of the application. For the paintball system, you might decide there are several major domains: identity, teams, booking, equipment, inventory, and commerce.</p>
+                <p>At this stage you are also answering questions such as: should this be one application or several separate services? Where does the database live? How does the web layer communicate with the rest of the application? Where does authentication happen? How are reservations persisted? How does payment processing integrate? Which parts of the system are allowed to depend on which other parts? Is the application organized around business domains, or around technical layers?</p>
+                <p>This is architecture, because you are establishing the major boundaries of the system and the relationships between them. For a first version of this application, a full microservices approach is probably unnecessary. A more sensible architecture would be what is sometimes called a modular monolith: a single executable, a single deployment, but with clearly separated internal modules for teams, booking, and commerce, each with their own internal concerns such as users, rooms, gear, and orders.</p>
+            </section>
+
+            <!-- Level Three: Software Design -->
+            <section aria-labelledby="level-three-software-design-heading" id="level-three-software-design">
+                <h4 id="level-three-software-design-heading">Level Three: Software Design — How Do the Parts Cooperate?</h4>
+                <p>Once the major architectural boundaries exist, software design happens inside them. Consider the Booking domain from the architecture above. The requirement was that a team can reserve a room and equipment. The design question becomes: what concepts and responsibilities are needed to make that actually happen?</p>
+                <p>You might discover that a Team makes a Reservation, and that a Reservation involves a Room and a set of Equipment, where Equipment itself breaks down into Guns and Protective Gear.</p>
+                <p>You then think through the rules that govern these relationships. A Reservation belongs to a Team, has a scheduled time, occupies a Room, and allocates Equipment. A Room can only support one non-conflicting reservation at a time. A Gun can only be allocated once for any given conflicting period.</p>
+                <p>This is software design. You are deciding what the important concepts are, what responsibilities they carry, how they interact, where the business rules should live, what boundaries exist between modules, and what information is allowed to cross those boundaries. This is much closer to what many developers mean when they informally describe "the organization of the code."</p>
+            </section>
+
+            <!-- Level Four: Structural Design -->
+            <section aria-labelledby="level-four-structural-design-heading" id="level-four-structural-design">
+                <h4 id="level-four-structural-design-heading">Level Four: Structural or Low-Level Design — What Does Each Module Actually Look Like?</h4>
+                <p>Now the design becomes more concrete. Suppose you have decided that booking is its own module. You might design its internal file layout as containing separate files for reservations, rooms, equipment, and availability logic.</p>
+                <p>You then decide what each of those files should contain conceptually. The reservation file would define a Reservation type, a ReservationId type, and a ReservationStatus type. The room file would define a Room type and a RoomId type. The equipment file would define an Equipment type along with Gun and ProtectiveGear types. The availability file would contain the logic for checking whether something is available.</p>
+                <p>You might also work out the relationships more precisely: a Reservation refers to a TeamId, a RoomId, a set of EquipmentIds, a TimePeriod, and a Status.</p>
+                <p>At this stage, the questions being asked are: what types exist? What functions exist? What module owns this particular responsibility? What does this module expose to the rest of the system, and what data is allowed to cross this particular boundary?</p>
+            </section>
+
+            <!-- Level Five: Code Design -->
+            <section aria-labelledby="level-five-code-design-heading" id="level-five-code-design">
+                <h4 id="level-five-code-design-heading">Level Five: Code Design — How Do We Express It in the Language?</h4>
+                <p>Only now do you get close to the actual implementation. Continuing the booking example, the conceptual Reservation, ReservationId, RoomId, and ReservationStatus become actual language-level constructs: structs, enums, traits, functions, error types, and decisions about ownership, borrowing, generics, lifetimes, visibility, naming conventions, idiomatic style, error propagation, and asynchronous behavior.</p>
+                <p>A good example of a code-design question at this level is: should a Reservation type directly contain a Room value, or should it merely contain a RoomId that refers to a Room stored elsewhere? This question begins as a design question and ends as a concrete implementation decision in the chosen programming language.</p>
+            </section>
+
+            <!-- Dependencies Across the Levels -->
+            <section aria-labelledby="dependencies-across-levels-heading" id="dependencies-across-levels">
+                <h4 id="dependencies-across-levels-heading">Dependencies Across the Levels</h4>
+                <p>The question of which dependencies to use is particularly interesting, because dependency selection does not belong to a single level. It moves down the stack along with everything else.</p>
+                <p>Consider a chain of decisions like this one. First, you recognize a general need: "we need persistent storage." That is closer to an architectural realization. Next, you decide "PostgreSQL fits this architecture." That is still architectural, or perhaps architecture blending into design. Next, you decide "we will use this particular Rust library for talking to PostgreSQL." That is closer to a design or implementation decision. Next, you decide "this specific module owns database access, and no other module is allowed to talk to the database directly." That is a structural design decision. Finally, a specific function inside that module calls a specific repository function. That is implementation.</p>
+                <p>Each step in this chain becomes progressively more concrete, moving from a broad architectural need down to a single line of code.</p>
+            </section>
+
+            <!-- File Structure as a Communication Device -->
+            <section aria-labelledby="file-structure-communication-heading" id="file-structure-communication">
+                <h4 id="file-structure-communication-heading">File Structure as a Communication Device</h4>
+                <p>It is tempting to think of file structure as mere housekeeping, but it is not. A layout such as separate top-level folders for identity, teams, booking, equipment, inventory, and commerce is not just a way of keeping files tidy. It communicates a design decision: these are the boundaries that the author of the system considered important.</p>
+                <p>This is why an experienced developer can often look at a repository's folder structure, without reading a single line of implementation, and already learn a great deal about how the original author understood the system. File structure sits primarily at the boundary between software design and structural design, and it is one of the clearest physical traces that design decisions leave behind in a codebase.</p>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART FOUR -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part-four-heading" id="part-four">
+            <h2 id="part-four-heading">Part Four: The Developer's Actual Job</h2>
+            <p>The paintball example shows how one project maps onto the design stack. This section steps back and describes, in language-independent terms, what a developer is actually doing throughout this whole process.</p>
+
+            <!-- Step One -->
+            <section aria-labelledby="step-one-understand-heading" id="step-one-understand">
+                <h4 id="step-one-understand-heading">Step One: Understand the Problem</h4>
+                <p>Before deciding how to build something, a developer needs to understand what is actually being built. A vague request such as "create a system for managing a paintball business" is far too broad to implement directly. The developer investigates what the system actually needs to accomplish: customers create accounts, customers create teams, teams make reservations, reservations involve rooms, reservations involve equipment, equipment has availability, customers purchase supplies, and inventory changes whenever a purchase is made.</p>
+                <p>The first job, then, is to understand the problem before designing the solution. A developer who misunderstands the underlying problem can still produce technically excellent software, but it will solve the wrong problem.</p>
+            </section>
+
+            <!-- Step Two -->
+            <section aria-labelledby="step-two-concepts-heading" id="step-two-concepts">
+                <h4 id="step-two-concepts-heading">Step Two: Identify the Important Concepts</h4>
+                <p>Once the problem is understood, the developer identifies the things that matter. For the paintball system, these concepts include User, Team, Room, Reservation, Equipment, Inventory, Product, Order, and Payment. These concepts form the vocabulary of the system.</p>
+                <p>The developer is asking: what things does the system need to know about? Which of these concepts have their own independent identity? Which concepts are related to one another? And which concepts are really just details belonging to some other, more important concept? This process turns a vague problem into something that can actually be modeled.</p>
+            </section>
+
+            <!-- Step Three -->
+            <section aria-labelledby="step-three-relationships-heading" id="step-three-relationships">
+                <h4 id="step-three-relationships-heading">Step Three: Discover the Relationships</h4>
+                <p>The important concepts do not exist independently of one another; they interact. A User belongs to a Team. A Team makes a Reservation. A Reservation occupies a Room, uses Equipment, and happens at a particular Time. An Order contains Products. Inventory represents how much of a Product is currently available.</p>
+                <p>The developer's task here is to work out how the important concepts relate to one another.</p>
+            </section>
+
+            <!-- Step Four -->
+            <section aria-labelledby="step-four-responsibilities-heading" id="step-four-responsibilities">
+                <h4 id="step-four-responsibilities-heading">Step Four: Establish Responsibilities</h4>
+                <p>Every significant part of a system needs a reason to exist. The developer decides which part of the system is responsible for which behavior. In the paintball system, Team Management is responsible for teams and their membership. Reservation Management is responsible for reservations and scheduling. Equipment Management is responsible for equipment and its availability. Inventory Management is responsible for stock levels. Commerce is responsible for orders and purchases.</p>
+                <p>This creates boundaries. Instead of one enormous piece of software that knows everything about everything, responsibility is distributed among meaningful parts. The guiding question here is: who should be responsible for this? This is one of the central questions of software design as a discipline.</p>
+            </section>
+
+            <!-- Step Five -->
+            <section aria-labelledby="step-five-boundaries-heading" id="step-five-boundaries">
+                <h4 id="step-five-boundaries-heading">Step Five: Establish Boundaries</h4>
+                <p>Responsibilities naturally lead to boundaries. A well-designed component should know enough to perform its own job, without needing to know unnecessary details about everything else in the system. For example, the reservation system may need to ask whether a particular room is available, but it does not need to understand how the room database is implemented internally. Likewise, the inventory system may need to answer whether five hundred paintballs are currently available, but the reservation system does not need to understand the internal mechanics of how inventory is tracked.</p>
+                <p>Good boundaries limit unnecessary knowledge between parts of the system. The developer is constantly asking two related questions: what should this part know about, and, just as importantly, what should this part not need to know about?</p>
+            </section>
+
+            <!-- Step Six -->
+            <section aria-labelledby="step-six-communicate-heading" id="step-six-communicate">
+                <h4 id="step-six-communicate-heading">Step Six: Decide How the Parts Communicate</h4>
+                <p>Once boundaries exist, the developer determines how the parts on either side of a boundary actually interact. For example, the Reservation component might ask the Room Management component whether room twelve is available, and separately ask the Equipment Management component whether a particular set of items is available.</p>
+                <p>The important question is not merely whether two components communicate, but what they need to communicate. A well-designed system exposes meaningful operations across its boundaries while keeping unnecessary implementation details hidden. The developer asks: what information needs to cross this boundary? What should be exposed to the other side? And what should remain entirely internal?</p>
+            </section>
+
+            <!-- Step Seven -->
+            <section aria-labelledby="step-seven-architecture-heading" id="step-seven-architecture">
+                <h4 id="step-seven-architecture-heading">Step Seven: Choose the System's Architecture</h4>
+                <p>With responsibilities and boundaries in mind, the developer can now make larger structural decisions about the system as a whole, such as dividing the application into major areas like Identity, Operations, and Commerce, each containing their own sub-concepts.</p>
+                <p>Architecture is concerned with questions such as: what are the major components of the system? Where are the boundaries between them? Where does persistent information actually live? How does information move through the system as a whole? Which components are allowed to depend on which other components? And which of these decisions will be expensive to change later on? Architecture, in short, is concerned with the shape of the system as a whole.</p>
+            </section>
+
+            <!-- Step Eight -->
+            <section aria-labelledby="step-eight-internal-structure-heading" id="step-eight-internal-structure">
+                <h4 id="step-eight-internal-structure-heading">Step Eight: Design the Internal Structure</h4>
+                <p>Architecture establishes the large pieces of the system. Design determines how each of those pieces is organized internally. A Reservation component, for instance, might contain concepts such as Reservation itself, Reservation Status, Availability, Scheduling, and Reservation Rules.</p>
+                <p>At this stage, the developer decides what concepts belong together, what responsibilities belong inside a given component, what information that component owns, what operations it provides to the rest of the system, what it exposes externally, and what remains a private implementation detail. This is where the conceptual design becomes increasingly concrete.</p>
+            </section>
+
+            <!-- Step Nine -->
+            <section aria-labelledby="step-nine-organize-heading" id="step-nine-organize">
+                <h4 id="step-nine-organize-heading">Step Nine: Organize the Codebase</h4>
+                <p>Eventually, the design has to become a physical structure: directories, files, modules, packages, components, libraries, interfaces, configuration, and tests. For the paintball example, this might mean top-level folders for users, teams, reservations, equipment, inventory, and orders.</p>
+                <p>This structure is not merely housekeeping. It communicates the design. A developer opening the project for the first time should be able to discover the system's major concepts and responsibilities simply from how it is organized. The guiding question at this stage is: how should the design actually appear in the codebase?</p>
+            </section>
+
+            <!-- Step Ten -->
+            <section aria-labelledby="step-ten-dependencies-heading" id="step-ten-dependencies">
+                <h4 id="step-ten-dependencies-heading">Step Ten: Choose Dependencies and Tools</h4>
+                <p>Software rarely exists entirely on its own; the developer decides which existing technologies and libraries the system should rely on. Dependency selection is more than simply finding something that performs a needed task. The developer considers whether the project genuinely needs the dependency, whether it is reliable, whether it fits the chosen architecture, whether it introduces unnecessary complexity, whether it creates undesirable coupling between parts of the system, how difficult it would be to replace later, and which part of the system should actually be allowed to depend on it.</p>
+                <p>A dependency, in other words, is also an architectural decision. The developer is not merely choosing what to use; they are deciding where that dependency belongs and how much of the rest of the system should even be aware that it exists.</p>
+                <p>For example, you might check your installed tools with a command like:</p>
+                <pre tabindex="0" role="region" aria-label="Command-line example"><code>docker --version</code></pre>
+            </section>
+
+            <!-- Step Eleven -->
+            <section aria-labelledby="step-eleven-data-heading" id="step-eleven-data">
+                <h4 id="step-eleven-data-heading">Step Eleven: Define the Data</h4>
+                <p>The developer determines what information the system needs to represent and preserve. A Team has a name and members. A Reservation has a team, a room, equipment, a time, and a status. A Product has a name and a price. An entry in Inventory has a product and a quantity. An Order has a customer, a set of items, and a total.</p>
+                <p>The exact implementation of these ideas comes later. First comes the model. The developer asks: what information exists? What information naturally belongs together? What information changes over time? What information must be preserved permanently? And what relationships need to be represented between different pieces of information?</p>
+            </section>
+
+            <!-- Step Twelve -->
+            <section aria-labelledby="step-twelve-rules-heading" id="step-twelve-rules">
+                <h4 id="step-twelve-rules-heading">Step Twelve: Define the Rules</h4>
+                <p>Software is not simply data storage; it also implements rules. In the paintball system, such rules might include: a room cannot have two conflicting reservations at the same time, equipment cannot be allocated to two conflicting reservations, a reservation requires an available room, and a purchase cannot exceed the currently available inventory.</p>
+                <p>The developer determines where each of these rules should live. This matters because business rules that are scattered randomly throughout a system become very difficult to understand and maintain over time. A well-designed system gives each important rule a clear, single owner. The guiding question here is: where does this particular piece of behavior actually belong?</p>
+            </section>
+
+            <!-- Step Thirteen -->
+            <section aria-labelledby="step-thirteen-implement-heading" id="step-thirteen-implement">
+                <h4 id="step-thirteen-implement-heading">Step Thirteen: Implement the Design</h4>
+                <p>Only at this point does the developer spend most of their time actually expressing these accumulated decisions in code. Implementation introduces concrete details such as data structures, functions, interfaces, algorithms, error handling, concurrency, input validation, persistence, communication between components, and user interfaces.</p>
+                <p>The developer is translating the design into executable behavior. This is where raw programming skill becomes essential, but implementation is not the entire job. It is best understood as the construction phase of a much larger design process.</p>
+            </section>
+
+            <!-- Step Fourteen -->
+            <section aria-labelledby="step-fourteen-test-heading" id="step-fourteen-test">
+                <h4 id="step-fourteen-test-heading">Step Fourteen: Test the Result</h4>
+                <p>The developer then compares the finished software against the original requirements. Does the system actually work? Does it correctly handle valid input? Does it correctly handle invalid input? Does it preserve the important rules that were defined earlier? Do the different parts of the system interact correctly with one another? Can the system be changed in one place without accidentally breaking unrelated functionality elsewhere?</p>
+                <p>Testing is not simply about hunting for bugs. It provides evidence about whether the design and the implementation actually correspond to the original problem the system was meant to solve.</p>
+            </section>
+
+            <!-- Step Fifteen -->
+            <section aria-labelledby="step-fifteen-refine-heading" id="step-fifteen-refine">
+                <h4 id="step-fifteen-refine-heading">Step Fifteen: Refine the Design</h4>
+                <p>The first design is rarely perfect. As the developer's understanding of the problem grows, weaknesses in the original design become visible. Perhaps two components turn out to be too tightly coupled. Perhaps one module has accumulated too many responsibilities. Perhaps a particular dependency has spread further through the system than intended. Perhaps a concept that seemed simple at first turns out to deserve an entire component of its own.</p>
+                <p>The developer restructures the software in response to these discoveries. This activity is commonly called refactoring, but at a deeper level it is really design refinement. The system evolves as the developer's understanding improves.</p>
+            </section>
+
+            <!-- Continuous Loop -->
+            <section aria-labelledby="continuous-loop-heading" id="continuous-loop">
+                <h4 id="continuous-loop-heading">The Developer's Continuous Loop</h4>
+                <p>Software development, understood this way, is not a one-way pipeline that moves neatly from requirements to a finished product. It is better understood as a loop: understand, model, design, build, observe, learn, redesign, and build again.</p>
+                <p>A developer might begin with an idea like "customers need to reserve equipment," then move to "we need an Equipment concept," then to "Equipment needs an availability property," then to "availability belongs inside the reservation domain," then to "this module should expose an availability operation," then to "this operation needs particular data structures," and only then arrive at "here is the actual code." The developer moves from the problem toward the code, and then repeatedly moves back from the observed behavior of the code toward a renewed understanding of the problem.</p>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART FIVE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part-five-heading" id="part-five">
+            <h2 id="part-five-heading">Part Five: Reading Existing Code as Reconstructing Decisions</h2>
+            <p>Understanding an existing codebase is a different skill from simply reading individual functions line by line, because the source code you see is only the final, visible result of a long chain of earlier decisions.</p>
+            <p>A developer reading an unfamiliar project can profitably ask a series of questions: What problem is this particular component solving? Why does this module exist at all? What responsibility does it have? Who depends on it, and what does it depend on? Who creates this particular object, and who owns it once it exists? Who is allowed to modify it? Why is this piece of functionality located here rather than somewhere else? Why was this particular dependency introduced in the first place? What does this component deliberately choose to hide from the rest of the system? And what would happen to the system if this particular boundary disappeared?</p>
+            <p>These questions reveal the structure that lies behind the visible code. When you open a large, unfamiliar codebase and start asking questions like "where is this particular object defined," "who creates it," "who owns it," "which module knows about it," and "why does this part of the system depend on that part," you are primarily studying software design and architecture rather than syntax. The code itself is simply the implementation of those earlier decisions. This is also why learning to read a large, unfamiliar project well requires a different skill than learning the programming language itself. The language tells you how the code works; software design tells you why the codebase is shaped the way it is.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART SIX -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part-six-heading" id="part-six">
+            <h2 id="part-six-heading">Part Six: Why the Levels Overlap</h2>
+
+            <!-- Levels, Not Phases -->
+            <section aria-labelledby="levels-not-phases-heading" id="levels-not-phases">
+                <h3 id="levels-not-phases-heading">These Are Levels, Not Sequential Phases</h3>
+                <p>The most important clarification in this entire subject is that architecture, design, structure, and implementation are not really sequential stages with clean boundaries between them. They are better understood as overlapping levels of decision-making that a developer moves between constantly.</p>
+                <p>A developer does not finish architecture, hand it off to someone else, and only then begin design. Architectural decisions continue to be made while design is happening. Design decisions continue to be made while implementation is happening. And implementation frequently reveals that an earlier architectural decision actually needs to change.</p>
+            </section>
+
+            <!-- One Problem, Several Levels -->
+            <section aria-labelledby="one-problem-several-levels-heading" id="one-problem-several-levels">
+                <h3 id="one-problem-several-levels-heading">One Problem, Viewed at Several Levels of Detail</h3>
+                <p>Consider a single underlying idea: the reservation system needs to check whether a piece of equipment is available. This one idea shows up, in different forms, at every level of the stack.</p>
+                <ul>
+                    <li><strong>Requirements:</strong> a customer must only be able to reserve equipment that is genuinely available.</li>
+                    <li><strong>Architecture:</strong> equipment availability belongs to the equipment and reservation part of the system.</li>
+                    <li><strong>Software Design:</strong> the reservation process should ask an equipment component whether the requested equipment is currently available.</li>
+                    <li><strong>Structural Design:</strong> an availability component, a representation of equipment, a representation of a reservation, and a defined interface between them.</li>
+                    <li><strong>Implementation:</strong> actual functions, data structures, database queries, and validation logic.</li>
+                </ul>
+                <p>So the same underlying idea moves through several transformations: equipment must be available, therefore equipment owns availability, therefore reservation asks equipment, therefore an availability interface or module is created, therefore the actual code is written. This is one problem, viewed at progressively greater levels of detail, rather than several unrelated problems.</p>
+            </section>
+
+            <!-- Architecture and Design Overlap -->
+            <section aria-labelledby="architecture-design-overlap-heading" id="architecture-design-overlap">
+                <h3 id="architecture-design-overlap-heading">Architecture and Design Overlap the Most</h3>
+                <p>This is where the terminology becomes genuinely confusing for many developers, and it is worth being honest about that. Suppose you decide that an application will be divided into Users, Teams, Reservations, Equipment, and Commerce. Is that decision architecture, or is it software design? It can reasonably be called either, depending on the scale at which you are thinking about it. If you are deciding the major boundaries of the entire application, most people would call this architecture. If you are instead deciding the internal responsibilities and relationships of components that already exist within a larger architecture, most people would call this software design. There is no universal, fixed line where one of these suddenly turns into the other. It is best understood as a smooth gradient: architecture becomes increasingly detailed until it shades into software design, which becomes increasingly detailed until it shades into structural design, which becomes increasingly concrete until it shades into implementation.</p>
+            </section>
+
+            <!-- Architecture Changed by Implementation -->
+            <section aria-labelledby="architecture-changed-by-implementation-heading" id="architecture-changed-by-implementation">
+                <h3 id="architecture-changed-by-implementation-heading">Even Architecture Can Be Changed by Implementation</h3>
+                <p>This point matters a great deal in real-world development. A team might initially design a Commerce area containing only a Payment Service. While implementing that service, they might discover that the payment provider they are using requires information that the current domain model simply does not contain. That discovery is made during implementation, but it feeds back into design: the Payment Service might need to be reorganized into separate Order, Payment, and Payment Gateway Adapter concepts.</p>
+                <p>Sometimes the consequences of such a discovery are even larger, and the team realizes that their originally chosen architecture makes an important requirement unnecessarily difficult to satisfy. At that point, the architecture itself changes. The real process, in other words, is iterative rather than strictly linear: architecture leads to design, design leads to implementation, implementation reveals a problem, which leads to a design change, which leads to further implementation changes, which sometimes reveals a deeper problem that leads all the way back to an architecture change. This cycle happens constantly in serious, real-world software development.</p>
+            </section>
+
+            <!-- Where File Structure Fits -->
+            <section aria-labelledby="file-structure-fits-heading" id="file-structure-fits">
+                <h3 id="file-structure-fits-heading">Where File Structure Really Fits</h3>
+                <p>File structure is another area that resists being placed into a single, isolated category. A layout with separate top-level folders for teams, reservations, equipment, and commerce is a structural representation of a design. But that same structure also expresses architecture. If a team intentionally makes the reservations folder independent of the commerce folder, and enforces that the dependency can only run in one direction, they have made an architectural decision visible directly in the file structure. File structure, then, is not really its own separate category of decision. It is a physical manifestation of architectural and design decisions that were made earlier, now made visible in the shape of the repository.</p>
+            </section>
+
+            <!-- Dependencies: Same -->
+            <section aria-labelledby="dependencies-same-heading" id="dependencies-same">
+                <h3 id="dependencies-same-heading">The Same Applies to Dependencies</h3>
+                <p>Choosing a database library provides a clear example of how a single decision can be decomposed into several decisions at different levels. First comes the recognition that the system needs persistence; this is close to an architectural decision. Second comes the decision to use a relational database rather than some other kind of storage; this is also architectural, or perhaps a blend of architecture and design. Third comes the decision to use a specific library for talking to that database; this is more design or implementation oriented. Fourth comes the decision about which single part of the system is allowed to depend on that library directly; this is a boundary decision, and therefore a design decision. Again, the categories overlap rather than sitting in clean, separate boxes.</p>
+            </section>
+
+            <!-- Practical Mental Model -->
+            <section aria-labelledby="practical-mental-model-heading" id="practical-mental-model">
+                <h3 id="practical-mental-model-heading">A Practical Mental Model</h3>
+                <p>Rather than trying to memorize rigid definitions such as "architecture equals this, design equals that, low-level design equals this other thing, and code design equals yet another thing," it is more useful to think in terms of the underlying question being asked at each level.</p>
+                <ul>
+                    <li><strong>Requirements</strong> asks: what problem must the software solve?</li>
+                    <li><strong>Architecture</strong> asks: what are the major parts and boundaries of the system?</li>
+                    <li><strong>Design</strong> asks: what responsibilities and relationships should those parts have?</li>
+                    <li><strong>Structural design</strong> asks: what modules, interfaces, and structures will realize that design?</li>
+                    <li><strong>Implementation</strong> asks: how do we express those structures in actual code?</li>
+                </ul>
+                <p>The most important word in that list is "level." These are levels of abstraction that a developer moves between, not isolated phases that are completed one after another and never revisited.</p>
+            </section>
+
+            <!-- Moving Up and Down -->
+            <section aria-labelledby="moving-up-down-heading" id="moving-up-down">
+                <h3 id="moving-up-down-heading">Moving Up and Down Constantly</h3>
+                <p>An experienced developer might spend only five minutes writing code before realizing that a particular responsibility is sitting in the wrong module. That is a design-level realization. A few minutes later, they might realize that two modules should not depend on each other at all. That is potentially an architectural realization. Later still, they might notice that a particular data structure is making an algorithm unnecessarily complicated. That is a structural or code-design realization. And at yet another point, they might simply notice that a function is hard to understand. That is a code-level, implementation realization.</p>
+                <p>All of these realizations are part of the very same activity: making decisions about the structure and behavior of the software. This is why "the developer's actual job" is better described as continuous problem-solving and design, with the act of writing code being the final step where those decisions are given executable form.</p>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- DEVELOPER'S ACTUAL JOB (summary) -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="developers-actual-job-summary-heading" id="developers-actual-job-summary">
+            <h2 id="developers-actual-job-summary-heading">The Developer's Actual Job</h2>
+            <p>This gives you a useful way of thinking about software development.</p>
+            <p>A developer isn't simply:</p>
+            <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                "writing code."
+            </blockquote>
+            <p>They are progressively answering questions:</p>
+            <ul>
+                <li><strong>Level 1 — Requirements:</strong> What problem are we solving?</li>
+                <li><strong>Level 2 — Architecture:</strong> What major pieces should exist?</li>
+                <li><strong>Level 3 — Design:</strong> What responsibilities and relationships should those pieces have?</li>
+                <li><strong>Level 4 — Structure:</strong> How should those pieces be represented in the repository?</li>
+                <li><strong>Level 5 — Code:</strong> How do I express that structure correctly in Rust?</li>
+                <li><strong>Level 6 — Implementation:</strong> Does the resulting program actually work?</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- TYPICAL QUESTIONS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="typical-questions-heading" id="typical-questions">
+            <h2 id="typical-questions-heading">Typical Questions &amp; Answers You Would Ask Yourself</h2>
+            <p>When you open a large Rust repository and start asking:</p>
+            <ul>
+                <li>Where is <code>Router</code> defined?</li>
+                <li>Who creates it?</li>
+                <li>Who owns it?</li>
+                <li>What module knows about it?</li>
+                <li>Which module calls this module?</li>
+                <li>Why is this functionality in this file?</li>
+                <li>Why does this crate depend on that crate?</li>
+                <li>What is <code>pub</code> here, and why?</li>
+                <li>What does this module expose to the rest of the application?</li>
+            </ul>
+            <p><strong>You are primarily studying software design and architecture, not syntax.</strong></p>
+            <p>The Rust code is the <em>implementation of those decisions</em>.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SUMMARY -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="summary-heading" id="summary">
+            <h2 id="summary-heading">Summary</h2>
+            <p>Software design, in the broad sense, is the act of deciding what form a system's structure should take. Software architecture is the act of deciding the major structure within which that design operates. And software development, as a whole, is the continuous practice of moving between all of these levels: requirements, architecture, design, structure, implementation, testing, and refinement.</p>
+            <p>When you organize your files, choose your dependencies, and split your program into modules, you are not doing something separate from architecture and design. You are giving architecture and design a physical form. The organization of a codebase is the visible trace of everything a developer has decided about the system, from the very first requirement all the way down to the smallest function.</p>
+            <p>A developer's core skill, ultimately, is turning complexity into structure: taking a real-world problem and progressively transforming it into a model, then a set of responsibilities, then a system architecture, then a collection of components, then a codebase, and finally a working system. And the work does not stop once the system runs. The developer continues to observe the system, learn from its behavior, and change its structure whenever that structure no longer fits what has been learned.</p>
+        </section>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <hr>
+    <footer role="contentinfo" style="margin-top:2rem;font-size:0.9rem;color:#999;text-align:center;">
+        <p><em>Understanding the Levels of Software Design</em> — Accessible Edition</p>
+        <p style="margin-top:0.2rem;">Built with semantic HTML, dark/light mode, and keyboard accessibility in mind.</p>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            // Check localStorage for saved preference; default to dark
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark'; // currently light → show "Dark"
+            } else {
+                // default: dark
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light'; // currently dark → show "Light"
+            }
+
+            // Toggle on click
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
