@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debian 13.6 MATE, Orca 48.1 Laptop Mode — Accessible Guide</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 920px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.15s, background-color 0.15s;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.6em;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.3em;
+        }
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 1.4em;
+        }
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 1.2em;
+        }
+
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2.5rem 0;
+        }
+
+        p {
+            margin: 0 0 1.2rem 0;
+        }
+
+        ul,
+        ol {
+            margin: 0.5rem 0 1.2rem 1.8rem;
+            padding-left: 0.5rem;
+        }
+        li {
+            margin-bottom: 0.4rem;
+        }
+
+        /* Keycap style */
+        kbd {
+            display: inline-block;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            padding: 0.1rem 0.6rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            border: 1px solid #555;
+            box-shadow: 0 1px 0 #555;
+            margin: 0 0.1rem;
+            white-space: nowrap;
+        }
+        .key-combo {
+            display: inline-block;
+            background: #1e1e1e;
+            padding: 0.2rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid #444;
+            font-family: inherit;
+            margin: 0.1rem 0;
+        }
+        .key-combo kbd {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0 0.15rem;
+            margin: 0;
+        }
+        .key-combo .sep {
+            color: #888;
+            padding: 0 0.2rem;
+        }
+
+        /* Code blocks */
+        pre {
+            background: #1e1e1e;
+            padding: 1.2rem 1.5rem;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 400px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.12s;
+            margin: 1.2rem 0 1.6rem 0;
+            border: 1px solid #2a2a2a;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #d4d4d4;
+            font-size: 0.92em;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        code.inline {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.92em;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode kbd {
+            background: #eee;
+            color: #111;
+            border-color: #bbb;
+            box-shadow: 0 1px 0 #bbb;
+        }
+        body.light-mode .key-combo {
+            background: #eee;
+            border-color: #ccc;
+        }
+        body.light-mode .key-combo kbd {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+        body.light-mode pre {
+            background: #eee;
+            border-color: #ddd;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+            color: #111;
+        }
+        body.light-mode code.inline {
+            background: #eee;
+            color: #111;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.2rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #444;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+        .theme-toggle:hover {
+            background: #666;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* ----- Skip link ----- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            z-index: 1000;
+            border-radius: 0 0 10px 10px;
+            font-weight: 500;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        body.light-mode .skip-link {
+            background: #222;
+            color: #fff;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* ----- TOC ----- */
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0.5rem 0 1rem 0;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0.2rem;
+        }
+        nav ul ul {
+            padding-left: 1.5rem;
+            margin-top: 0.15rem;
+        }
+
+        /* ----- Sections ----- */
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        /* ----- Responsive ----- */
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Focus indicators */
+        :focus-visible {
+            outline: 3px solid #88c0ff;
+            outline-offset: 2px;
+        }
+        body.light-mode :focus-visible {
+            outline-color: #0055cc;
+        }
+
+        /* Header */
+        header p {
+            margin-bottom: 0.2rem;
+        }
+        header h1 {
+            margin-bottom: 0.1rem;
+        }
+        header .subtitle {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #b0b0b0;
+            margin-top: 0.1rem;
+        }
+        body.light-mode header .subtitle {
+            color: #444;
+        }
+
+        /* Definition / note boxes */
+        .note-box {
+            background: #1e1e1e;
+            padding: 1rem 1.5rem;
+            border-left: 4px solid #88c0ff;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        body.light-mode .note-box {
+            background: #f0f0f0;
+            border-left-color: #0055cc;
+        }
+
+        .concept-box {
+            background: #1a1a2e;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.2rem 0;
+            border: 1px solid #444;
+        }
+        body.light-mode .concept-box {
+            background: #eeeef7;
+            border-color: #ccc;
+        }
+        .concept-box strong {
+            color: #88c0ff;
+        }
+        body.light-mode .concept-box strong {
+            color: #0055cc;
+        }
+
+        /* ----- UPDATED SHORTCUT LIST: stacked (keys under description) ----- */
+        .shortcut-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .shortcut-list li {
+            display: flex;
+            flex-direction: column;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
+        }
+        body.light-mode .shortcut-list li {
+            border-bottom-color: #ddd;
+        }
+        .shortcut-desc {
+            flex: 1;
+        }
+        .shortcut-keys {
+            margin-top: 0.2rem;
+            font-family: inherit;
+        }
+
+        /* Special heading for the three positions */
+        .position-heading {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-top: 1.2rem;
+            margin-bottom: 0.3rem;
+        }
+        .position-heading small {
+            font-weight: 400;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        body.light-mode .position-heading small {
+            color: #666;
+        }
+
+        /* Inline code in light mode */
+        body.light-mode code.inline {
+            background: #eee;
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header role="banner" aria-label="Page header">
+        <h1>Debian 13.6 MATE, Orca 48.1 Laptop Mode</h1>
+        <p class="subtitle">MATE Terminal, Orca, and Helix Text Editor</p>
+    </header>
+
+    <hr>
+
+    <!-- Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#introduction">Introduction — Three Positions</a></li>
+            <li><a href="#mate-terminal">MATE Terminal</a></li>
+            <li><a href="#orca-flat-review">Orca Laptop Mode Flat Review</a>
+                <ul>
+                    <li><a href="#entering-leaving">Entering and Leaving Flat Review</a></li>
+                    <li><a href="#flat-review-line">Moving by Line</a></li>
+                    <li><a href="#flat-review-word">Moving by Word</a></li>
+                    <li><a href="#flat-review-character">Moving by Character</a></li>
+                </ul>
+            </li>
+            <li><a href="#command-line-editing">Command-Line Editing</a></li>
+            <li><a href="#helix-intro">Helix: The Rust Programmer's Editor</a></li>
+            <li><a href="#helix-normal">Helix Normal Mode</a>
+                <ul>
+                    <li><a href="#helix-basic">Basic Movement</a></li>
+                    <li><a href="#helix-word">Word Movement</a></li>
+                </ul>
+            </li>
+            <li><a href="#helix-page-file">Helix Page and File Navigation</a>
+                <ul>
+                    <li><a href="#helix-page">Page Movement</a></li>
+                    <li><a href="#helix-file">File Movement</a></li>
+                    <li><a href="#helix-current-line">Current-Line Movement</a></li>
+                </ul>
+            </li>
+            <li><a href="#orca-helix">Orca and Helix</a></li>
+            <li><a href="#reading-without-moving">Reading Without Moving the Helix Cursor</a></li>
+            <li><a href="#helix-rule">The Important Helix Rule</a></li>
+            <li><a href="#moving-helix-cursor">Moving the Actual Helix Cursor</a></li>
+            <li><a href="#redraw">Refreshing the Helix Display</a></li>
+            <li><a href="#three-positions">The Three Positions</a>
+                <ul>
+                    <li><a href="#caret-write">Caret = Write</a></li>
+                    <li><a href="#focus-act">Focus = Act</a></li>
+                    <li><a href="#review-look">Review = Look</a></li>
+                </ul>
+            </li>
+            <li><a href="#practical-rule">The Practical Rule</a></li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- INTRODUCTION -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="introduction-heading" id="introduction">
+            <h2 id="introduction-heading">Introduction — Three Positions</h2>
+            <p>This guide describes three different ways of moving through text on a Debian 13.6 MATE desktop using Orca 48.1 in Laptop Mode.</p>
+            <p>The important idea is that there are <strong>three different positions</strong> to keep separate:</p>
+            <div class="concept-box">
+                <p><strong>Caret = Write</strong><br>The application's actual editing position.</p>
+                <p><strong>Focus = Act</strong><br>The currently active interface element.</p>
+                <p><strong>Review = Look</strong><br>Orca's Flat Review position, used to inspect what is displayed.</p>
+            </div>
+            <p>These positions can interact, but they are not the same thing.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- MATE TERMINAL -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="mate-terminal-heading" id="mate-terminal">
+            <h2 id="mate-terminal-heading">MATE Terminal</h2>
+
+            <h3 id="native-terminal-scrolling">Native Terminal Scrolling</h3>
+            <p>These shortcuts move the terminal's visible viewport through its scrollback history.</p>
+            <p>They do <strong>not</strong> move the command-line editing cursor.</p>
+
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc">Scroll up one page.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>PageUp</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Scroll down one page.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>PageDown</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Scroll to the top of the terminal's scrollback history.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>Home</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Return to the bottom of the terminal scrollback, near the current prompt.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>End</kbd></span></span>
+                </li>
+            </ul>
+
+            <div class="note-box">
+                <p>The terminal is changing what is displayed on screen. Orca's speech behavior depends on its terminal tracking and speech settings, so these shortcuts should be understood primarily as terminal scrolling commands.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- ORCA FLAT REVIEW -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="orca-flat-review-heading" id="orca-flat-review">
+            <h2 id="orca-flat-review-heading">Orca Laptop Mode Flat Review</h2>
+
+            <p>Orca's Flat Review provides a temporary reading position over the content displayed on the screen.</p>
+            <p>In Laptop Mode, the Orca modifier is normally <kbd>CapsLock</kbd>.</p>
+            <p>Flat Review is useful when you want to inspect terminal output or other displayed text without deliberately moving the application's editing position.</p>
+
+            <!-- Entering and Leaving -->
+            <section aria-labelledby="entering-leaving-heading" id="entering-leaving">
+                <h3 id="entering-leaving-heading">Entering and Leaving Flat Review</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Toggle Flat Review. This also refreshes the Flat Review context.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>P</kbd></span></span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Moving by Line -->
+            <section aria-labelledby="flat-review-line-heading" id="flat-review-line">
+                <h3 id="flat-review-line-heading">Moving by Line</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move to the first line of the current Flat Review context.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>Ctrl</kbd> + <kbd>U</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the previous line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>U</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Read the current line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>I</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the next line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>O</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the last line of the current Flat Review context.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>Ctrl</kbd> + <kbd>O</kbd></span></span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Moving by Word -->
+            <section aria-labelledby="flat-review-word-heading" id="flat-review-word">
+                <h3 id="flat-review-word-heading">Moving by Word</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move to the previous word.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>J</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Read the current word.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>K</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the next word.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>L</kbd></span></span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Moving by Character -->
+            <section aria-labelledby="flat-review-character-heading" id="flat-review-character">
+                <h3 id="flat-review-character-heading">Moving by Character</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move to the previous character.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>M</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Read the current character.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>,</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the next character.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>.</kbd></span></span>
+                    </li>
+                </ul>
+            </section>
+
+            <div class="note-box">
+                <p>Flat Review moves Orca's review position. It does <strong>not</strong> deliberately move the application's text cursor.</p>
+                <p>This distinction is especially important when working in a terminal editor such as Helix.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- COMMAND-LINE EDITING -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="command-line-editing-heading" id="command-line-editing">
+            <h2 id="command-line-editing-heading">Command-Line Editing</h2>
+            <p>When Bash or another readline-based command line is active, these shortcuts move the actual command-line editing cursor.</p>
+
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc">Move to the beginning of the command line.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>A</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move to the end of the command line.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>E</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move backward by one word.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>B</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move forward by one word.</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F</kbd></span></span>
+                </li>
+            </ul>
+
+            <div class="note-box">
+                <p>These commands change where text will be inserted or edited.</p>
+                <p>They are therefore <strong>caret commands</strong>, not Flat Review commands.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- HELIX INTRO -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="helix-intro-heading" id="helix-intro">
+            <h2 id="helix-intro-heading">Helix: The Rust Programmer's Editor</h2>
+            <p>Helix is a modal text editor running inside the terminal.</p>
+            <p>There are two fundamentally different ways to navigate its displayed text:</p>
+            <ol>
+                <li>Use Helix navigation to move the actual Helix cursor.</li>
+                <li>Use Orca Flat Review to inspect the terminal display without deliberately moving the Helix cursor.</li>
+            </ol>
+            <p>Keeping these two operations separate prevents confusion about where text will actually be inserted.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- HELIX NORMAL MODE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="helix-normal-heading" id="helix-normal">
+            <h2 id="helix-normal-heading">Helix Normal Mode</h2>
+            <p>Press <kbd>Escape</kbd> to ensure that Helix is in Normal Mode.</p>
+            <p>Helix's navigation commands move the <strong>actual editor cursor</strong>.</p>
+
+            <!-- Basic Movement -->
+            <section aria-labelledby="helix-basic-heading" id="helix-basic">
+                <h3 id="helix-basic-heading">Basic Movement</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move left by one character.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>h</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move down by one line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>j</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move up by one line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>k</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move right by one character.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>l</kbd></span></span>
+                    </li>
+                </ul>
+                <p>The arrow keys can also be used for basic movement.</p>
+            </section>
+
+            <!-- Word Movement -->
+            <section aria-labelledby="helix-word-heading" id="helix-word">
+                <h3 id="helix-word-heading">Word Movement</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move forward to the beginning of the next word.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>w</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move backward to the beginning of the previous word.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>b</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the end of the current word.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>e</kbd></span></span>
+                    </li>
+                </ul>
+                <div class="note-box">
+                    <p>These commands change the <strong>actual Helix editing position</strong>.</p>
+                </div>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- HELIX PAGE AND FILE NAVIGATION -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="helix-page-file-heading" id="helix-page-file">
+            <h2 id="helix-page-file-heading">Helix Page and File Navigation</h2>
+
+            <!-- Page Movement -->
+            <section aria-labelledby="helix-page-heading" id="helix-page">
+                <h3 id="helix-page-heading">Page Movement</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move one page upward.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>B</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move one page downward.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>F</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move approximately half a page upward.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>U</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move approximately half a page downward.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>D</kbd></span></span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- File Movement -->
+            <section aria-labelledby="helix-file-heading" id="helix-file">
+                <h3 id="helix-file-heading">File Movement</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Jump to the beginning of the file.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>g</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Jump to the last line of the file.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>e</kbd></span></span>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Current-Line Movement -->
+            <section aria-labelledby="helix-current-line-heading" id="helix-current-line">
+                <h3 id="helix-current-line-heading">Current-Line Movement</h3>
+                <ul class="shortcut-list">
+                    <li>
+                        <span class="shortcut-desc">Move to the beginning of the current line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>h</kbd></span></span>
+                    </li>
+                    <li>
+                        <span class="shortcut-desc">Move to the end of the current line.</span>
+                        <span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>l</kbd></span></span>
+                    </li>
+                </ul>
+                <div class="note-box">
+                    <p>These are Helix commands. They move the <strong>actual Helix cursor</strong>.</p>
+                </div>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- ORCA AND HELIX -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="orca-helix-heading" id="orca-helix">
+            <h2 id="orca-helix-heading">Orca and Helix</h2>
+            <p>Helix does not expose its terminal text in exactly the same way as a conventional graphical text editor.</p>
+            <p>Helix draws its interface inside the terminal. Orca therefore interacts with the terminal's displayed content rather than treating the Helix buffer as a conventional graphical accessibility document.</p>
+            <p>As a result, Orca's speech behavior while moving the Helix cursor can depend on the terminal, Orca's settings, and how the terminal exposes its current contents.</p>
+            <p>For this reason, it is better to think of the two systems separately:</p>
+            <div class="concept-box">
+                <p><strong>Helix</strong> controls the editing position.</p>
+                <p><strong>Orca</strong> controls speech and Flat Review.</p>
+            </div>
+            <p>When Helix moves its cursor, Orca may announce the resulting terminal content according to its current settings.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- READING WITHOUT MOVING -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="reading-without-moving-heading" id="reading-without-moving">
+            <h2 id="reading-without-moving-heading">Reading Without Moving the Helix Cursor</h2>
+            <p>Suppose you are editing Rust code at one location but want to inspect another part of the visible screen.</p>
+            <p>Use Orca Flat Review.</p>
+            <p>Press:</p>
+            <pre tabindex="0" role="region" aria-label="Key combination: CapsLock + P"><code>CapsLock + P</code></pre>
+            <p>Then use:</p>
+
+            <ul class="shortcut-list">
+                <li><span class="shortcut-desc">Previous line.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>U</kbd></span></span></li>
+                <li><span class="shortcut-desc">Read current line.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>I</kbd></span></span></li>
+                <li><span class="shortcut-desc">Next line.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>O</kbd></span></span></li>
+                <li><span class="shortcut-desc">Previous word.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>J</kbd></span></span></li>
+                <li><span class="shortcut-desc">Read current word.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>K</kbd></span></span></li>
+                <li><span class="shortcut-desc">Next word.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>L</kbd></span></span></li>
+                <li><span class="shortcut-desc">Previous character.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>M</kbd></span></span></li>
+                <li><span class="shortcut-desc">Read current character.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>,</kbd></span></span></li>
+                <li><span class="shortcut-desc">Next character.</span><span class="shortcut-keys"><span class="key-combo"><kbd>CapsLock</kbd> + <kbd>.</kbd></span></span></li>
+            </ul>
+
+            <div class="note-box">
+                <p>This lets you inspect displayed text while keeping the Helix editing position separate.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- THE IMPORTANT HELIX RULE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="helix-rule-heading" id="helix-rule">
+            <h2 id="helix-rule-heading">The Important Helix Rule</h2>
+            <div class="concept-box" style="border-left:4px solid #ff8855;">
+                <p><strong>If you use Flat Review to read a line of Rust code, the location you are reviewing is <em>not automatically</em> the location where Helix will insert text.</strong></p>
+            </div>
+            <p>For example:</p>
+            <ul>
+                <li>You are editing line 50.</li>
+                <li>You use Flat Review to inspect line 20.</li>
+                <li>You then leave Flat Review and begin typing.</li>
+                <li>Your typing still goes to the actual Helix cursor at line 50.</li>
+            </ul>
+            <p>The Flat Review position does <strong>not</strong> automatically become the Helix cursor.</p>
+            <p>This is one of the most important distinctions to remember when using Orca with terminal editors.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- MOVING THE ACTUAL HELIX CURSOR -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="moving-helix-cursor-heading" id="moving-helix-cursor">
+            <h2 id="moving-helix-cursor-heading">Moving the Actual Helix Cursor</h2>
+            <p>When you want to change the place where editing occurs, use Helix navigation.</p>
+            <p>For example:</p>
+
+            <ul class="shortcut-list">
+                <li><span class="shortcut-desc">Move between lines.</span><span class="shortcut-keys"><span class="key-combo"><kbd>j</kbd> / <kbd>k</kbd></span></span></li>
+                <li><span class="shortcut-desc">Move between characters.</span><span class="shortcut-keys"><span class="key-combo"><kbd>h</kbd> / <kbd>l</kbd></span></span></li>
+                <li><span class="shortcut-desc">Move between words.</span><span class="shortcut-keys"><span class="key-combo"><kbd>w</kbd> / <kbd>b</kbd> / <kbd>e</kbd></span></span></li>
+                <li><span class="shortcut-desc">Go to the beginning of the file.</span><span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>g</kbd></span></span></li>
+                <li><span class="shortcut-desc">Go to the last line.</span><span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>e</kbd></span></span></li>
+                <li><span class="shortcut-desc">Go to the beginning of the current line.</span><span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>h</kbd></span></span></li>
+                <li><span class="shortcut-desc">Go to the end of the current line.</span><span class="shortcut-keys"><span class="key-combo"><kbd>g</kbd> + <kbd>l</kbd></span></span></li>
+                <li><span class="shortcut-desc">Move by pages.</span><span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>B</kbd> / <kbd>Ctrl</kbd> + <kbd>F</kbd></span></span></li>
+                <li><span class="shortcut-desc">Move by half pages.</span><span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>U</kbd> / <kbd>Ctrl</kbd> + <kbd>D</kbd></span></span></li>
+            </ul>
+
+            <div class="note-box">
+                <p>These commands change the <strong>actual editing position</strong>.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- REFRESHING THE HELIX DISPLAY -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="redraw-heading" id="redraw">
+            <h2 id="redraw-heading">Refreshing the Helix Display</h2>
+            <p>Helix provides the <code class="inline">:redraw</code> command to redraw the entire interface.</p>
+            <p>If the terminal display appears incorrect, or Orca's Flat Review context appears to be based on an outdated screen, a redraw can help.</p>
+            <p>Press <kbd>Escape</kbd> to enter Normal Mode, then enter:</p>
+            <pre tabindex="0" role="region" aria-label="Helix command: redraw"><code>:redraw</code></pre>
+            <p>Press <kbd>Enter</kbd>.</p>
+            <p>This forces Helix to repaint its interface.</p>
+            <div class="note-box">
+                <p><code class="inline">:redraw</code> should be considered a display-refresh command, not an Orca synchronization command.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- THE THREE POSITIONS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="three-positions-heading" id="three-positions">
+            <h2 id="three-positions-heading">The Three Positions</h2>
+            <p>It helps to keep three concepts separate.</p>
+
+            <!-- Caret = Write -->
+            <section aria-labelledby="caret-write-heading" id="caret-write">
+                <h3 id="caret-write-heading" class="position-heading">Caret = Write <small>— the editing position</small></h3>
+                <p>The caret is the actual editing position.</p>
+                <ul>
+                    <li>In Helix, this is the Helix cursor.</li>
+                    <li>In a terminal command line, it is the command-line cursor.</li>
+                </ul>
+                <p>Moving the caret changes where editing takes place.</p>
+                <p>Use Helix navigation or command-line editing commands when you need to change it.</p>
+            </section>
+
+            <!-- Focus = Act -->
+            <section aria-labelledby="focus-act-heading" id="focus-act">
+                <h3 id="focus-act-heading" class="position-heading">Focus = Act <small>— the interface element</small></h3>
+                <p>Accessibility focus identifies the currently active interface object.</p>
+                <p>Examples include:</p>
+                <ul>
+                    <li>A button.</li>
+                    <li>A menu item.</li>
+                    <li>A list item.</li>
+                    <li>A file in a file manager.</li>
+                    <li>A control in a dialog.</li>
+                    <li>A toolbar element.</li>
+                </ul>
+                <p><kbd>Tab</kbd> and <kbd>Shift</kbd> + <kbd>Tab</kbd> commonly move between interface controls.</p>
+                <p>Arrow keys commonly move within menus and lists.</p>
+                <p><kbd>Enter</kbd> or <kbd>Space</kbd> activates the focused object when appropriate.</p>
+                <p>Focus is therefore about interacting with the user interface.</p>
+                <p><strong>Think: Focus = Act</strong></p>
+            </section>
+
+            <!-- Review = Look -->
+            <section aria-labelledby="review-look-heading" id="review-look">
+                <h3 id="review-look-heading" class="position-heading">Review = Look <small>— the reading position</small></h3>
+                <p>Flat Review is Orca's temporary reading position.</p>
+                <p>It is useful for inspecting what is displayed on the screen.</p>
+                <p>Flat Review can move through lines, words, and characters without deliberately moving the application's editing position.</p>
+                <p><strong>Think: Review = Look</strong></p>
+            </section>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- THE PRACTICAL RULE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="practical-rule-heading" id="practical-rule">
+            <h2 id="practical-rule-heading">The Practical Rule</h2>
+            <p>When using Debian MATE with Orca and Helix, remember:</p>
+
+            <div class="concept-box">
+                <p><strong>Caret = Write</strong><br>Where will my next edit happen?<br>Use Helix navigation.</p>
+                <p><strong>Focus = Act</strong><br>Which interface element will respond to my next action?<br>Use accessibility focus navigation.</p>
+                <p><strong>Review = Look</strong><br>What text is currently displayed here?<br>Use Orca Flat Review.</p>
+            </div>
+
+            <p>The most important distinction is between <strong>looking at text</strong> and <strong>moving the editing position</strong>.</p>
+            <ul>
+                <li>Orca Flat Review is for <strong>looking</strong>.</li>
+                <li>Helix navigation is for <strong>moving the editor</strong>.</li>
+            </ul>
+            <p>Once these two operations become mentally separate, terminal-based editing becomes much easier to reason about.</p>
+        </section>
+
+    </main>
+
+    <hr>
+    <footer role="contentinfo" style="margin-top:2rem;font-size:0.9rem;color:#999;text-align:center;">
+        <p><em>Debian 13.6 MATE, Orca 48.1 Laptop Mode</em> — Accessible Reference</p>
+        <p style="margin-top:0.2rem;">Built with semantic HTML, dark/light mode, and keyboard accessibility in mind.</p>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
+

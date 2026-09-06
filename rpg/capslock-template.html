@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK // TEMPLATE</title>
+<style>
+  /* ============================================================
+     CAPSLOCK DESIGN SYSTEM
+     Riso-printed street-flyer aesthetic: dark aged paper, pink/
+     yellow duotone, Anton display + Space Mono body, dashed fold
+     lines between panels. Reused across capslock.html and
+     capslock-rustcore.html — this file consolidates every
+     component into one starter template.
+
+     HOW TO USE THIS FILE:
+     1. Keep the <style> block as-is — it's the whole design system.
+     2. Duplicate whichever <section class="panel" data-fold="..."> 
+        blocks you need from PANEL LIBRARY below, in any order.
+     3. Delete the panels you don't use. Update data-fold labels
+        to read "PANEL n / NAME" sequentially.
+     4. Never introduce a new accent color, a new display font, or
+        a light/glossy background — that breaks continuity with
+        every other CAPSLOCK page.
+     ============================================================ */
+
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;      /* base page background */
+    --paper-2: #211c16;    /* card / inset background */
+    --paper-3: #171310;    /* darkest inset, used for boss/highlight cards */
+    --ink: #e9e1d1;        /* primary text */
+    --ink-dim: #a99d87;    /* secondary / muted text */
+    --riso-pink: #ff2e63;  /* primary accent — headings, emphasis, boss markers */
+    --riso-yellow: #d8ff3e;/* secondary accent — taglines, callouts, tags */
+    --rule: #4a4136;       /* borders, dashed fold lines, dividers */
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0; padding:0; background: transparent;
+    color: var(--ink);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* ---------- PAGE SHEET (wraps all panels) ---------- */
+  .sheet{
+    max-width: 960px;
+    margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #000;
+  }
+  /* subtle paper grain, purely decorative */
+  .sheet::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+    mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+
+  /* ---------- BASE PANEL (every section wraps in this) ---------- */
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold);
+    position: absolute;
+    top: -11px; right: 20px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    background: var(--paper);
+    padding: 0 8px;
+  }
+
+  /* ---------- COVER PANEL ---------- */
+  .cover{ padding-top: 56px; padding-bottom: 56px; }
+  .stamp{
+    display:inline-block;
+    border: 2px solid var(--riso-pink);
+    color: var(--riso-pink);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    padding: 4px 10px;
+    transform: rotate(-3deg);
+    margin-bottom: 28px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: clamp(46px, 10vw, 100px);
+    line-height: 0.9;
+    margin: 0;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  h1.masthead .sub{
+    display:block;
+    font-size: clamp(20px, 4vw, 38px);
+    color: var(--riso-yellow);
+    text-shadow: none;
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+  }
+  .tagline{
+    margin-top: 22px;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    color: var(--riso-yellow);
+    max-width: 38ch;
+    line-height: 1.6;
+  }
+  .cover-foot{
+    margin-top: 46px;
+    display:flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .cover-foot span{ white-space: nowrap; }
+
+  /* ---------- SECTION HEADERS (use inside any non-cover panel) ---------- */
+  h2.section{
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: 32px;
+    color: var(--riso-pink);
+    margin: 0 0 6px 0;
+    letter-spacing: 0.01em;
+  }
+  .kicker{
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-dim);
+    margin-bottom: 24px;
+  }
+  p.copy{
+    font-size: 14.5px;
+    line-height: 1.75;
+    max-width: 64ch;
+    color: var(--ink);
+  }
+  p.copy + p.copy{ margin-top: 14px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; } /* inline emphasis / in-fiction quotes */
+
+  /* ---------- 3-UP GRID (factions, values, any 3-item parallel set) ---------- */
+  .factions{
+    margin-top: 30px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .faction{ border-left: 3px solid var(--riso-yellow); padding-left: 14px; }
+  .faction h3{
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    color: var(--riso-yellow);
+    font-weight: 700;
+  }
+  .faction p{ margin:0; font-size: 12.5px; line-height: 1.6; color: var(--ink-dim); }
+
+  /* ---------- NUMBERED LIST WITH BIG MARK (archetypes, ranked items) ---------- */
+  .archetypes{ margin-top: 26px; display:flex; flex-direction:column; gap: 24px; }
+  .arch{ display:grid; grid-template-columns: 84px 1fr; gap: 18px; align-items: start; }
+  .arch-mark{ font-family:'Anton', sans-serif; font-size: 44px; line-height: 1; color: var(--rule); }
+  .arch h3{ margin: 2px 0 6px 0; font-size: 17px; color: var(--ink); letter-spacing: 0.02em; }
+  .arch p{ margin: 8px 0 0 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 56ch; }
+
+  /* ---------- STEP FLOW (core loop, sequences) ---------- */
+  .loop{ margin-top: 28px; display:flex; flex-wrap: wrap; gap: 0; }
+  .loop-step{
+    flex: 1 1 120px;
+    padding: 14px 16px;
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+    position: relative;
+  }
+  .loop-step + .loop-step{ border-left: none; }
+  .loop-step .num{ font-family:'Anton', sans-serif; font-size: 11px; color: var(--riso-pink); letter-spacing: 0.1em; display:block; margin-bottom: 6px; }
+  .loop-step .name{ font-size: 13px; color: var(--ink); font-weight: 700; letter-spacing: 0.02em; }
+  @media (max-width: 760px){
+    .loop-step{ flex-basis: 45%; border-left: 1px solid var(--rule) !important; }
+  }
+
+  /* ---------- CARD GRID (checkpoints, gear catalogs, any dense repeating list) ---------- */
+  .checkpoint-grid{ margin-top: 28px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .cp{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; position: relative; }
+  .cp .cp-num{ font-family:'Anton', sans-serif; font-size: 26px; color: var(--rule); line-height: 1; }
+  .cp h4{ margin: 6px 0 4px 0; font-size: 14px; color: var(--ink); letter-spacing: 0.02em; }
+  .cp .cp-focus{ font-size: 10.5px; color: var(--ink-dim); letter-spacing: 0.03em; margin-bottom: 10px; }
+  .cp .cp-target{ font-size: 12px; color: var(--ink); line-height: 1.55; margin-bottom: 12px; }
+  .adv-tag{ display:inline-block; font-size: 9.5px; letter-spacing: 0.14em; padding: 3px 8px; border: 1px solid var(--ink-dim); color: var(--ink-dim); }
+  .adv-watcher{ border-color: var(--ink-dim); color: var(--ink-dim); }
+  .adv-enforcer{ border-color: var(--riso-yellow); color: var(--riso-yellow); }
+  .adv-hunter{ border-color: var(--riso-pink); color: var(--riso-pink); }
+  .cp.boss{ background: var(--paper-3); border: 1px solid var(--riso-pink); box-shadow: 0 0 0 1px rgba(255,46,99,0.15); }
+  .cp.boss .cp-num{ color: var(--riso-pink); }
+  .boss-mark{ position:absolute; top:12px; right:12px; font-family:'Anton', sans-serif; font-size: 10px; color: var(--riso-pink); letter-spacing: 0.16em; }
+  @media (max-width: 760px){ .checkpoint-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px){ .checkpoint-grid{ grid-template-columns: 1fr; } }
+
+  /* ---------- 3-COLUMN THREAT/TAG CARDS (adversaries, obstacle types) ---------- */
+  .threats{ margin-top: 26px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 15px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 760px){ .threats{ grid-template-columns: 1fr; } }
+
+  /* ---------- STACKED HOOKS (story hooks, modes, FAQ-style entries) ---------- */
+  .hooks{ margin-top: 26px; display:flex; flex-direction:column; }
+  .hook{ padding: 18px 0; border-top: 1px solid var(--rule); }
+  .hook:first-child{ border-top:none; }
+  .hook h4{ margin: 0 0 6px 0; font-size: 15px; color: var(--riso-pink); letter-spacing: 0.01em; }
+  .hook p{ margin:0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 62ch; }
+
+  /* ---------- BACK / CLOSING PANEL ---------- */
+  .back{ text-align:center; padding-top: 60px; padding-bottom: 60px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 18px; color: var(--ink-dim); letter-spacing: 0.3em; }
+  .back .closer{ margin-top: 18px; font-size: 13px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .back .strapline{ margin-top: 30px; font-family:'Anton', sans-serif; font-size: 20px; color: var(--riso-yellow); }
+
+  @media (max-width: 640px){
+    .panel{ padding: 34px 22px; }
+    .factions{ grid-template-columns: 1fr; }
+    .arch{ grid-template-columns: 56px 1fr; }
+    .arch-mark{ font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- ============================================================
+         PANEL LIBRARY — duplicate what you need, delete the rest.
+         Renumber data-fold labels sequentially when you're done.
+         ============================================================ -->
+
+    <!-- 1. COVER — always panel one -->
+    <section class="panel cover" data-fold="PANEL 1 / COVER">
+      <div class="stamp">STAMP / SUBTITLE HERE</div>
+      <h1 class="masthead">CAPS<br>LOCK<span class="sub">// PAGE NAME</span></h1>
+      <div class="tagline">ONE-LINE PITCH IN ALL CAPS, RISO YELLOW, UNDER 40 CHARACTERS PER LINE.</div>
+      <div class="cover-foot">
+        <span>TAG ONE</span>
+        <span>TAG TWO</span>
+        <span>TAG THREE</span>
+      </div>
+    </section>
+
+    <!-- 2. PROSE SECTION with 3-up grid (world/values/factions) -->
+    <section class="panel" data-fold="PANEL 2 / SECTION NAME">
+      <div class="kicker">EYEBROW LABEL</div>
+      <h2 class="section">Section Headline Goes Here</h2>
+      <p class="copy">Lead paragraph. Short sentences. Plain words. One <span class="anchor">italicized emphasis phrase</span> per paragraph, used sparingly.</p>
+      <p class="copy">Second paragraph if needed — keep each under ~4 sentences.</p>
+
+      <div class="factions">
+        <div class="faction">
+          <h3>ITEM ONE</h3>
+          <p>One or two short sentences.</p>
+        </div>
+        <div class="faction">
+          <h3>ITEM TWO</h3>
+          <p>One or two short sentences.</p>
+        </div>
+        <div class="faction">
+          <h3>ITEM THREE</h3>
+          <p>One or two short sentences.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. STEP FLOW (core loop / sequence of N steps) -->
+    <section class="panel" data-fold="PANEL 3 / A SEQUENCE">
+      <div class="kicker">EYEBROW LABEL</div>
+      <h2 class="section">Sequence Headline</h2>
+      <p class="copy">One line framing what this sequence is for.</p>
+      <div class="loop">
+        <div class="loop-step"><span class="num">01</span><span class="name">STEP NAME</span></div>
+        <div class="loop-step"><span class="num">02</span><span class="name">STEP NAME</span></div>
+        <div class="loop-step"><span class="num">03</span><span class="name">STEP NAME</span></div>
+      </div>
+    </section>
+
+    <!-- 4. NUMBERED ARCHETYPE-STYLE LIST -->
+    <section class="panel" data-fold="PANEL 4 / A RANKED LIST">
+      <div class="kicker">EYEBROW LABEL</div>
+      <h2 class="section">Three (or More) Ways In</h2>
+      <div class="archetypes">
+        <div class="arch">
+          <div class="arch-mark">01</div>
+          <div>
+            <h3>NAME — <span class="anchor">"memory anchor phrase"</span></h3>
+            <p>One or two sentences of flavor description.</p>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">02</div>
+          <div>
+            <h3>NAME — <span class="anchor">"memory anchor phrase"</span></h3>
+            <p>One or two sentences of flavor description.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. DENSE CARD GRID (checkpoints / catalog items, with optional boss variant) -->
+    <section class="panel" data-fold="PANEL 5 / A CATALOG">
+      <div class="kicker">EYEBROW LABEL</div>
+      <h2 class="section">Catalog Headline</h2>
+      <p class="copy">One line explaining the grid, e.g. what the pink border / tag colors mean.</p>
+      <div class="checkpoint-grid">
+        <div class="cp">
+          <div class="cp-num">01</div>
+          <h4>ITEM NAME</h4>
+          <div class="cp-focus">Category label</div>
+          <div class="cp-target">One-line description or target.</div>
+          <span class="adv-tag adv-watcher">WATCHER</span>
+        </div>
+        <div class="cp boss">
+          <div class="boss-mark">BOSS</div>
+          <div class="cp-num">02</div>
+          <h4>HIGHLIGHTED ITEM</h4>
+          <div class="cp-focus">Category label</div>
+          <div class="cp-target">One-line description — use .boss for anything that should stand out.</div>
+          <span class="adv-tag adv-hunter">HUNTER</span>
+        </div>
+        <div class="cp">
+          <div class="cp-num">03</div>
+          <h4>ITEM NAME</h4>
+          <div class="cp-focus">Category label</div>
+          <div class="cp-target">One-line description.</div>
+          <span class="adv-tag adv-enforcer">ENFORCER</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. THREE-COLUMN TAG CARDS (adversaries / obstacle types / any parallel trio) -->
+    <section class="panel" data-fold="PANEL 6 / A TRIO">
+      <div class="kicker">EYEBROW LABEL</div>
+      <h2 class="section">Trio Headline</h2>
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">TAG LABEL</div>
+          <h4>Card headline</h4>
+          <p>One or two lines.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">TAG LABEL</div>
+          <h4>Card headline</h4>
+          <p>One or two lines.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">TAG LABEL</div>
+          <h4>Card headline</h4>
+          <p>One or two lines.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. STACKED HOOKS (story hooks / modes / FAQ) -->
+    <section class="panel" data-fold="PANEL 7 / A LIST OF ENTRIES">
+      <div class="kicker">EYEBROW LABEL</div>
+      <h2 class="section">Entries Headline</h2>
+      <div class="hooks">
+        <div class="hook">
+          <h4>ENTRY TITLE</h4>
+          <p>One to three sentences.</p>
+        </div>
+        <div class="hook">
+          <h4>ENTRY TITLE</h4>
+          <p>One to three sentences.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. BACK / CLOSING — always the last panel -->
+    <section class="panel back" data-fold="PANEL 8 / BACK">
+      <div class="glyph">C A P S L O C K</div>
+      <p class="closer">Closing line. Short. No exclamation points.</p>
+      <div class="strapline">FINAL STRAPLINE IN ALL CAPS</div>
+    </section>
+
+  </div>
+</div>
+
+</body>
+</html>

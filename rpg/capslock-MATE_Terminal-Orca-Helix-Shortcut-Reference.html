@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MATE Terminal / Orca / Helix — Shortcut Reference</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  /* skip link */
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 56px; padding-bottom: 56px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 28px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(38px, 8vw, 78px); line-height: 0.95; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  h1.masthead .sub{ display:block; font-size: clamp(16px, 3vw, 26px); color: var(--riso-yellow); text-shadow: none; letter-spacing: 0.06em; margin-top: 8px; }
+  .tagline{ margin-top: 22px; font-size: 14px; letter-spacing: 0.05em; color: var(--riso-yellow); max-width: 44ch; line-height: 1.6; }
+  .cover-foot{ margin-top: 40px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 28px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.7; max-width: 66ch; color: var(--ink); }
+
+  h3.sub{
+    font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px;
+    color: var(--ink); letter-spacing: 0.03em; margin: 26px 0 6px 0;
+  }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  p.note{ font-size: 12px; color: var(--ink-dim); line-height: 1.6; margin: -2px 0 10px 0; max-width: 60ch; }
+
+  /* keybinding tables */
+  table.keytable{ width:100%; border-collapse: collapse; margin: 6px 0 26px 0; font-size: 12.5px; }
+  table.keytable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.14em; color:var(--ink-dim); margin-bottom:6px; }
+  table.keytable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.12em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 6px 12px 6px 0; text-transform: uppercase;
+  }
+  table.keytable td{ padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.keytable tr:last-child td{ border-bottom: none; }
+  table.keytable td.key{ font-weight: 700; white-space: nowrap; color: var(--riso-pink); }
+  table.keytable td.key kbd{ font-family: inherit; background: none; border: none; padding: 0; color: inherit; }
+
+  /* table of contents */
+  nav.toc ul{ list-style:none; margin:0; padding:0; columns: 2; column-gap: 28px; }
+  nav.toc li{ break-inside: avoid; padding: 6px 0; border-top: 1px solid var(--rule); }
+  nav.toc li:nth-child(-n+2){ border-top:none; }
+  nav.toc a{ color: var(--ink); text-decoration:none; font-size: 13px; }
+  nav.toc a:hover, nav.toc a:focus{ color: var(--riso-pink); }
+  @media (max-width: 640px){ nav.toc ul{ columns: 1; } }
+
+  /* stacked workflow steps */
+  .hooks{ margin-top: 10px; display:flex; flex-direction:column; }
+  .hook{ padding: 14px 0; border-top: 1px solid var(--rule); }
+  .hook:first-child{ border-top:none; }
+  .hook h4{ margin: 0 0 4px 0; font-size: 13px; color: var(--riso-pink); }
+  .hook p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+
+  .back{ text-align:center; padding-top: 50px; padding-bottom: 50px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="PANEL 1 / COVER" role="banner">
+      <div class="stamp">SHORTCUT REFERENCE</div>
+      <h1 class="masthead">TERMINAL<br>ORCA<span class="sub">// AND HELIX</span></h1>
+      <div class="tagline">THREE TOOLS THAT SHARE A KEYBOARD. ONE SHEET TO HOLD THEM ALL.</div>
+      <div class="cover-foot">
+        <span>MATE TERMINAL</span>
+        <span>ORCA SCREEN READER</span>
+        <span>HELIX EDITOR</span>
+      </div>
+    </header>
+
+    <!-- TOC -->
+    <nav class="panel toc" aria-label="Table of contents" data-fold="PANEL 2 / CONTENTS">
+      <div class="kicker">JUMP TO</div>
+      <h2 class="section">Contents</h2>
+      <ul>
+        <li><a href="#mate">MATE Terminal</a></li>
+        <li><a href="#orca">Orca</a></li>
+        <li><a href="#helix-basics">Helix — modes &amp; movement</a></li>
+        <li><a href="#helix-search">Helix — search &amp; navigation</a></li>
+        <li><a href="#helix-edit">Helix — selection &amp; editing</a></li>
+        <li><a href="#helix-interface">Helix — interface &amp; splits</a></li>
+        <li><a href="#helix-jumps">Helix — jump list &amp; workflow</a></li>
+      </ul>
+    </nav>
+
+    <main id="main-content">
+
+    <!-- MATE TERMINAL -->
+    <section class="panel" id="mate" aria-labelledby="mate-h" data-fold="PANEL 3 / MATE TERMINAL">
+      <div class="kicker">PART 1</div>
+      <h2 class="section" id="mate-h">MATE Terminal</h2>
+      <p class="copy">Copy/paste, tabs, view controls, and the Bash Readline shortcuts that come bundled with the shell rather than the terminal app itself.</p>
+
+      <h3 class="sub">Copy and paste</h3>
+      <table class="keytable">
+        <caption>Copy and paste shortcuts</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+Shift+C</td><td>Copy selected text.</td></tr>
+          <tr><td class="key">Ctrl+Shift+V</td><td>Paste.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Tabs and windows</h3>
+      <table class="keytable">
+        <caption>Tab and window management</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+Shift+T</td><td>Open a new tab.</td></tr>
+          <tr><td class="key">Ctrl+Shift+N</td><td>Open a new terminal window.</td></tr>
+          <tr><td class="key">Ctrl+Shift+W</td><td>Close the current tab.</td></tr>
+          <tr><td class="key">Ctrl+Shift+Q</td><td>Quit MATE Terminal.</td></tr>
+          <tr><td class="key">Ctrl+Page Up</td><td>Previous tab.</td></tr>
+          <tr><td class="key">Ctrl+Page Down</td><td>Next tab.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">View</h3>
+      <table class="keytable">
+        <caption>View controls</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+Plus</td><td>Zoom in.</td></tr>
+          <tr><td class="key">Ctrl+Minus</td><td>Zoom out.</td></tr>
+          <tr><td class="key">Ctrl+0</td><td>Reset zoom.</td></tr>
+          <tr><td class="key">F11</td><td>Toggle full screen.</td></tr>
+          <tr><td class="key">Ctrl+Shift+F</td><td>Find text.</td></tr>
+          <tr><td class="key">F1</td><td>Open help.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Bash line editing</h3>
+      <p class="note">These come from Bash Readline, not MATE Terminal itself — they work in any Readline-based shell.</p>
+      <table class="keytable">
+        <caption>Bash Readline shortcuts</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+A</td><td>Start of command line.</td></tr>
+          <tr><td class="key">Ctrl+E</td><td>End of command line.</td></tr>
+          <tr><td class="key">Ctrl+U</td><td>Delete from cursor to start of line.</td></tr>
+          <tr><td class="key">Ctrl+K</td><td>Delete from cursor to end of line.</td></tr>
+          <tr><td class="key">Ctrl+W</td><td>Delete previous word.</td></tr>
+          <tr><td class="key">Ctrl+R</td><td>Search command history.</td></tr>
+          <tr><td class="key">Ctrl+L</td><td>Clear the screen.</td></tr>
+          <tr><td class="key">Ctrl+C</td><td>Interrupt the running command.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Terminal profiles</h3>
+      <p class="note">Depend on your MATE configuration.</p>
+      <table class="keytable">
+        <caption>Profile switching</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Super+Alt+Down</td><td>Next profile.</td></tr>
+          <tr><td class="key">Super+Alt+Up</td><td>Previous profile.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ORCA -->
+    <section class="panel" id="orca" aria-labelledby="orca-h" data-fold="PANEL 4 / ORCA">
+      <div class="kicker">PART 2</div>
+      <h2 class="section" id="orca-h">Orca</h2>
+      <p class="copy">Laptop layout. Orca Modifier: <strong>Caps Lock</strong>.</p>
+
+      <h3 class="sub">Flat Review</h3>
+      <table class="keytable">
+        <caption>Flat Review navigation</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Caps Lock+Ctrl+U</td><td>First line.</td></tr>
+          <tr><td class="key">Caps Lock+U</td><td>Previous line.</td></tr>
+          <tr><td class="key">Caps Lock+I</td><td>Current line.</td></tr>
+          <tr><td class="key">Caps Lock+O</td><td>Next line.</td></tr>
+          <tr><td class="key">Caps Lock+Ctrl+O</td><td>Last line.</td></tr>
+          <tr><td class="key">Caps Lock+J</td><td>Previous word.</td></tr>
+          <tr><td class="key">Caps Lock+K</td><td>Current word.</td></tr>
+          <tr><td class="key">Caps Lock+L</td><td>Next word.</td></tr>
+          <tr><td class="key">Caps Lock+M</td><td>Previous character.</td></tr>
+          <tr><td class="key">Caps Lock+,</td><td>Current character.</td></tr>
+          <tr><td class="key">Caps Lock+.</td><td>Next character.</td></tr>
+          <tr><td class="key">Caps Lock+P</td><td>Toggle Flat Review.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- HELIX: MODES & MOVEMENT -->
+    <section class="panel" id="helix-basics" aria-labelledby="helix-basics-h" data-fold="PANEL 5 / HELIX BASICS">
+      <div class="kicker">PART 3</div>
+      <h2 class="section" id="helix-basics-h">Helix — Modes &amp; Movement</h2>
+
+      <h3 class="sub">Modes</h3>
+      <table class="keytable">
+        <caption>Mode switching</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Escape</td><td>Return to Normal mode.</td></tr>
+          <tr><td class="key">i</td><td>Insert before the selection.</td></tr>
+          <tr><td class="key">a</td><td>Insert after the selection.</td></tr>
+          <tr><td class="key">I</td><td>Insert at the start of the line.</td></tr>
+          <tr><td class="key">A</td><td>Insert at the end of the line.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Save, quit, undo, redo</h3>
+      <table class="keytable">
+        <caption>File and history commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">:w</td><td>Save.</td></tr>
+          <tr><td class="key">:q</td><td>Quit.</td></tr>
+          <tr><td class="key">:wq</td><td>Save and quit.</td></tr>
+          <tr><td class="key">:q!</td><td>Quit without saving.</td></tr>
+          <tr><td class="key">u</td><td>Undo.</td></tr>
+          <tr><td class="key">U</td><td>Redo.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Basic movement</h3>
+      <table class="keytable">
+        <caption>Cursor movement</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">h</td><td>Move left.</td></tr>
+          <tr><td class="key">j</td><td>Move down.</td></tr>
+          <tr><td class="key">k</td><td>Move up.</td></tr>
+          <tr><td class="key">l</td><td>Move right.</td></tr>
+          <tr><td class="key">w</td><td>Move to next word start.</td></tr>
+          <tr><td class="key">b</td><td>Move to previous word start.</td></tr>
+          <tr><td class="key">e</td><td>Move to next word end.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- HELIX: SEARCH & NAVIGATION -->
+    <section class="panel" id="helix-search" aria-labelledby="helix-search-h" data-fold="PANEL 6 / HELIX SEARCH">
+      <div class="kicker">PART 3, CONTINUED</div>
+      <h2 class="section" id="helix-search-h">Helix — Search &amp; Navigation</h2>
+
+      <h3 class="sub">Character search</h3>
+      <p class="note">Not restricted to the current line.</p>
+      <table class="keytable">
+        <caption>Find-character motions</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">f + char</td><td>Move to the next occurrence of the character.</td></tr>
+          <tr><td class="key">t + char</td><td>Move to just before the next occurrence.</td></tr>
+          <tr><td class="key">F + char</td><td>Move to the previous occurrence.</td></tr>
+          <tr><td class="key">T + char</td><td>Move to just after the previous occurrence.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Goto</h3>
+      <table class="keytable">
+        <caption>Goto commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">g g</td><td>Start of file.</td></tr>
+          <tr><td class="key">g e</td><td>End of file.</td></tr>
+          <tr><td class="key">g h</td><td>Start of current line.</td></tr>
+          <tr><td class="key">g l</td><td>End of current line.</td></tr>
+          <tr><td class="key">g d</td><td>Go to definition.</td></tr>
+          <tr><td class="key">g D</td><td>Go to declaration.</td></tr>
+          <tr><td class="key">g y</td><td>Go to type definition.</td></tr>
+          <tr><td class="key">g r</td><td>Go to references.</td></tr>
+          <tr><td class="key">g i</td><td>Go to implementation.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Scrolling</h3>
+      <table class="keytable">
+        <caption>Scroll commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+B</td><td>Page up.</td></tr>
+          <tr><td class="key">Ctrl+F</td><td>Page down.</td></tr>
+          <tr><td class="key">Ctrl+U</td><td>Half page up.</td></tr>
+          <tr><td class="key">Ctrl+D</td><td>Half page down.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Search</h3>
+      <table class="keytable">
+        <caption>Regex search</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">/</td><td>Search forward using a regex.</td></tr>
+          <tr><td class="key">?</td><td>Search backward using a regex.</td></tr>
+          <tr><td class="key">n</td><td>Next match.</td></tr>
+          <tr><td class="key">N</td><td>Previous match.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- HELIX: SELECTION & EDITING -->
+    <section class="panel" id="helix-edit" aria-labelledby="helix-edit-h" data-fold="PANEL 7 / HELIX EDITING">
+      <div class="kicker">PART 3, CONTINUED</div>
+      <h2 class="section" id="helix-edit-h">Helix — Selection &amp; Editing</h2>
+
+      <table class="keytable">
+        <caption>Selection and editing commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">x</td><td>Select the current line.</td></tr>
+          <tr><td class="key">X</td><td>Extend the selection to the line boundaries.</td></tr>
+          <tr><td class="key">%</td><td>Select the entire file.</td></tr>
+          <tr><td class="key">d</td><td>Delete the selection.</td></tr>
+          <tr><td class="key">y</td><td>Yank the selection.</td></tr>
+          <tr><td class="key">p</td><td>Paste after.</td></tr>
+          <tr><td class="key">P</td><td>Paste before.</td></tr>
+          <tr><td class="key">c</td><td>Change the selection.</td></tr>
+          <tr><td class="key">r</td><td>Replace with one character.</td></tr>
+          <tr><td class="key">C</td><td>Copy the selection to the next line and add a cursor.</td></tr>
+          <tr><td class="key">Alt+C</td><td>Copy the selection to the previous line and add a cursor.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Regex selection</h3>
+      <table class="keytable">
+        <caption>Regex-based selection</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">s</td><td>Select all regex matches inside the current selection.</td></tr>
+          <tr><td class="key">S</td><td>Split the selection on regex matches.</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Example: select the entire file with <strong>%</strong>, press <strong>s</strong>, enter a regex — every match becomes a selection.</p>
+    </section>
+
+    <!-- HELIX: INTERFACE -->
+    <section class="panel" id="helix-interface" aria-labelledby="helix-interface-h" data-fold="PANEL 8 / HELIX INTERFACE">
+      <div class="kicker">PART 3, CONTINUED</div>
+      <h2 class="section" id="helix-interface-h">Helix — Interface &amp; Splits</h2>
+
+      <h3 class="sub">View mode</h3>
+      <table class="keytable">
+        <caption>View centering commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">z z</td><td>Center the current line.</td></tr>
+          <tr><td class="key">z c</td><td>Center the current line.</td></tr>
+          <tr><td class="key">z t</td><td>Move the current line to the top of the screen.</td></tr>
+          <tr><td class="key">z b</td><td>Move the current line to the bottom of the screen.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Space menu</h3>
+      <table class="keytable">
+        <caption>Space-prefixed commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Space f</td><td>File picker.</td></tr>
+          <tr><td class="key">Space b</td><td>Buffer picker.</td></tr>
+          <tr><td class="key">Space j</td><td>Jump list picker.</td></tr>
+          <tr><td class="key">Space k</td><td>Hover documentation.</td></tr>
+          <tr><td class="key">Space a</td><td>Code actions.</td></tr>
+          <tr><td class="key">Space s</td><td>Document symbol picker.</td></tr>
+          <tr><td class="key">Space S</td><td>Workspace symbol picker.</td></tr>
+          <tr><td class="key">Space /</td><td>Global project search.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Buffers</h3>
+      <table class="keytable">
+        <caption>Buffer navigation</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">] b</td><td>Next buffer.</td></tr>
+          <tr><td class="key">[ b</td><td>Previous buffer.</td></tr>
+          <tr><td class="key">Space b</td><td>Buffer picker.</td></tr>
+          <tr><td class="key">:bc</td><td>Close the current buffer.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Window splits</h3>
+      <table class="keytable">
+        <caption>Window split commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+W v</td><td>Vertical split.</td></tr>
+          <tr><td class="key">Ctrl+W s</td><td>Horizontal split.</td></tr>
+          <tr><td class="key">Ctrl+W w</td><td>Cycle through splits.</td></tr>
+          <tr><td class="key">Ctrl+W h</td><td>Move to the split on the left.</td></tr>
+          <tr><td class="key">Ctrl+W j</td><td>Move to the split below.</td></tr>
+          <tr><td class="key">Ctrl+W k</td><td>Move to the split above.</td></tr>
+          <tr><td class="key">Ctrl+W l</td><td>Move to the split on the right.</td></tr>
+          <tr><td class="key">Ctrl+W q</td><td>Close the current split.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- HELIX: JUMP LIST & WORKFLOW -->
+    <section class="panel" id="helix-jumps" aria-labelledby="helix-jumps-h" data-fold="PANEL 9 / HELIX JUMPS">
+      <div class="kicker">PART 3, CONTINUED</div>
+      <h2 class="section" id="helix-jumps-h">Helix — Jump List &amp; Workflow</h2>
+
+      <table class="keytable">
+        <caption>Jump list commands</caption>
+        <thead><tr><th scope="col">Shortcut</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td class="key">Ctrl+S</td><td>Save the current selection as a jump.</td></tr>
+          <tr><td class="key">Ctrl+O</td><td>Jump backward.</td></tr>
+          <tr><td class="key">Ctrl+I</td><td>Jump forward.</td></tr>
+          <tr><td class="key">Space j</td><td>Open the jump list picker.</td></tr>
+        </tbody>
+      </table>
+      <p class="note">The jump list records significant movements: searches, large file movements, definition/reference jumps, buffer changes, and manual Ctrl+S jumps.</p>
+
+      <h3 class="sub">Search-and-navigation workflow</h3>
+      <div class="hooks">
+        <div class="hook"><h4>/</h4><p>Find something.</p></div>
+        <div class="hook"><h4>n</h4><p>Move to the next occurrence.</p></div>
+        <div class="hook"><h4>g d</h4><p>Go to its definition.</p></div>
+        <div class="hook"><h4>g r</h4><p>Go to its references.</p></div>
+        <div class="hook"><h4>Ctrl+O</h4><p>Return to the previous location.</p></div>
+        <div class="hook"><h4>Ctrl+I</h4><p>Move forward again.</p></div>
+        <div class="hook"><h4>Space j</h4><p>Inspect the jump history.</p></div>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="PANEL 10 / BACK">
+      <div class="glyph">T E R M I N A L / O R C A / H E L I X</div>
+      <p class="closer">Three keymaps, one hand. Print it, pin it, or just keep the tab open.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

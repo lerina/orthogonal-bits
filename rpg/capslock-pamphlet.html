@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0; padding:0; background: transparent;
+    color: var(--ink);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .sheet{
+    max-width: 920px;
+    margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    background-blend-mode: normal;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #000;
+  }
+
+  /* grain */
+  .sheet::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none;
+    mix-blend-mode: overlay;
+  }
+
+  .panels{
+    display:grid;
+    grid-template-columns: 1fr;
+  }
+
+  .panel{
+    padding: 48px 44px;
+    position: relative;
+  }
+
+  .panel + .panel{
+    border-top: 2px dashed var(--rule);
+  }
+
+  .panel::after{
+    content: attr(data-fold);
+    position: absolute;
+    top: -11px; right: 20px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-dim);
+    background: var(--paper);
+    padding: 0 8px;
+  }
+
+  /* ---------- COVER ---------- */
+  .cover{
+    padding-top: 56px;
+    padding-bottom: 56px;
+  }
+
+  .stamp{
+    display:inline-block;
+    border: 2px solid var(--riso-pink);
+    color: var(--riso-pink);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    padding: 4px 10px;
+    transform: rotate(-3deg);
+    margin-bottom: 28px;
+  }
+
+  h1.masthead{
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: clamp(58px, 12vw, 118px);
+    line-height: 0.86;
+    margin: 0;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+
+  .tagline{
+    margin-top: 22px;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    color: var(--riso-yellow);
+    max-width: 30ch;
+    line-height: 1.6;
+  }
+
+  .cover-foot{
+    margin-top: 46px;
+    display:flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+  .cover-foot span{ white-space: nowrap; }
+
+  /* ---------- SECTION HEADERS ---------- */
+  h2.section{
+    font-family: 'Anton', sans-serif;
+    font-weight: 400;
+    font-size: 34px;
+    color: var(--riso-pink);
+    margin: 0 0 6px 0;
+    letter-spacing: 0.01em;
+  }
+
+  .kicker{
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink-dim);
+    margin-bottom: 24px;
+  }
+
+  p.copy{
+    font-size: 14.5px;
+    line-height: 1.75;
+    max-width: 62ch;
+    color: var(--ink);
+  }
+  p.copy + p.copy{ margin-top: 14px; }
+
+  .redact{
+    background: var(--ink);
+    color: var(--ink);
+    padding: 0 4px;
+    border-radius: 1px;
+  }
+
+  /* ---------- FACTIONS ---------- */
+  .factions{
+    margin-top: 30px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .faction{
+    border-left: 3px solid var(--riso-yellow);
+    padding-left: 14px;
+  }
+  .faction h3{
+    margin: 0 0 6px 0;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    color: var(--riso-yellow);
+    font-weight: 700;
+  }
+  .faction p{
+    margin:0;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+  }
+
+  /* ---------- ARCHETYPES ---------- */
+  .archetypes{
+    margin-top: 26px;
+    display:flex;
+    flex-direction:column;
+    gap: 24px;
+  }
+  .arch{
+    display:grid;
+    grid-template-columns: 84px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .arch-mark{
+    font-family:'Anton', sans-serif;
+    font-size: 44px;
+    line-height: 1;
+    color: var(--rule);
+  }
+  .arch h3{
+    margin: 2px 0 6px 0;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+  }
+  .arch .anchor{
+    color: var(--riso-pink);
+    font-style: italic;
+  }
+  .arch p{
+    margin: 8px 0 0 0;
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.65;
+    max-width: 56ch;
+  }
+
+  /* ---------- THREATS ---------- */
+  .threats{
+    margin-top: 26px;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .threat{
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    padding: 16px;
+  }
+  .threat .tag{
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--riso-yellow);
+  }
+  .threat h4{
+    margin: 8px 0 8px 0;
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .threat p{
+    margin:0;
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+  }
+
+  /* ---------- HOOKS ---------- */
+  .hooks{
+    margin-top: 26px;
+    display:flex;
+    flex-direction:column;
+  }
+  .hook{
+    padding: 18px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .hook:first-child{ border-top:none; }
+  .hook h4{
+    margin: 0 0 6px 0;
+    font-size: 15px;
+    color: var(--riso-pink);
+    letter-spacing: 0.01em;
+  }
+  .hook p{
+    margin:0;
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.65;
+    max-width: 60ch;
+  }
+
+  /* ---------- BACK ---------- */
+  .back{
+    text-align:center;
+    padding-top: 60px;
+    padding-bottom: 60px;
+  }
+  .back .glyph{
+    font-family:'Anton', sans-serif;
+    font-size: 20px;
+    color: var(--ink-dim);
+    letter-spacing: 0.3em;
+  }
+  .back .closer{
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.8;
+    max-width: 42ch;
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .back .strapline{
+    margin-top: 30px;
+    font-family:'Anton', sans-serif;
+    font-size: 22px;
+    color: var(--riso-yellow);
+  }
+
+  @media (max-width: 640px){
+    .panel{ padding: 34px 22px; }
+    .factions{ grid-template-columns: 1fr; }
+    .threats{ grid-template-columns: 1fr; }
+    .arch{ grid-template-columns: 56px 1fr; }
+    .arch-mark{ font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <section class="panel cover" data-fold="PANEL 1 / COVER">
+      <div class="stamp">MIND YOUR MIND</div>
+      <h1 class="masthead">CAPS<br>LOCK</h1>
+      <div class="tagline">A GAME PLAYED ENTIRELY IN YOUR HEAD, ABOUT A CITY THAT NEVER SHUTS UP.</div>
+      <div class="cover-foot">
+        <span>NO DICE</span>
+        <span>NO SHEETS</span>
+        <span>NO RULEBOOK</span>
+        <span>JUST YOU, WALKING</span>
+      </div>
+    </section>
+
+    <!-- WHAT IT IS -->
+    <section class="panel" data-fold="PANEL 2 / THE GAME">
+      <div class="kicker">WHAT IT IS</div>
+      <h2 class="section">Everything Fits In Your Skull</h2>
+      <p class="copy">CAPSLOCK is a story you carry through a commute, a chore, a long walk at night. There is nothing to print, nothing to shuffle, nothing to lose in a bag. One character, one city, one voice in your head arguing with itself.</p>
+      <p class="copy">It's built for the in-between moments — the drive home, the line at the noodle stand, the fifteen minutes before you fall asleep. You don't sit down to play CAPSLOCK. You just start narrating, and the city fills in around you.</p>
+    </section>
+
+    <!-- THE WORLD -->
+    <section class="panel" data-fold="PANEL 3 / THE WORLD">
+      <div class="kicker">THE LORE</div>
+      <h2 class="section">One Corp. One Gang. One Bar.</h2>
+      <p class="copy">The city doesn't need a hundred factions to feel alive. It needs three, and a rule for the rest: whenever something in this world doesn't make sense, ask <span class="anchor">who profits</span> — and the answer writes the lore for you on the spot.</p>
+
+      <div class="factions">
+        <div class="faction">
+          <h3>THE MEGACORP</h3>
+          <p>Faceless, city-spanning, unaccountable. It doesn't hate you. It doesn't know you exist. That's worse.</p>
+        </div>
+        <div class="faction">
+          <h3>THE STREET GANG</h3>
+          <p>The threat with a face and a name, three blocks from wherever you're standing. Loud, local, personal.</p>
+        </div>
+        <div class="faction">
+          <h3>THE SAFE ZONE</h3>
+          <p>One door that locks from the inside. A noodle bar, a safehouse, a name only your crew knows.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHETYPES -->
+    <section class="panel" data-fold="PANEL 4 / WHO YOU ARE">
+      <div class="kicker">THE PEOPLE IN IT</div>
+      <h2 class="section">Three Ways In</h2>
+
+      <div class="archetypes">
+        <div class="arch">
+          <div class="arch-mark">01</div>
+          <div>
+            <h3>THE INFILTRATOR — <span class="anchor">"ghost in the system"</span></h3>
+            <p>Doesn't kick doors down. Doesn't need to. By the time anyone notices the terminal's been touched, she's three blocks gone and the alarm hasn't caught up to her yet.</p>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">02</div>
+          <div>
+            <h3>THE STREET SAMURAI — <span class="anchor">"chrome and steel"</span></h3>
+            <p>The last argument in any room. Doesn't start fights, isn't scared of finishing them — reflexes wired faster than the fear can catch up.</p>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">03</div>
+          <div>
+            <h3>THE FACE — <span class="anchor">"smooth talking, sharp suit"</span></h3>
+            <p>Walks into a building he doesn't own wearing a badge that isn't his, and walks out with something that was never supposed to leave.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THREATS -->
+    <section class="panel" data-fold="PANEL 5 / WHAT'S OUT THERE">
+      <div class="kicker">WHAT HUNTS YOU</div>
+      <h2 class="section">The City Bites Back</h2>
+      <p class="copy">Nothing in this city has a health bar. It has a temperament.</p>
+
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">WATCHERS</div>
+          <h4>Cameras. Drones. Informants.</h4>
+          <p>Never fight you directly. Only ever tell someone worse that you're here.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">ENFORCERS</div>
+          <h4>Guards. Gangers. Turrets.</h4>
+          <p>Stand between you and the door, and mean it.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">HUNTERS</div>
+          <h4>Solos. Netrunners. Mechs.</h4>
+          <p>You don't beat these head-on. You outthink them, or you run.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOOKS -->
+    <section class="panel" data-fold="PANEL 6 / WHERE TO START">
+      <div class="kicker">TONIGHT'S TROUBLE</div>
+      <h2 class="section">Pick a Way In</h2>
+
+      <div class="hooks">
+        <div class="hook">
+          <h4>THE BROKEN UPLINK</h4>
+          <p>You're wedged in a maintenance shaft two floors below a Megacorp server farm, a stolen drive cooking your neural port, and one patrol drone standing between you and the exit.</p>
+        </div>
+        <div class="hook">
+          <h4>THE BLACK MARKET DROP</h4>
+          <p>A prototype cyber-eye, a crowded noodle bar, and a message across your vision that reads: <em>they followed me — don't look up.</em></p>
+        </div>
+        <div class="hook">
+          <h4>THE NEON CHASE</h4>
+          <p>A stolen flying car, an autopilot that hates you personally, and a skyline full of gaps just narrow enough to be a problem.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- BACK -->
+    <section class="panel back" data-fold="PANEL 7 / BACK">
+      <div class="glyph">C A P S L O C K</div>
+      <p class="closer">No book to buy. No character sheet to fill out. Just a city, three names, and however far you can walk before the story runs out of road.</p>
+      <div class="strapline">START ANYWHERE. THE CITY'S ALREADY RUNNING.</div>
+    </section>
+
+  </div>
+</div>
+
+</body>
+</html>

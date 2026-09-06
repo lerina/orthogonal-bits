@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyboard &amp; Mouse Shortcuts for MATE Desktop</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 920px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.15s, background-color 0.15s;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.6em;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.3em;
+        }
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 1.4em;
+        }
+
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2.5rem 0;
+        }
+
+        p {
+            margin: 0 0 1.2rem 0;
+        }
+
+        ul,
+        ol {
+            margin: 0.5rem 0 1.2rem 1.8rem;
+            padding-left: 0.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* ----- Keycap style ----- */
+        kbd {
+            display: inline-block;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            padding: 0.1rem 0.6rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            border: 1px solid #555;
+            box-shadow: 0 1px 0 #555;
+            margin: 0 0.1rem;
+            white-space: nowrap;
+        }
+        .key-combo {
+            display: inline-block;
+            background: #1e1e1e;
+            padding: 0.2rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid #444;
+            font-family: inherit;
+            margin: 0.1rem 0;
+        }
+        .key-combo kbd {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0 0.15rem;
+            margin: 0;
+        }
+        .key-combo .sep {
+            color: #888;
+            padding: 0 0.2rem;
+        }
+
+        /* ----- Light mode ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode kbd {
+            background: #eee;
+            color: #111;
+            border-color: #bbb;
+            box-shadow: 0 1px 0 #bbb;
+        }
+        body.light-mode .key-combo {
+            background: #eee;
+            border-color: #ccc;
+        }
+        body.light-mode .key-combo kbd {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        /* ----- Toggle button ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.2rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #444;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+        .theme-toggle:hover {
+            background: #666;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* ----- Skip link ----- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            z-index: 1000;
+            border-radius: 0 0 10px 10px;
+            font-weight: 500;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        body.light-mode .skip-link {
+            background: #222;
+            color: #fff;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* ----- TOC styling ----- */
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0.5rem 0 1rem 0;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0.2rem;
+        }
+
+        /* ----- Sections ----- */
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        /* ----- Responsive ----- */
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+            .key-combo {
+                display: block;
+                margin-top: 0.2rem;
+            }
+        }
+
+        /* Focus indicators */
+        :focus-visible {
+            outline: 3px solid #88c0ff;
+            outline-offset: 2px;
+        }
+        body.light-mode :focus-visible {
+            outline-color: #0055cc;
+        }
+
+        /* Header */
+        header p {
+            margin-bottom: 0.2rem;
+        }
+        header h1 {
+            margin-bottom: 0.1rem;
+        }
+        header .subtitle {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #b0b0b0;
+            margin-top: 0.1rem;
+        }
+        body.light-mode header .subtitle {
+            color: #444;
+        }
+
+        /* Definition list style for shortcuts */
+        .shortcut-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .shortcut-list li {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid #333;
+            gap: 0.5rem 1rem;
+        }
+        body.light-mode .shortcut-list li {
+            border-bottom-color: #ddd;
+        }
+        .shortcut-desc {
+            flex: 1 1 60%;
+            min-width: 200px;
+        }
+        .shortcut-keys {
+            flex: 0 0 auto;
+            font-family: inherit;
+        }
+        .shortcut-keys .key-combo {
+            background: #2a2a2a;
+            border-color: #555;
+        }
+        body.light-mode .shortcut-keys .key-combo {
+            background: #eee;
+            border-color: #ccc;
+        }
+
+        /* Tips list */
+        .tips-list {
+            list-style-type: decimal;
+        }
+
+        /* Terminal note */
+        .note {
+            background: #1e1e1e;
+            padding: 1rem 1.5rem;
+            border-left: 4px solid #88c0ff;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        body.light-mode .note {
+            background: #f0f0f0;
+            border-left-color: #0055cc;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header role="banner" aria-label="Book header">
+        <h1>Keyboard &amp; Mouse Shortcuts for MATE Desktop</h1>
+        <p class="subtitle">A reference for Marco window manager and MATE Terminal</p>
+    </header>
+
+    <hr>
+
+    <!-- Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#mouse-actions">Marco: Mouse Actions on Titlebar</a></li>
+            <li><a href="#global-shortcuts">Marco: Global Keyboard Shortcuts</a></li>
+            <li><a href="#window-shortcuts">Marco: Window-Specific Shortcuts</a></li>
+            <li><a href="#terminal-shortcuts">MATE Terminal Shortcuts</a></li>
+            <li><a href="#muscle-memory">Tips for Building Muscle Memory</a></li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- Main content -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- INTRODUCTION -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="introduction-heading" id="introduction">
+            <h2 id="introduction-heading">Introduction</h2>
+            <p>This reference lists keyboard and mouse shortcuts for the MATE desktop environment, covering the Marco window manager and the MATE Terminal application. Marco handles how windows behave: moving, resizing, tiling, minimizing, and switching between them, as well as switching between virtual desktops known as workspaces. MATE Terminal is the default terminal application, and its shortcuts cover tabs, searching, zooming, and copy and paste.</p>
+            <p>Each entry describes what the shortcut does and why someone would want to use it, followed by the exact key combination needed to trigger it. The list is organized into four sections: mouse actions on the window titlebar, global keyboard shortcuts that work anywhere on the desktop, shortcuts that apply to the currently focused window, and terminal-specific shortcuts.</p>
+            <div class="note">
+                <p><strong>Note on terminology:</strong> <kbd>Super</kbd> refers to the key sometimes labeled with a Windows logo, and <kbd>Alt</kbd> refers to the key labeled Alt, sometimes called Option on other keyboard layouts. Where a shortcut is described as a <em>run command slot</em>, this means the key combination triggers a custom, user-assigned action rather than a fixed, built‑in one, so the actual result may vary between systems.</p>
+            </div>
+            <p>A section on building muscle memory follows the shortcut list, with practical guidance on how to learn and retain these shortcuts over time rather than simply memorizing them all at once.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- MOUSE ACTIONS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="mouse-actions-heading" id="mouse-actions">
+            <h2 id="mouse-actions-heading">Marco Window Manager: Mouse Actions on Titlebar</h2>
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc">Toggle maximize. To quickly maximize or restore a window without locating a button:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>double-click</kbd></span> the titlebar</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Lower the window behind others. To send a window to the back without minimizing it:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>middle-click</kbd></span> the titlebar</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Open the window menu. To access move, resize, and workspace options with the mouse:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>right-click</kbd></span> the titlebar</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- GLOBAL SHORTCUTS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="global-shortcuts-heading" id="global-shortcuts">
+            <h2 id="global-shortcuts-heading">Marco Window Manager: Global Keyboard Shortcuts</h2>
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc">Open the main menu. To launch applications without a mouse:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F1</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Open the run dialog. To quickly launch a command or application by typing its name:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F2</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch between open windows. To cycle forward through your open windows:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Tab</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch between open windows in reverse. To cycle backward instead:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>Tab</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Cycle through windows in the same application group. For when one app has multiple windows open:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F6</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch window group. As an alternate way to cycle windows within the current application:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>`</kbd></span> (key below Escape)</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch focus to a panel. To move keyboard focus to the taskbar:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Tab</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Cycle through panel elements. To move between different parts of a panel:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>Esc</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Show the desktop. To minimize all windows at once:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>D</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch workspace in a given direction. To move between virtual desktops:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> / <kbd>←</kbd> / <kbd>→</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Take a screenshot. To capture the entire screen:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Print Screen</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Take a window screenshot. To capture only the active window:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Print Screen</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot two. Often assigned to a region or selection screenshot:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>Print Screen</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot seven. Often assigned to a task manager:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Esc</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Open a terminal. To get a shell quickly without using menus:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot one. Often assigned to locking the screen:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>L</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot three. Custom assigned, often a file manager:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>E</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot four. Custom assigned:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>T</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot five. Custom assigned:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>I</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot six. Custom assigned:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>S</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Run command slot eight. The Pause key is rarely used elsewhere, making it a safe free slot for a custom command:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>Pause</kbd></span></span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- WINDOW-SPECIFIC SHORTCUTS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="window-shortcuts-heading" id="window-shortcuts">
+            <h2 id="window-shortcuts-heading">Marco Window Manager: Window-Specific Shortcuts</h2>
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc">Open the window menu. For keyboard access to move, close, and other window actions:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Space</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Close the window. The standard close shortcut:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F4</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Begin moving the window. After pressing this, use arrow keys to move it:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F7</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Begin resizing the window. After pressing this, use arrow keys to resize it:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F8</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Minimize the window. Sends it to the taskbar:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F9</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Toggle maximize. To maximize or restore the window using the keyboard:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>F10</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Toggle shade. Rolls the window up into just its titlebar, useful for briefly checking what's behind it:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move the window to center. To re-center a window that has drifted off-screen or is badly placed:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Super</kbd> + <kbd>C</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Maximize the window:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>↑</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Restore the window to its previous size:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>↓</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Tile the window to half the screen. For side-by-side work:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Super</kbd> + <kbd>←</kbd> / <kbd>→</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Tile to the northwest corner, one quarter of the screen:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Super</kbd> + <kbd>←</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Tile to the northeast corner:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Super</kbd> + <kbd>→</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Tile to the southwest corner:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Super</kbd> + <kbd>←</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Tile to the southeast corner:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>Super</kbd> + <kbd>→</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move the entire window to the adjacent workspace in a given direction:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> / <kbd>←</kbd> / <kbd>→</kbd></span></span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- TERMINAL SHORTCUTS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="terminal-shortcuts-heading" id="terminal-shortcuts">
+            <h2 id="terminal-shortcuts-heading">MATE Terminal Shortcuts</h2>
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc">Open a new terminal window:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Open a new tab in the same window. To keep sessions organized instead of opening many windows:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Close the current tab:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Close the entire terminal window, including all tabs:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Q</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Copy selected text. Plain <kbd>Ctrl</kbd>+<kbd>C</kbd> is reserved for interrupting a running process, so terminal copy uses this variant instead:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Paste text. Same reasoning as copy above:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Select all terminal text:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch to the previous tab:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Page Up</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch to the next tab:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Page Down</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move the current tab one position to the left:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Page Up</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Move the current tab one position to the right:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Page Down</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch directly to a tab by number, one through nine, or zero for the tenth tab:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>1</kbd>…<kbd>9</kbd> or <kbd>0</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch to the previous terminal profile, meaning a saved color and font scheme:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Page Up</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Switch to the next terminal profile:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Alt</kbd> + <kbd>Page Down</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Open find, to search terminal output:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Find the next match:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Find the previous match:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Toggle full screen for a distraction-free terminal:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>F11</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Open terminal help:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>F1</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Zoom in, increasing font size:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>+</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Zoom out, decreasing font size:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>-</kbd></span></span>
+                </li>
+                <li>
+                    <span class="shortcut-desc">Reset zoom to normal font size:</span>
+                    <span class="shortcut-keys"><span class="key-combo"><kbd>Ctrl</kbd> + <kbd>0</kbd></span></span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- TIPS FOR BUILDING MUSCLE MEMORY -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="muscle-memory-heading" id="muscle-memory">
+            <h2 id="muscle-memory-heading">Tips for Building Muscle Memory</h2>
+            <ol class="tips-list">
+                <li>
+                    <strong>Learn shortcuts in small batches.</strong> Trying to memorize all of these at once will not stick. Pick three to five that solve a problem you hit every day, and ignore the rest until those feel automatic.
+                </li>
+                <li>
+                    <strong>Start with the highest-value ones first.</strong> For most people that means: <kbd>Alt</kbd>+<kbd>Tab</kbd> to switch windows, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>T</kbd> to open a terminal, <kbd>Super</kbd>+<kbd>←</kbd> or <kbd>→</kbd> to tile windows side by side, and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd> for terminal tabs. These get used dozens of times a day, so they pay off fastest.
+                </li>
+                <li>
+                    <strong>Force yourself to use the shortcut instead of the mouse.</strong> The temptation is always to reach for the mouse because it is faster in the moment. Muscle memory only forms when you deliberately choose the slower, correct path a few dozen times in a row. If you catch yourself reaching for the mouse, stop and use the key combination instead, even if it takes longer that time.
+                </li>
+                <li>
+                    <strong>Say the shortcut out loud, or describe it to yourself, as you press it.</strong> Verbalizing while doing reinforces the connection between the intention and the physical action faster than silent repetition.
+                </li>
+                <li>
+                    <strong>Practice in short, frequent bursts rather than one long session.</strong> Five minutes of deliberate practice a day for a week builds memory better than one thirty-minute drill.
+                </li>
+                <li>
+                    <strong>Chain related shortcuts together in one practice session.</strong> For example, practice opening a terminal, opening a new tab, switching between tabs, and closing a tab as one sequence. Grouping related actions together mirrors how you will actually use them in real work.
+                </li>
+                <li>
+                    <strong>Once one batch feels automatic, add the next batch.</strong> A shortcut feels automatic when you no longer have to think about which keys to press, your fingers just do it. That is the signal to introduce a new small set rather than trying to hold everything in mind simultaneously.
+                </li>
+                <li>
+                    <strong>Expect a temporary slowdown.</strong> For the first several days a new shortcut will feel slower than the mouse. This is normal and does not mean the shortcut is not worth learning. The payoff comes after the habit is formed, not during it.
+                </li>
+            </ol>
+        </section>
+
+    </main>
+
+    <hr>
+    <footer role="contentinfo" style="margin-top:2rem;font-size:0.9rem;color:#999;text-align:center;">
+        <p><em>Keyboard &amp; Mouse Shortcuts for MATE Desktop</em> — Accessible Reference</p>
+        <p style="margin-top:0.2rem;">Built with semantic HTML, dark/light mode, and keyboard accessibility in mind.</p>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>

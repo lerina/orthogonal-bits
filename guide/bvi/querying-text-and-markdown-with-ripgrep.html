@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Querying Text and Markdown With ripgrep — Accessible Guide</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 920px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: color 0.15s, background-color 0.15s;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.6em;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.3em;
+        }
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 1.4em;
+        }
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 1.2em;
+        }
+
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2.5rem 0;
+        }
+
+        p {
+            margin: 0 0 1.2rem 0;
+        }
+
+        ul,
+        ol {
+            margin: 0.5rem 0 1.2rem 1.8rem;
+            padding-left: 0.5rem;
+        }
+        li {
+            margin-bottom: 0.4rem;
+        }
+
+        /* Keycap style */
+        kbd {
+            display: inline-block;
+            background: #2a2a2a;
+            color: #e0e0e0;
+            padding: 0.1rem 0.6rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            border: 1px solid #555;
+            box-shadow: 0 1px 0 #555;
+            margin: 0 0.1rem;
+            white-space: nowrap;
+        }
+        .key-combo {
+            display: inline-block;
+            background: #1e1e1e;
+            padding: 0.2rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid #444;
+            font-family: inherit;
+            margin: 0.1rem 0;
+        }
+        .key-combo kbd {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0 0.15rem;
+            margin: 0;
+        }
+        .key-combo .sep {
+            color: #888;
+            padding: 0 0.2rem;
+        }
+
+        /* Code blocks */
+        pre {
+            background: #1e1e1e;
+            padding: 1.2rem 1.5rem;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 400px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.12s;
+            margin: 1.2rem 0 1.6rem 0;
+            border: 1px solid #2a2a2a;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #d4d4d4;
+            font-size: 0.92em;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        code.inline {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.92em;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode kbd {
+            background: #eee;
+            color: #111;
+            border-color: #bbb;
+            box-shadow: 0 1px 0 #bbb;
+        }
+        body.light-mode .key-combo {
+            background: #eee;
+            border-color: #ccc;
+        }
+        body.light-mode .key-combo kbd {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+        body.light-mode pre {
+            background: #eee;
+            border-color: #ddd;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+            color: #111;
+        }
+        body.light-mode code.inline {
+            background: #eee;
+            color: #111;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.2rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #444;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            font-family: inherit;
+            line-height: 1.4;
+        }
+        .theme-toggle:hover {
+            background: #666;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* ----- Skip link ----- */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            z-index: 1000;
+            border-radius: 0 0 10px 10px;
+            font-weight: 500;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        body.light-mode .skip-link {
+            background: #222;
+            color: #fff;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* ----- TOC ----- */
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0.5rem 0 1rem 0;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0.2rem;
+        }
+        nav ul ul {
+            padding-left: 1.5rem;
+            margin-top: 0.15rem;
+        }
+
+        /* ----- Sections ----- */
+        section {
+            margin-bottom: 2.5rem;
+        }
+
+        /* ----- Responsive ----- */
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Focus indicators */
+        :focus-visible {
+            outline: 3px solid #88c0ff;
+            outline-offset: 2px;
+        }
+        body.light-mode :focus-visible {
+            outline-color: #0055cc;
+        }
+
+        /* Header */
+        header p {
+            margin-bottom: 0.2rem;
+        }
+        header h1 {
+            margin-bottom: 0.1rem;
+        }
+        header .subtitle {
+            font-size: 1.3rem;
+            font-weight: 400;
+            color: #b0b0b0;
+            margin-top: 0.1rem;
+        }
+        body.light-mode header .subtitle {
+            color: #444;
+        }
+
+        /* Note boxes */
+        .note-box {
+            background: #1e1e1e;
+            padding: 1rem 1.5rem;
+            border-left: 4px solid #88c0ff;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        body.light-mode .note-box {
+            background: #f0f0f0;
+            border-left-color: #0055cc;
+        }
+
+        .concept-box {
+            background: #1a1a2e;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin: 1.2rem 0;
+            border: 1px solid #444;
+        }
+        body.light-mode .concept-box {
+            background: #eeeef7;
+            border-color: #ccc;
+        }
+        .concept-box strong {
+            color: #88c0ff;
+        }
+        body.light-mode .concept-box strong {
+            color: #0055cc;
+        }
+
+        /* Shortcut list (stacked) */
+        .shortcut-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .shortcut-list li {
+            display: flex;
+            flex-direction: column;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #333;
+        }
+        body.light-mode .shortcut-list li {
+            border-bottom-color: #ddd;
+        }
+        .shortcut-desc {
+            flex: 1;
+        }
+        .shortcut-keys {
+            margin-top: 0.2rem;
+            font-family: inherit;
+        }
+
+        /* Inline code in light mode */
+        body.light-mode code.inline {
+            background: #eee;
+            color: #111;
+        }
+
+        /* For the regex vocabulary list */
+        .regex-vocab {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.2rem 1rem;
+            margin: 0.5rem 0 1.2rem 0;
+            padding: 0.5rem 0;
+        }
+        .regex-vocab .term {
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            color: #88c0ff;
+        }
+        body.light-mode .regex-vocab .term {
+            color: #0055cc;
+        }
+        .regex-vocab .meaning {
+            color: #ccc;
+        }
+        body.light-mode .regex-vocab .meaning {
+            color: #333;
+        }
+        @media (max-width: 600px) {
+            .regex-vocab {
+                grid-template-columns: 1fr;
+                gap: 0.1rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header role="banner" aria-label="Page header">
+        <h1>Querying Text and Markdown With ripgrep</h1>
+        <p class="subtitle">A practical guide to document investigation and Rust source-code reconnaissance</p>
+    </header>
+
+    <hr>
+
+    <!-- Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#core-idea">The Core Idea</a></li>
+            <li><a href="#basic-searching">Basic Searching</a></li>
+            <li><a href="#finding-files">Finding Which Files Contain a Term</a></li>
+            <li><a href="#context">Reading the Context Around a Match</a></li>
+            <li><a href="#markdown-structure">Searching Markdown Structure</a></li>
+            <li><a href="#several-terms">Searching for Several Terms</a></li>
+            <li><a href="#whole-word">Searching by Whole Word</a></li>
+            <li><a href="#particular-directory">Searching a Particular Directory</a></li>
+            <li><a href="#workflow">The Basic Investigation Workflow</a></li>
+            <li><a href="#reference">A Small ripgrep Reference</a></li>
+            <li><a href="#why-ripgrep">Why ripgrep Is Enough Here</a></li>
+            <li><a href="#part2">Part 2: regex to query Rust codebase</a>
+                <ul>
+                    <li><a href="#regex-basics">What regex is doing</a></li>
+                    <li><a href="#first-six">The first six regex concepts</a></li>
+                    <li><a href="#anchor-importance">`^` is extremely important for source code</a></li>
+                    <li><a href="#struct-declarations">Find all struct declarations</a></li>
+                    <li><a href="#extract-names">Extract names</a></li>
+                    <li><a href="#or-operator">OR: asking several related questions</a></li>
+                    <li><a href="#query-functions">Query functions</a></li>
+                    <li><a href="#artifacts">Search only the artifacts we care about</a></li>
+                    <li><a href="#context-query">Context is part of the query</a></li>
+                    <li><a href="#visual-landmarks">Regex for Rust's visual landmarks</a></li>
+                    <li><a href="#repetition">`{}` repetition</a></li>
+                    <li><a href="#vocabulary">Your first real query vocabulary</a></li>
+                    <li><a href="#dont-memorize">Don't memorize regex. Build queries.</a></li>
+                    <li><a href="#bigger-goal">The bigger goal: source-code reconnaissance</a></li>
+                    <li><a href="#learning-path">Our learning path</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- CORE IDEA -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="core-idea-heading" id="core-idea">
+            <h2 id="core-idea-heading">The Core Idea</h2>
+            <p>A large collection of text or Markdown files does not need to be read from beginning to end.</p>
+            <p>Treat it as a <strong>queryable body of text</strong>.</p>
+            <p>Instead of asking:</p>
+            <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                Where should I start reading?
+            </blockquote>
+            <p>ask:</p>
+            <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                What am I looking for?
+            </blockquote>
+            <p>Then search directly for it.</p>
+            <p>The main tool for this is <strong>ripgrep</strong>, usually invoked as <code class="inline">rg</code>.</p>
+            <p>It searches files recursively, shows matching lines, reports line numbers, and can restrict the search to particular file types.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- BASIC SEARCHING -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="basic-searching-heading" id="basic-searching">
+            <h2 id="basic-searching-heading">Basic Searching</h2>
+            <p>Search the current directory and its subdirectories:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep command: search for authentication"><code>rg "authentication"</code></pre>
+
+            <p>Search for a term in Markdown files only:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep command: search in Markdown"><code>rg "authentication" -g "*.md"</code></pre>
+
+            <p>Search case-insensitively:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep command: case-insensitive"><code>rg -i "authentication"</code></pre>
+
+            <p>Show line numbers:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep command: with line numbers"><code>rg -n "authentication"</code></pre>
+            <p>Line numbers are especially useful when you want to return to a specific location in an editor.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- FINDING FILES -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="finding-files-heading" id="finding-files">
+            <h2 id="finding-files-heading">Finding Which Files Contain a Term</h2>
+            <p>Sometimes the matching lines are not important. You only want to know which files contain the subject.</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: list matching files"><code>rg -l "authentication"</code></pre>
+            <p>This produces a list of matching filenames.</p>
+            <p>For Markdown files:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: list Markdown files"><code>rg -l "authentication" -g "*.md"</code></pre>
+            <p>This is often the fastest way to discover which documents are relevant.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- CONTEXT -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="context-heading" id="context">
+            <h2 id="context-heading">Reading the Context Around a Match</h2>
+            <p>A search result may not provide enough information by itself.</p>
+            <p>Show three lines before and after each match:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: context 3 lines"><code>rg -n -C 3 "authentication"</code></pre>
+            <p>Show five lines after a match:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: after context"><code>rg -n -A 5 "authentication"</code></pre>
+            <p>Show five lines before a match:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: before context"><code>rg -n -B 5 "authentication"</code></pre>
+            <p>This lets you understand the surrounding passage without opening the entire document.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- MARKDOWN STRUCTURE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="markdown-structure-heading" id="markdown-structure">
+            <h2 id="markdown-structure-heading">Searching Markdown Structure</h2>
+            <p>Markdown headings can be searched directly.</p>
+            <p>Find every heading:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: all headings"><code>rg -n "^#" file.md</code></pre>
+            <p>Find top-level headings:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: top-level headings"><code>rg -n "^# " file.md</code></pre>
+            <p>Find level-two headings:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: level-two headings"><code>rg -n "^## " file.md</code></pre>
+            <p>Search every Markdown file for headings:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: all Markdown headings"><code>rg -n "^#{1,2} " -g "*.md"</code></pre>
+            <p>This gives you a quick structural overview of a collection of documents.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SEVERAL TERMS -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="several-terms-heading" id="several-terms">
+            <h2 id="several-terms-heading">Searching for Several Terms</h2>
+            <p>Use a regular expression when you want alternatives.</p>
+            <p>For example:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: todo or fixme"><code>rg -ni "todo|fixme"</code></pre>
+            <p>This finds either <code class="inline">TODO</code> or <code class="inline">FIXME</code>, without caring about capitalization.</p>
+            <p>You can also search for several related concepts:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: ownership or borrowing or lifetime"><code>rg -ni "ownership|borrowing|lifetime"</code></pre>
+            <p>This is useful when investigating a technical subject whose terminology varies.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- WHOLE WORD -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="whole-word-heading" id="whole-word">
+            <h2 id="whole-word-heading">Searching by Whole Word</h2>
+            <p>Use <code class="inline">-w</code> when you want an exact word rather than part of another word.</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: whole word"><code>rg -nw "read" file.md</code></pre>
+            <p>This searches for <code class="inline">read</code> as a word rather than matching it inside another word.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PARTICULAR DIRECTORY -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="particular-directory-heading" id="particular-directory">
+            <h2 id="particular-directory-heading">Searching a Particular Directory</h2>
+            <p>You can give <code class="inline">rg</code> a directory to search:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: search directory"><code>rg "authentication" docs/</code></pre>
+            <p>Or restrict the search to Markdown files inside that directory:</p>
+            <pre tabindex="0" role="region" aria-label="ripgrep: search directory with glob"><code>rg "authentication" docs/ -g "*.md"</code></pre>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- WORKFLOW -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="workflow-heading" id="workflow">
+            <h2 id="workflow-heading">The Basic Investigation Workflow</h2>
+            <p>For a new collection of documents, a simple sequence is enough.</p>
+            <h3>Step One: Survey the headings</h3>
+            <pre tabindex="0" role="region" aria-label="survey headings"><code>rg -n "^#{1,2} " -g "*.md"</code></pre>
+            <p>This gives you a rough structural map.</p>
+
+            <h3>Step Two: Search for your subject</h3>
+            <pre tabindex="0" role="region" aria-label="search subject"><code>rg -n -i "ownership" -g "*.md"</code></pre>
+
+            <h3>Step Three: Identify the relevant files</h3>
+            <pre tabindex="0" role="region" aria-label="list relevant files"><code>rg -l -i "ownership" -g "*.md"</code></pre>
+
+            <h3>Step Four: Read the relevant passage</h3>
+            <p>Use the filename and line number from the search result to jump directly to the relevant location in your editor.</p>
+
+            <h3>Step Five: Search again</h3>
+            <p>Once you understand the terminology used by the documents, search for additional terms, related concepts, or names.</p>
+            <p>This creates an iterative process:</p>
+            <div class="concept-box">
+                <p><strong>Search → locate → read → identify terms → search again.</strong></p>
+            </div>
+            <p>The document is no longer a linear stream that has to be consumed from beginning to end.</p>
+            <p>It becomes a body of information that can be investigated.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- REFERENCE -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="reference-heading" id="reference">
+            <h2 id="reference-heading">A Small ripgrep Reference</h2>
+            <ul class="shortcut-list">
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg "pattern"</code> — Search recursively.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -n "pattern"</code> — Show line numbers.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -i "pattern"</code> — Ignore capitalization.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -l "pattern"</code> — Show filenames only.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -w "pattern"</code> — Match whole words.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -C 3 "pattern"</code> — Show three lines of context around each match.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -A 3 "pattern"</code> — Show three lines after each match.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg -B 3 "pattern"</code> — Show three lines before each match.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg "pattern" -g "*.md"</code> — Search Markdown files only.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg "^#" -g "*.md"</code> — Search Markdown headings.</span>
+                </li>
+                <li>
+                    <span class="shortcut-desc"><code class="inline">rg "term1|term2"</code> — Search for either of two terms.</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- WHY RIPGREP -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="why-ripgrep-heading" id="why-ripgrep">
+            <h2 id="why-ripgrep-heading">Why ripgrep Is Enough Here</h2>
+            <p>The purpose of this manual is <strong>document investigation</strong>, not mastery of the Unix command line.</p>
+            <p>For that purpose, ripgrep already provides the essential operations:</p>
+            <ul>
+                <li>Search recursively.</li>
+                <li>Search specific file types.</li>
+                <li>Show line numbers.</li>
+                <li>Show surrounding context.</li>
+                <li>List matching files.</li>
+                <li>Search case-insensitively.</li>
+                <li>Use regular expressions.</li>
+                <li>Search structural patterns such as Markdown headings.</li>
+            </ul>
+            <p><code class="inline">find</code>, <code class="inline">xargs</code>, <code class="inline">sed</code>, <code class="inline">cut</code>, <code class="inline">sort</code>, and complex pipelines are useful Linux skills, but they are not necessary for this particular workflow.</p>
+            <p>Start with one powerful search tool.</p>
+            <p>Learn the other commands when a real task gives you a reason to need them.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- PART 2 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="part2-heading" id="part2">
+            <h2 id="part2-heading">Part 2: regex to query Rust codebase</h2>
+            <p>The right way to approach this is <strong>not “learn regex syntax” in isolation</strong>. We want to build a small <strong>query language for a Rust codebase</strong>.</p>
+            <p>Your mental model can be:</p>
+            <div class="concept-box">
+                <p><strong>Rust source is a structured artifact. <code class="inline">rg</code> + regex lets me interrogate that artifact for the structural cues that would otherwise be obtained visually.</strong></p>
+            </div>
+            <p>We can learn regex progressively, using actual Rust code as the material.</p>
+
+            <!-- 1. What regex is doing -->
+            <section aria-labelledby="regex-basics-heading" id="regex-basics">
+                <h3 id="regex-basics-heading">1. First: what regex is doing</h3>
+                <p>Suppose your project contains:</p>
+                <pre tabindex="0" role="region" aria-label="Rust code example"><code>pub struct Router {
+    routes: Vec&lt;Route&gt;,
+}
+
+impl Router {
+    pub fn new() -> Self {
+        Self {
+            routes: Vec::new(),
+        }
+    }
+
+    pub fn add(&mut self, route: Route) {
+        self.routes.push(route);
+    }
+}</code></pre>
+                <p>A normal search asks:</p>
+                <pre tabindex="0" role="region" aria-label="rg search Router"><code>rg "Router"</code></pre>
+                <p>Regex lets you ask <strong>structural questions</strong>.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="rg search pub struct"><code>rg "^pub struct"</code></pre>
+                <p>means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Find lines that begin with <code class="inline">pub struct</code>.
+                </blockquote>
+                <p>You have already moved from:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    “Where does this word occur?”
+                </blockquote>
+                <p>to:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    “Where are public structs declared?”
+                </blockquote>
+                <p>That distinction is the foundation.</p>
+            </section>
+
+            <!-- 2. First six concepts -->
+            <section aria-labelledby="first-six-heading" id="first-six">
+                <h3 id="first-six-heading">2. The first six regex concepts</h3>
+                <p>You don't need the entire regex language.</p>
+                <p>Start with these:</p>
+                <div class="regex-vocab">
+                    <span class="term">^</span><span class="meaning">beginning of line</span>
+                    <span class="term">$</span><span class="meaning">end of line</span>
+                    <span class="term">.</span><span class="meaning">any character</span>
+                    <span class="term">*</span><span class="meaning">zero or more</span>
+                    <span class="term">+</span><span class="meaning">one or more</span>
+                    <span class="term">?</span><span class="meaning">optional</span>
+                </div>
+                <p>And these character groups:</p>
+                <div class="regex-vocab">
+                    <span class="term">[abc]</span><span class="meaning">a, b, or c</span>
+                    <span class="term">[a-z]</span><span class="meaning">any lowercase letter</span>
+                    <span class="term">[0-9]</span><span class="meaning">any digit</span>
+                    <span class="term">[^/]</span><span class="meaning">anything except /</span>
+                </div>
+                <p>And these grouping operators:</p>
+                <div class="regex-vocab">
+                    <span class="term">(...)</span><span class="meaning">group</span>
+                    <span class="term">|</span><span class="meaning">OR</span>
+                </div>
+                <p>That's enough to become surprisingly powerful.</p>
+            </section>
+
+            <!-- 3. ^ important -->
+            <section aria-labelledby="anchor-importance-heading" id="anchor-importance">
+                <h3 id="anchor-importance-heading">3. <code class="inline">^</code> is extremely important for source code</h3>
+                <p>Consider:</p>
+                <pre tabindex="0" role="region" aria-label="Rust struct declarations"><code>pub struct Router
+pub struct Request
+pub struct Response</code></pre>
+                <p>Search:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub struct anchor"><code>rg '^pub struct' -g '*.rs'</code></pre>
+                <p>You are saying:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    The line must begin with <code class="inline">pub struct</code>.
+                </blockquote>
+                <p>Compare:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub struct without anchor"><code>rg 'pub struct' -g '*.rs'</code></pre>
+                <p>This searches for <code class="inline">pub struct</code> anywhere in the line.</p>
+                <p>While:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub struct anchor again"><code>rg '^pub struct' -g '*.rs'</code></pre>
+                <p>searches specifically for declarations beginning the line.</p>
+                <p>For source-code interrogation, <strong>anchors are extremely valuable</strong>.</p>
+            </section>
+
+            <!-- 4. Struct declarations -->
+            <section aria-labelledby="struct-declarations-heading" id="struct-declarations">
+                <h3 id="struct-declarations-heading">4. Find all struct declarations</h3>
+                <p>Start broadly:</p>
+                <pre tabindex="0" role="region" aria-label="rg struct"><code>rg 'struct' -g '*.rs'</code></pre>
+                <p>Then refine:</p>
+                <pre tabindex="0" role="region" aria-label="rg struct with whitespace"><code>rg '^\s*struct' -g '*.rs'</code></pre>
+                <p>Here we've introduced:</p>
+                <div class="regex-vocab">
+                    <span class="term">\s</span><span class="meaning">whitespace</span>
+                </div>
+                <p>So:</p>
+                <pre tabindex="0" role="region" aria-label="regex: ^\s*struct"><code>^\s*struct</code></pre>
+                <p>means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Beginning of line → any amount of whitespace → <code class="inline">struct</code>.
+                </blockquote>
+                <p>This catches both:</p>
+                <pre><code>struct Router</code></pre>
+                <p>and:</p>
+                <pre><code>    struct Router</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub optional struct"><code>rg '^\s*(pub\s+)?struct\s+' -g '*.rs'</code></pre>
+                <p>Now we have something much more interesting.</p>
+                <p>It means:</p>
+                <pre><code>^           beginning
+\s*         optional indentation
+(pub\s+)?   optional "pub" followed by whitespace
+struct      literal word
+\s+         at least one whitespace character</code></pre>
+                <p>It matches:</p>
+                <pre><code>struct Router
+pub struct Router
+pub(crate) struct Router</code></pre>
+                <p>Actually, note that last one <strong>doesn't fully match correctly</strong> because <code class="inline">pub(crate)</code> isn't covered by <code class="inline">(pub\s+)?</code>. This is useful: regex teaches us to be precise about what our query actually means.</p>
+            </section>
+
+            <!-- 5. Extract names -->
+            <section aria-labelledby="extract-names-heading" id="extract-names">
+                <h3 id="extract-names-heading">5. Extract names</h3>
+                <p>Now suppose we want:</p>
+                <pre><code>pub struct Router
+pub struct Request
+pub struct Response</code></pre>
+                <p>We can query:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub struct with name"><code>rg '^\s*pub\s+struct\s+\w+' -g '*.rs'</code></pre>
+                <p><code class="inline">\w+</code> means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    one or more word characters.
+                </blockquote>
+                <p>So:</p>
+                <pre><code>\w+</code></pre>
+                <p>matches:</p>
+                <pre><code>Router
+Request
+Response</code></pre>
+                <p>This is our first <strong>declaration query</strong>.</p>
+            </section>
+
+            <!-- 6. OR -->
+            <section aria-labelledby="or-operator-heading" id="or-operator">
+                <h3 id="or-operator-heading">6. OR: asking several related questions</h3>
+                <p>Suppose we want all major Rust type declarations:</p>
+                <pre tabindex="0" role="region" aria-label="rg struct enum trait"><code>rg '^\s*(pub\s+)?(struct|enum|trait)\s+' -g '*.rs'</code></pre>
+                <p>The important part is:</p>
+                <pre><code>(struct|enum|trait)</code></pre>
+                <p>which means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    struct OR enum OR trait.
+                </blockquote>
+                <p>Now:</p>
+                <pre tabindex="0" role="region" aria-label="rg struct enum trait with pub"><code>rg '^\s*(pub\s+)?(struct|enum|trait)\s+' -g '*.rs'</code></pre>
+                <p>becomes:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Find declarations of structs, enums, or traits, optionally public, allowing indentation.
+                </blockquote>
+                <p>This is beginning to look like a <strong>source-code query</strong> rather than ordinary text search.</p>
+            </section>
+
+            <!-- 7. Query functions -->
+            <section aria-labelledby="query-functions-heading" id="query-functions">
+                <h3 id="query-functions-heading">7. Query functions</h3>
+                <p>Functions are one of the most useful things to query.</p>
+                <p>Start:</p>
+                <pre tabindex="0" role="region" aria-label="rg fn"><code>rg 'fn ' -g '*.rs'</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub fn"><code>rg '^\s*(pub\s+)?fn\s+' -g '*.rs'</code></pre>
+                <p>Now include methods that have modifiers:</p>
+                <pre><code>pub async fn run(...)
+pub unsafe fn access(...)
+pub const fn create(...)</code></pre>
+                <p>We can ask:</p>
+                <pre tabindex="0" role="region" aria-label="rg pub async fn"><code>rg '^\s*(pub\s+)?(async\s+)?fn\s+' -g '*.rs'</code></pre>
+                <p>But Rust has several possible modifiers, so we can build a more general query later.</p>
+                <p>For now, learn the principle:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    <strong>Regex lets you describe the shape of the declaration.</strong>
+                </blockquote>
+            </section>
+
+            <!-- 8. Artifacts -->
+            <section aria-labelledby="artifacts-heading" id="artifacts">
+                <h3 id="artifacts-heading">8. Search only the artifacts we care about</h3>
+                <p>Our project has three important textual artifacts:</p>
+                <pre><code>*.rs
+*.toml
+*.md</code></pre>
+                <p>So establish this habit immediately:</p>
+                <pre tabindex="0" role="region" aria-label="rg multiple globs"><code>rg 'QUERY' -g '*.rs' -g '*.toml' -g '*.md'</code></pre>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="rg markdown headings"><code>rg '^#' -g '*.md'</code></pre>
+                <p>Find Markdown headings.</p>
+                <pre tabindex="0" role="region" aria-label="rg dependencies"><code>rg 'dependencies' -g '*.toml'</code></pre>
+                <p>Find dependency declarations.</p>
+                <pre tabindex="0" role="region" aria-label="rg struct declarations"><code>rg '^\s*(pub\s+)?struct\s+' -g '*.rs'</code></pre>
+                <p>Find Rust struct declarations.</p>
+                <p>This gives us three related layers:</p>
+                <pre><code>Rust source     → program structure
+Cargo.toml      → project/dependency structure
+Markdown        → human documentation</code></pre>
+                <p>Together they form our <strong>queryable codebase</strong>.</p>
+            </section>
+
+            <!-- 9. Context -->
+            <section aria-labelledby="context-query-heading" id="context-query">
+                <h3 id="context-query-heading">9. Context is part of the query</h3>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="rg struct Router"><code>rg 'struct Router' -g '*.rs'</code></pre>
+                <p>returns:</p>
+                <pre><code>src/router.rs:14:pub struct Router {</code></pre>
+                <p>That's useful, but you may want surrounding material.</p>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="rg with context"><code>rg -n -C 5 'struct Router' -g '*.rs'</code></pre>
+                <p><code class="inline">-C 5</code> means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    five lines of context before and after.
+                </blockquote>
+                <p>Or:</p>
+                <pre tabindex="0" role="region" aria-label="rg after context"><code>rg -n -A 10 'struct Router' -g '*.rs'</code></pre>
+                <p>means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    the matching line plus ten lines after it.
+                </blockquote>
+                <p>This is particularly useful when the <strong>match identifies a structural landmark</strong> and the surrounding lines provide its definition.</p>
+            </section>
+
+            <!-- 10. Visual landmarks -->
+            <section aria-labelledby="visual-landmarks-heading" id="visual-landmarks">
+                <h3 id="visual-landmarks-heading">10. Regex for Rust's visual landmarks</h3>
+                <p>A programmer normally gets many structural cues visually:</p>
+                <ul>
+                    <li>indentation</li>
+                    <li><code class="inline">pub</code></li>
+                    <li><code class="inline">struct</code></li>
+                    <li><code class="inline">enum</code></li>
+                    <li><code class="inline">trait</code></li>
+                    <li><code class="inline">impl</code></li>
+                    <li><code class="inline">fn</code></li>
+                    <li>braces</li>
+                    <li>modules</li>
+                    <li><code class="inline">use</code></li>
+                    <li>types</li>
+                    <li>attributes</li>
+                    <li>comments</li>
+                    <li>Markdown headings</li>
+                </ul>
+                <p>We can turn these into queries.</p>
+
+                <h4>Modules</h4>
+                <pre tabindex="0" role="region" aria-label="rg mod"><code>rg '^\s*(pub\s+)?mod\s+' -g '*.rs'</code></pre>
+
+                <h4>Imports</h4>
+                <pre tabindex="0" role="region" aria-label="rg use"><code>rg '^\s*use\s+' -g '*.rs'</code></pre>
+
+                <h4>Structs</h4>
+                <pre tabindex="0" role="region" aria-label="rg struct"><code>rg '^\s*(pub\s+)?struct\s+' -g '*.rs'</code></pre>
+
+                <h4>Enums</h4>
+                <pre tabindex="0" role="region" aria-label="rg enum"><code>rg '^\s*(pub\s+)?enum\s+' -g '*.rs'</code></pre>
+
+                <h4>Traits</h4>
+                <pre tabindex="0" role="region" aria-label="rg trait"><code>rg '^\s*(pub\s+)?trait\s+' -g '*.rs'</code></pre>
+
+                <h4>Implementations</h4>
+                <pre tabindex="0" role="region" aria-label="rg impl"><code>rg '^\s*impl\s+' -g '*.rs'</code></pre>
+
+                <h4>Functions</h4>
+                <pre tabindex="0" role="region" aria-label="rg fn"><code>rg '^\s*(pub\s+)?fn\s+' -g '*.rs'</code></pre>
+
+                <h4>Attributes</h4>
+                <pre tabindex="0" role="region" aria-label="rg attributes"><code>rg '^\s*#\[' -g '*.rs'</code></pre>
+
+                <h4>Tests</h4>
+                <pre tabindex="0" role="region" aria-label="rg test"><code>rg '^\s*#\[test\]' -g '*.rs'</code></pre>
+
+                <h4>Markdown structure</h4>
+                <pre tabindex="0" role="region" aria-label="rg markdown headings"><code>rg '^#{1,6}\s+' -g '*.md'</code></pre>
+                <p>The last one introduces another important regex concept.</p>
+            </section>
+
+            <!-- 11. Repetition -->
+            <section aria-labelledby="repetition-heading" id="repetition">
+                <h3 id="repetition-heading">11. <code class="inline">{}</code> repetition</h3>
+                <p>This:</p>
+                <pre><code>#{1,6}</code></pre>
+                <p>means:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Between 1 and 6 <code class="inline">#</code> characters.
+                </blockquote>
+                <p>Therefore:</p>
+                <pre tabindex="0" role="region" aria-label="rg headings"><code>rg '^#{1,6}\s+' -g '*.md'</code></pre>
+                <p>finds Markdown headings:</p>
+                <pre><code># Chapter
+## Section
+### Subsection</code></pre>
+                <p>We can distinguish levels:</p>
+                <pre tabindex="0" role="region" aria-label="rg level 1 heading"><code>rg '^#\s+' -g '*.md'</code></pre>
+                <p>Top-level headings.</p>
+                <pre tabindex="0" role="region" aria-label="rg level 2 heading"><code>rg '^##\s+' -g '*.md'</code></pre>
+                <p>Second-level headings.</p>
+                <pre tabindex="0" role="region" aria-label="rg level 3 heading"><code>rg '^###\s+' -g '*.md'</code></pre>
+                <p>Third-level headings.</p>
+                <p>This is a very useful pattern for turning documentation into a navigable artifact.</p>
+            </section>
+
+            <!-- 12. Vocabulary -->
+            <section aria-labelledby="vocabulary-heading" id="vocabulary">
+                <h3 id="vocabulary-heading">12. Your first real query vocabulary</h3>
+                <p>I would teach you regex through a vocabulary like this:</p>
+
+                <h4>Location</h4>
+                <div class="regex-vocab">
+                    <span class="term">^</span><span class="meaning">beginning of line</span>
+                    <span class="term">$</span><span class="meaning">end of line</span>
+                </div>
+                <p><em>Where is it on the line?</em></p>
+
+                <h4>Character</h4>
+                <div class="regex-vocab">
+                    <span class="term">.</span><span class="meaning">any character</span>
+                    <span class="term">\s</span><span class="meaning">whitespace</span>
+                    <span class="term">\w</span><span class="meaning">word character</span>
+                    <span class="term">\d</span><span class="meaning">digit</span>
+                </div>
+                <p><em>What kind of character is here?</em></p>
+
+                <h4>Quantity</h4>
+                <div class="regex-vocab">
+                    <span class="term">*</span><span class="meaning">zero or more</span>
+                    <span class="term">+</span><span class="meaning">one or more</span>
+                    <span class="term">?</span><span class="meaning">optional (zero or one)</span>
+                    <span class="term">{n}</span><span class="meaning">exactly n</span>
+                    <span class="term">{n,m}</span><span class="meaning">between n and m</span>
+                </div>
+                <p><em>How many?</em></p>
+
+                <h4>Alternatives</h4>
+                <div class="regex-vocab">
+                    <span class="term">(a|b|c)</span><span class="meaning">a, b, or c</span>
+                </div>
+                <p><em>Which one?</em></p>
+
+                <h4>Character sets</h4>
+                <div class="regex-vocab">
+                    <span class="term">[abc]</span><span class="meaning">a, b, or c</span>
+                    <span class="term">[a-z]</span><span class="meaning">any lowercase letter</span>
+                    <span class="term">[0-9]</span><span class="meaning">any digit</span>
+                    <span class="term">[^x]</span><span class="meaning">anything except x</span>
+                </div>
+                <p><em>Which characters?</em></p>
+
+                <h4>Grouping</h4>
+                <div class="regex-vocab">
+                    <span class="term">(...)</span><span class="meaning">treat as one unit</span>
+                </div>
+                <p><em>Group this together.</em></p>
+
+                <p>That is the core language.</p>
+            </section>
+
+            <!-- 13. Don't memorize -->
+            <section aria-labelledby="dont-memorize-heading" id="dont-memorize">
+                <h3 id="dont-memorize-heading">13. Don't memorize regex. Build queries.</h3>
+                <p>This is important for our eventual system.</p>
+                <p>When you want to ask:</p>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Where are all the traits?
+                </blockquote>
+                <p>You construct:</p>
+                <pre><code>trait</code></pre>
+                <p>Then refine:</p>
+                <pre><code>^trait</code></pre>
+                <p>Then account for indentation:</p>
+                <pre><code>^\s*trait</code></pre>
+                <p>Then account for public visibility:</p>
+                <pre><code>^\s*(pub\s+)?trait</code></pre>
+                <p>Then require the trait name:</p>
+                <pre><code>^\s*(pub\s+)?trait\s+\w+</code></pre>
+                <p>The progression itself is the skill.</p>
+                <div class="concept-box">
+                    <p><strong>Query → inspect result → refine query.</strong></p>
+                </div>
+            </section>
+
+            <!-- 14. Bigger goal -->
+            <section aria-labelledby="bigger-goal-heading" id="bigger-goal">
+                <h3 id="bigger-goal-heading">14. The bigger goal: source-code reconnaissance</h3>
+                <p>Eventually, I want you to be able to interrogate an unfamiliar Rust repository with queries such as:</p>
+
+                <pre tabindex="0" role="region" aria-label="rg modules"><code>rg '^\s*(pub\s+)?mod\s+' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    What modules exist?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg struct enum trait"><code>rg '^\s*(pub\s+)?(struct|enum|trait)\s+' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    What are the major types?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg impl"><code>rg '^\s*impl\s+' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Where are implementations?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg fn"><code>rg '^\s*(pub\s+)?fn\s+' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    What functions exist?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg use"><code>rg '^\s*use\s+' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    What does each file depend on?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg test"><code>rg '^\s*#\[test\]' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Where are tests?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg derive"><code>rg '^\s*#\[derive' -g '*.rs'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    Which types derive traits automatically?
+                </blockquote>
+
+                <pre tabindex="0" role="region" aria-label="rg markdown headings"><code>rg '^#{1,3}\s+' -g '*.md'</code></pre>
+                <blockquote style="font-style:italic;border-left:4px solid #444;padding-left:1.5rem;margin:0.5rem 0 1.2rem 0;">
+                    What is the documentation structure?
+                </blockquote>
+
+                <p>And eventually, much more interesting questions:</p>
+                <ul>
+                    <li>Who creates this type?</li>
+                    <li>Who calls this function?</li>
+                    <li>Which files know about this module?</li>
+                    <li>Where is this trait implemented?</li>
+                    <li>Which types contain this type?</li>
+                    <li>Which functions return this type?</li>
+                </ul>
+                <p>Those require progressively more sophisticated patterns and eventually combinations of <code class="inline">rg</code> searches.</p>
+            </section>
+
+            <!-- 15. Learning path -->
+            <section aria-labelledby="learning-path-heading" id="learning-path">
+                <h3 id="learning-path-heading">Our learning path</h3>
+                <p>I suggest we <strong>don't study Regex as a general computer-science subject</strong>.</p>
+                <p>We'll study it as:</p>
+                <div class="concept-box">
+                    <p><strong>Regex for interrogating Rust.</strong></p>
+                </div>
+
+                <h4>Stage 1 — Pattern recognition</h4>
+                <p>Learn:</p>
+                <pre><code>literal
+^
+$
+.
+\s
+\w
+\d
+*
++
+?
+{}
+[]
+()
+|</code></pre>
+
+                <h4>Stage 2 — Rust declarations</h4>
+                <p>Build queries for:</p>
+                <pre><code>mod
+use
+struct
+enum
+trait
+impl
+fn
+const
+static
+type</code></pre>
+
+                <h4>Stage 3 — Rust relationships</h4>
+                <p>Query:</p>
+                <pre><code>impl Trait for Type
+Type&lt;T&gt;
+Result&lt;T, E&gt;
+Option&lt;T&gt;
+&amp;Type
+&amp;mut Type
+Box&lt;Type&gt;
+Arc&lt;Type&gt;</code></pre>
+
+                <h4>Stage 4 — Attributes and macros</h4>
+                <p>Query:</p>
+                <pre><code>#[derive(...)]
+#[test]
+#[tokio::test]
+#[cfg(...)]
+macro_rules!</code></pre>
+
+                <h4>Stage 5 — Markdown and Cargo</h4>
+                <p>Interrogate:</p>
+                <pre><code>*.md
+*.toml</code></pre>
+                <p>for headings, dependencies, features, packages, workspace members, and documentation structure.</p>
+
+                <h4>Stage 6 — Structural reconnaissance</h4>
+                <p>Combine <code class="inline">rg</code> with context and multiple searches to produce a <strong>textual map of an unfamiliar repository</strong>.</p>
+                <p>That is where this becomes much more than learning regex. It becomes a <strong>replacement for the visual source-code map that an IDE normally gives you</strong>.</p>
+                <p>And I think that is the right target for us: <strong>not “I know regex,” but “I can interrogate a Rust repository.”</strong></p>
+            </section>
+
+        </section>
+
+    </main>
+
+    <hr>
+    <footer role="contentinfo" style="margin-top:2rem;font-size:0.9rem;color:#999;text-align:center;">
+        <p><em>Querying Text and Markdown With ripgrep</em> — Accessible Reference</p>
+        <p style="margin-top:0.2rem;">Built with semantic HTML, dark/light mode, and keyboard accessibility in mind.</p>
+    </footer>
+
+    <!-- ===== THEME TOGGLE SCRIPT ===== -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
