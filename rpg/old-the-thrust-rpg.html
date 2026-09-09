@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The thrust RPG — Accessible Edition</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 960px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        a:hover,
+        a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 3px;
+            padding: 0 0.2rem;
+        }
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #f0f0f0;
+            margin-top: 1.8em;
+            margin-bottom: 0.5em;
+        }
+        h1 {
+            font-size: 2.4rem;
+            margin-top: 0.2em;
+        }
+        h2 {
+            font-size: 1.9rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.25em;
+        }
+        h3 {
+            font-size: 1.5rem;
+            margin-top: 1.6em;
+        }
+        h4 {
+            font-size: 1.2rem;
+            margin-top: 1.3em;
+        }
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2.5rem 0;
+        }
+        code,
+        .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            color: #d4d4d4;
+            font-size: 0.92em;
+        }
+        pre {
+            background: #1e1e1e;
+            padding: 1rem 1.2rem;
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 420px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.12s;
+            margin: 1.2rem 0;
+            border-left: 4px solid #3a3a3a;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: #d4d4d4;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+            font-size: 0.95rem;
+        }
+        th,
+        td {
+            border: 1px solid #444;
+            padding: 0.5rem 0.8rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        th {
+            background: #2a2a2a;
+            color: #f0f0f0;
+            font-weight: 600;
+        }
+        td {
+            background: #1a1a1a;
+        }
+        caption {
+            caption-side: bottom;
+            margin-top: 0.4rem;
+            font-size: 0.9rem;
+            color: #aaa;
+            font-style: italic;
+        }
+
+        /* Lists */
+        ul,
+        ol {
+            padding-left: 1.8rem;
+            margin: 0.6rem 0 1rem 0;
+        }
+        li {
+            margin-bottom: 0.3rem;
+        }
+
+        /* Blockquotes / callouts */
+        .note {
+            background: #1e2a3a;
+            border-left: 4px solid #88c0ff;
+            padding: 0.8rem 1.2rem;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .tip {
+            background: #1e3a2a;
+            border-left: 4px solid #5cb87a;
+            padding: 0.8rem 1.2rem;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .warning {
+            background: #3a2a1e;
+            border-left: 4px solid #d4a05a;
+            padding: 0.8rem 1.2rem;
+            margin: 1.2rem 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f7f7f7;
+            color: #1a1a1a;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e0e0e0;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #bbb;
+        }
+        body.light-mode hr {
+            border-top-color: #bbb;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #e8e8e8;
+            color: #1a1a1a;
+        }
+        body.light-mode pre {
+            background: #e8e8e8;
+            border-left-color: #aaa;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            color: #1a1a1a;
+        }
+        body.light-mode th {
+            background: #d8d8d8;
+            color: #111;
+        }
+        body.light-mode td {
+            background: #efefef;
+        }
+        body.light-mode table th,
+        body.light-mode table td {
+            border-color: #bbb;
+        }
+        body.light-mode .note {
+            background: #e3ecf7;
+            border-left-color: #0055cc;
+        }
+        body.light-mode .tip {
+            background: #e3f5ea;
+            border-left-color: #2a7a4a;
+        }
+        body.light-mode .warning {
+            background: #f5ede3;
+            border-left-color: #b0803a;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.2rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .theme-toggle:hover {
+            background: #777;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* Skip link */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1.2rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+            font-weight: 600;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        body.light-mode .skip-link {
+            background: #333;
+            color: #fff;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* TOC */
+        nav ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        nav ul ul {
+            padding-left: 1.5rem;
+        }
+        nav li {
+            margin-bottom: 0.25rem;
+        }
+        nav a {
+            display: inline-block;
+            padding: 0.1rem 0;
+        }
+
+        /* Figures / images */
+        figure {
+            margin: 1.5rem 0;
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #333;
+        }
+        body.light-mode figure {
+            background: #eee;
+            border-color: #ccc;
+        }
+        figcaption {
+            font-style: italic;
+            color: #aaa;
+            margin-top: 0.4rem;
+            font-size: 0.92rem;
+        }
+        body.light-mode figcaption {
+            color: #555;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            display: block;
+            margin: 0.5rem 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            body {
+                padding: 1rem 0.8rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+            h2 {
+                font-size: 1.5rem;
+            }
+            h3 {
+                font-size: 1.25rem;
+            }
+            table {
+                font-size: 0.85rem;
+            }
+            th,
+            td {
+                padding: 0.3rem 0.5rem;
+            }
+            pre {
+                padding: 0.6rem 0.8rem;
+                max-height: 300px;
+            }
+            .theme-toggle {
+                padding: 0.4rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+        /* Print */
+        @media print {
+            .theme-toggle-wrap {
+                display: none;
+            }
+            .skip-link {
+                display: none;
+            }
+            body,
+            body.light-mode {
+                background: #fff !important;
+                color: #000 !important;
+            }
+            pre {
+                max-height: none !important;
+                border: 1px solid #aaa !important;
+                background: #f4f4f4 !important;
+            }
+            table th,
+            table td {
+                border-color: #aaa !important;
+            }
+            th {
+                background: #ddd !important;
+            }
+            td {
+                background: #f9f9f9 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- Theme toggle -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark or light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header role="banner" aria-label="Book header">
+        <h1>The thrust RPG</h1>
+        <h2>Accessible Edition</h2>
+        <p><strong>A productivity system &amp; storytelling engine</strong></p>
+        <p>— gamified deep work, habit tracking, and adventure generation</p>
+    </header>
+
+    <hr />
+
+    <!-- Table of Contents -->
+    <nav aria-label="Table of Contents" role="navigation">
+        <h2 id="toc-heading">Table of Contents</h2>
+        <ul aria-labelledby="toc-heading">
+            <li><a href="#sec-heart-heading">The heart of the game</a></li>
+            <li><a href="#sec-gamification-heading">thrust RPG Gamification</a></li>
+            <li><a href="#sec-purpose-heading">Purpose</a></li>
+            <li><a href="#sec-procedure-heading">Procedure</a></li>
+            <li><a href="#sec-setup-heading">Setup</a></li>
+            <li><a href="#sec-premise-heading">Create the adventure premise</a></li>
+            <li><a href="#sec-character-heading">Create a character / alter-ego</a></li>
+            <li><a href="#sec-sketch-heading">Sketch a story</a></li>
+            <li><a href="#sec-mission-heading">Build a Mission</a>
+                <ul>
+                    <li><a href="#sec-mission-activities">1. Real activities</a></li>
+                    <li><a href="#sec-mission-map">2. Map activities to Scenes</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-progression-heading">Progression</a></li>
+            <li><a href="#sec-running-heading">Running the game</a>
+                <ul>
+                    <li><a href="#sec-binary">Binary (ish) questions</a></li>
+                    <li><a href="#sec-doubles">Doubles and the Twist Counter</a></li>
+                    <li><a href="#sec-mood">Determine the mood of the next scene</a></li>
+                    <li><a href="#sec-distraction">Distraction and Direction</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-picoatto-heading">Tips for writing the story arc — PICO·ATTO</a>
+                <ul>
+                    <li><a href="#sec-pico">PICO: The Larger Shape</a></li>
+                    <li><a href="#sec-atto">ATTO: What Happens Inside the Moment</a></li>
+                    <li><a href="#sec-combined">How PICO and ATTO Work Together</a></li>
+                    <li><a href="#sec-craft">Three Simple Craft Questions</a></li>
+                    <li><a href="#sec-drafting">A Simple Drafting Process</a></li>
+                    <li><a href="#sec-ways">Three Ways to Use PICO·ATTO</a></li>
+                    <li><a href="#sec-practice">The Method in Practice</a></li>
+                    <li><a href="#sec-remember">A Few Things to Remember</a></li>
+                    <li><a href="#sec-short">The Short Version</a></li>
+                </ul>
+            </li>
+            <li><a href="#sec-kishotenketsu-heading">The Kishotenketsu</a></li>
+        </ul>
+    </nav>
+
+    <hr />
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- SECTION: The heart of the game                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-heart-heading">
+            <h2 id="sec-heart-heading">The heart of the game</h2>
+            <p>Given a set of Tasks,</p>
+
+            <div class="note" role="note" aria-label="Core idea">
+                <p><strong>▲ Without Distraction</strong> — Beat the time</p>
+                <p>Build the habit to beat the timer:</p>
+                <ol>
+                    <li>Pick a Task or step.</li>
+                    <li>Set the time to beat.</li>
+                    <li>Finish before the time is up.</li>
+                </ol>
+            </div>
+
+            <div class="note" role="note" aria-label="Deep work">
+                <p><strong>● Perform the Process</strong> — Perform Deepwork</p>
+                <p>Practice Deepwork for long periods. Start with 20 minutes, then 40, 60, …</p>
+                <p>Perform the task. Nothing else matters until the time is up.</p>
+            </div>
+
+            <div class="note" role="note" aria-label="Session goal">
+                <p><strong>■ While in Session</strong> — Aim for 3 hours sessions</p>
+                <p>Divide the 3 hours into work sessions. Start gradually in 20, 40, 60, 40, 20 minutes chunks.</p>
+            </div>
+
+            <p>
+                <a href="../../text/the_process/thrust_productivity_system.html" target="_blank" rel="noopener noreferrer">
+                    More about the <cite>thrust</cite> Productivity System &rarr;
+                </a>
+            </p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: thrust RPG Gamification                                -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-gamification-heading">
+            <h2 id="sec-gamification-heading">thrust RPG Gamification</h2>
+            <p>We can use this productivity system to power our RPG game.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Purpose                                               -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-purpose-heading">
+            <h2 id="sec-purpose-heading">Purpose</h2>
+            <p>The purpose of the game is to create a story where your PC progresses <em>only</em> if you complete <strong>x</strong> amount of real-life challenges.</p>
+            <p>For instance, if the challenge is to complete a set of 9 items, then we will match the completion of these items to a scene from the character's adventure.</p>
+            <ul>
+                <li>First you select <strong>3 actions</strong> to do for the day.</li>
+                <li>Next you select <strong>3 actions <em>not</em> to do</strong> for the day.</li>
+                <li>Finally you select <strong>3 tasks</strong> to complete for the day.</li>
+            </ul>
+            <p>These are the <strong>9 Items</strong> for the day.</p>
+            <p>If you choose to write down such a generated story, there is one last but optional work to do: writing down the scene to grow the story.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Procedure                                             -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-procedure-heading">
+            <h2 id="sec-procedure-heading">Procedure</h2>
+            <ol>
+                <li>Define the setting, the genre, the gameworld of the adventure.</li>
+                <li>Create your Player Character (PC) — a name and a brief description is sufficient, but you can create your PC using the rules of any RPG you want.</li>
+                <li>The PC starts with <strong>level 0</strong>.</li>
+                <li>Define a <strong>Lesser Award</strong> and a <strong>Major Award</strong> for your PC in case you complete the adventure in a particularly good way. Examples: Cool equipment, rare outfits, special titles or appointments, etc.</li>
+                <li>Define <strong>hindrances and costs</strong>.</li>
+                <li>To complete the adventure you need <strong>21 consecutive days</strong>.</li>
+                <li>To make it more solemn you can start on a <strong>New Moon</strong>.</li>
+            </ol>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Setup                                                 -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-setup-heading">
+            <h2 id="sec-setup-heading">Setup</h2>
+            <p>This system doesn't really use dice. Instead we check the current time and add the digits on the seconds. It gives a hat-like distribution <samp>_----_</samp>.</p>
+
+            <table aria-label="Seconds to die roll mapping">
+                <caption>Mapping seconds digits to D6 results</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">&#127922; (D6)</th>
+                        <th scope="col">&#8986; (Seconds digit)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>⚀ (1)</td><td>0</td></tr>
+                    <tr><td>⚁ (2)</td><td>1, 2</td></tr>
+                    <tr><td>⚂ (3)</td><td>3, 4</td></tr>
+                    <tr><td>⚃ (4)</td><td>5, 6</td></tr>
+                    <tr><td>⚄ (5)</td><td>7, 8</td></tr>
+                    <tr><td>⚅ (6)</td><td>9</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Create the adventure premise                          -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-premise-heading">
+            <h2 id="sec-premise-heading">Create the adventure premise</h2>
+
+            <table aria-label="Adventure premise generation table">
+                <caption>Roll D6 for each column to generate a premise</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">D6</th>
+                        <th scope="col">Who? <br /><span style="font-weight:400;">The proposer</span></th>
+                        <th scope="col">What? <br /><span style="font-weight:400;">The mission</span></th>
+                        <th scope="col">Why? <br /><span style="font-weight:400;">The incentive</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">1</th><td>Authority</td><td>Explore</td><td>Help</td></tr>
+                    <tr><th scope="row">2</th><td>Organization</td><td>Protection</td><td>Fortune</td></tr>
+                    <tr><th scope="row">3</th><td>Ally (friend, relative)</td><td>Exploit</td><td>Coercition</td></tr>
+                    <tr><th scope="row">4</th><td>Mentor</td><td>Rescue</td><td>Impulse</td></tr>
+                    <tr><th scope="row">5</th><td>Helpseeker</td><td>Escape</td><td>Ambition</td></tr>
+                    <tr><th scope="row">6</th><td>Blackmailer</td><td>Pursuit</td><td>Revenge</td></tr>
+                </tbody>
+            </table>
+
+            <table aria-label="Adventure premise secondary table">
+                <caption>Continue rolling for target, seed, and complication</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">D6</th>
+                        <th scope="col">Where? <br /><span style="font-weight:400;">The target</span></th>
+                        <th scope="col">How? <br /><span style="font-weight:400;">The seed</span></th>
+                        <th scope="col">Obstacle? <br /><span style="font-weight:400;">The complication</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">1</th><td>Person</td><td>Casual encounter</td><td>Opposition</td></tr>
+                    <tr><th scope="row">2</th><td>Group</td><td>Old acquaintance</td><td>Deception</td></tr>
+                    <tr><th scope="row">3</th><td>Location</td><td>Rumors</td><td>Environment</td></tr>
+                    <tr><th scope="row">4</th><td>Treasure</td><td>Mishap</td><td>Disguise</td></tr>
+                    <tr><th scope="row">5</th><td>A device</td><td>Capture</td><td>Time</td></tr>
+                    <tr><th scope="row">6</th><td>Confession / Leak</td><td>Object, map, document</td><td>Space</td></tr>
+                </tbody>
+            </table>
+
+            <div class="example" style="background:#1a2a2a;padding:0.8rem 1.2rem;border-radius:8px;margin:1.2rem 0;border:1px solid #3a4a4a;">
+                <p><strong>Example:</strong></p>
+                <ul>
+                    <li>The proposer: A mentor (rolled 4: Mentor)</li>
+                    <li>The mission: Extraction (rolled 4: Rescue)</li>
+                    <li>The incentive: Retribution (rolled 6: Revenge)</li>
+                    <li>The target: A Datacenter (rolled 3: Location)</li>
+                    <li>The seed: Old acquaintance (rolled 2: Old acquaintance)</li>
+                    <li>The obstacle: Flat open land (rolled 6: Space)</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Create a character / alter-ego                        -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-character-heading">
+            <h2 id="sec-character-heading">Create a character / alter-ego</h2>
+
+            <table aria-label="Character creation table part 1">
+                <caption>Roll D6 for each column</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">D6</th>
+                        <th scope="col">Good <br /><span style="font-weight:400;">at</span></th>
+                        <th scope="col">Known <br /><span style="font-weight:400;">for</span></th>
+                        <th scope="col">Have</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">1</th><td>Strong</td><td>Weapons</td><td>New Tech</td></tr>
+                    <tr><th scope="row">2</th><td>Witted</td><td>Hacks</td><td>Corp access</td></tr>
+                    <tr><th scope="row">3</th><td>Charming</td><td>Tech</td><td>Enemy</td></tr>
+                    <tr><th scope="row">4</th><td>Quick</td><td>Persuasion</td><td>Secret</td></tr>
+                    <tr><th scope="row">5</th><td>Focused</td><td>Infiltration</td><td>Disfunction</td></tr>
+                    <tr><th scope="row">6</th><td>Deft hands</td><td>Tracking</td><td>Wealth</td></tr>
+                </tbody>
+            </table>
+
+            <table aria-label="Character creation table part 2">
+                <caption>Roll D6 for motivation, reputation, and burden</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">D6</th>
+                        <th scope="col">Is Motivated <br /><span style="font-weight:400;">by</span></th>
+                        <th scope="col">Has the Reputation of</th>
+                        <th scope="col">Burdened <br /><span style="font-weight:400;">by</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">1</th><td>Retribution</td><td>Sly</td><td>Ex-con</td></tr>
+                    <tr><th scope="row">2</th><td>Money</td><td>Consistent</td><td>Blackmailed</td></tr>
+                    <tr><th scope="row">3</th><td>Cure</td><td>Driven</td><td>Mental pb</td></tr>
+                    <tr><th scope="row">4</th><td>Social J</td><td>Efficient</td><td>Physical pb</td></tr>
+                    <tr><th scope="row">5</th><td>Fear</td><td>Snob</td><td>On-the-Run</td></tr>
+                    <tr><th scope="row">6</th><td>Self-interest</td><td>Dangerous</td><td>Family</td></tr>
+                </tbody>
+            </table>
+
+            <div class="example" style="background:#1a2a2a;padding:0.8rem 1.2rem;border-radius:8px;margin:1.2rem 0;border:1px solid #3a4a4a;">
+                <p><strong>Example:</strong></p>
+                <ul>
+                    <li>Good at: Social engineering (rolled 3: Charming)</li>
+                    <li>Know for: Hacking (rolled 2: Hacks)</li>
+                    <li>Have: VIP Access badge (rolled 2: Corp access)</li>
+                    <li>Motivated by: Need to clear name (rolled 6: Self-interest)</li>
+                    <li>Reputation: Can't let go once fired up (rolled 3: Driven)</li>
+                    <li>Baggage: Was setup by his own fixer (rolled 5: On-the-Run)</li>
+                </ul>
+            </div>
+
+            <p>Then select a name and flesh out the PC with the following questions:</p>
+            <ul>
+                <li>What do they do?</li>
+                <li>What do they wear?</li>
+                <li>What do they eat?</li>
+                <li>Who are the people they spend time with?</li>
+                <li>What does their daily routine look like?</li>
+                <li>What habits do they practice?</li>
+                <li>What does their life look like?</li>
+                <li>What values do you share?</li>
+                <li>What values would you like to share?</li>
+                <li>What does your role model read?</li>
+                <li>What are your role model's hobbies?</li>
+                <li>How does your role model spend their free time?</li>
+            </ul>
+            <p><strong>Focus on these questions as a PC:</strong></p>
+            <ul>
+                <li>Why do I want to reinvent myself?</li>
+                <li>What habits and choices would I have to say <em>yes</em> to?</li>
+                <li>What habits and choices would I have to say <em>no</em> to?</li>
+                <li>Will I stay the course even when it gets rough?</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Sketch a story                                        -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-sketch-heading">
+            <h2 id="sec-sketch-heading">Sketch a story</h2>
+            <p>Using the adventure premise, sketch out a story outline using a version of <strong>Harmon's story circle</strong> (eight phases modified for RPG) that goes like this:</p>
+            <ol>
+                <li><strong>You</strong> (char_gen/intro) — a character is in a zone of comfort</li>
+                <li><strong>Need</strong> (inciting incident) — but they want something</li>
+                <li><strong>Go</strong> (commitment) — they enter an unfamiliar situation</li>
+                <li><strong>Search</strong> (pinch 1) — and adapt to the new situation</li>
+                <li><strong>Find</strong> (midpoint) — find what they wanted</li>
+                <li><strong>Take</strong> (pinch 2) — and pay the price</li>
+                <li><strong>Change</strong> (climax) — now capable of change</li>
+                <li><strong>Return</strong> (denouement) — and go back to where they started</li>
+            </ol>
+            <p>Whichever scene actually resolved the start of the adventure, that's the climax. Having attained their climax in phase 7, that last phase — "Return" — is where the PCs travel home, experience is distributed, payment is made, effects are determined, loose ends are tied, and we wind down, ready for the next session.</p>
+
+            <p>Keeping the story circle in mind, we first start with our generated adventure premise, and try to fill in the outline for the first three steps of the circle.</p>
+
+            <div class="note" role="note">
+                <p><strong>char in comfort zone</strong></p>
+                <p><em>The PC:</em> Freelance by day. Hacker by night. Hustler 24/24. For fn, hustling is not just a skill it's an art. It takes time to craft, practice to perfect, chance to master — but that's the thrill of it. Aside from being able to brush aside past failures and adversity, fn is not only one who can get things done, but can make things happen. fn turns personal pain into stepping stones and a chance of progress. fn also turns others' pain into seeds of profitable solutions to apply.</p>
+            </div>
+
+            <div class="note" role="note">
+                <p><strong>Need</strong></p>
+                <p><em>The proposer:</em> The colonel sits on a park bench, erect like a post as if still on active duty. It's been at least one score since he had retired. 10 years since he picked fn out of the gutter and the dangers of the street. 7 years since he had given his protegé a new life and identity. 3 years since the great betrayal, or was it?</p>
+                <p><em>The mission:</em> … We're talking a risky mission here. Some kind of extraction under extreme duress.</p>
+                <p><em>The incentive:</em> It turns out that the "hostiles" are people fn wants revenge on. They are the ones that wiped out the last tech-nomads of the old days. fn lost family and friends in that disaster. This is why the colonel, fn's savior and ex-mentor, called this informal meeting. Despite the confusion of the past year, the colonel knows, in all things, fn is driven in part by the prospect of retaliation.</p>
+                <p><em>The target:</em> Information. Locked away in a secure datacenter. The documents are explosive information in the correct hands. A game changer.</p>
+                <p><em>The seed:</em> The colonel got the information from an old acquaintance. It should be "legit" but <em>hey!</em> people can change.</p>
+                <p><em>The obstacle:</em> Space. Vast distance of desert and flat land to cross before any hope of reaching the target.</p>
+            </div>
+
+            <p>At this point the player accepts the mission. We enter the <strong>Go (commitment)</strong> phase and as the PC prepares for the mission, the first couple of scenes should make the PC enter an unfamiliar situation.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Build a Mission                                       -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-mission-heading">
+            <h2 id="sec-mission-heading">Build a Mission</h2>
+            <p><em>Selecting and designing challenges and activities</em></p>
+            <p>Once you have a tentative story outline, it is time to select some real life actions, tasks and things to avoid and map them to scenes in our story. Doing and accomplishing real stuff makes the story go forward.</p>
+
+            <!-- sub-section: Real activities -->
+            <h3 id="sec-mission-activities">1. Real activities</h3>
+            <p>You make a list of all the tasks you have to do, big or small. Don't filter or organize the items you add to the list, just write it all down in a list format.</p>
+            <p>As stated earlier, there are the <strong>9 Items</strong> to take care of for the day.</p>
+            <p>The PIC (Player In Character) and the story progresses scene by scene only if your POC (Player Out of Character) progresses in real life by completing or performing the 9 specific items for the day. A real day corresponds to a scene of the character's adventure.</p>
+            <ul>
+                <li>First you select <strong>3 actions</strong> to do for the day.</li>
+                <li>Next you select <strong>3 actions <em>not</em> to do</strong> for the day.</li>
+                <li>Finally you select <strong>3 tasks</strong> to complete for the day.</li>
+            </ul>
+
+            <div class="example" style="background:#1a2a2a;padding:0.8rem 1.2rem;border-radius:8px;margin:1.2rem 0;border:1px solid #3a4a4a;">
+                <p><strong>Example 9 Items:</strong></p>
+                <ul>
+                    <li><strong>Do:</strong> renew licence, pay rent, change winter tire</li>
+                    <li><strong>Don't:</strong> no coffee today, no facebook, no elevators (take the stairs)</li>
+                    <li><strong>Complete:</strong> read the third chapter of <cite>The Rust Programming Language</cite> book, do laundry, practice rust code with rustlings</li>
+                </ul>
+            </div>
+
+            <!-- sub-section: Map activities to Scenes -->
+            <h3 id="sec-mission-map">2. Map activities to Scenes and action play</h3>
+            <p>By mapping activities within the game to be in the same spirit as those performed by the player in real life, we get to evolve both the character and the story as the player actually accomplishes real life objectives and targets.</p>
+
+            <h4>Map the story scene to a real life work session or activity</h4>
+            <table aria-label="Mapping real life to in-game activities">
+                <thead>
+                    <tr><th scope="col">Real life (OC)</th><th scope="col">In the Game (IC)</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>renew licence</td><td>Get new gear</td></tr>
+                    <tr><td>pay rent</td><td>Rent a van</td></tr>
+                    <tr><td>appointment to</td><td>meeting with the colonel</td></tr>
+                    <tr><td>change winter tire</td><td>—</td></tr>
+                    <tr><td>no coffee</td><td>successfully dodge the police</td></tr>
+                    <tr><td>no facebook</td><td>found a spyware tracker</td></tr>
+                    <tr><td>no elevator</td><td>survived a bar fight while trying to upgrade some gears</td></tr>
+                    <tr><td>read chapter 3 of <cite>The Rust Programming Language</cite></td><td>Gather your team</td></tr>
+                    <tr><td>do laundry</td><td>Settled the shares and loot division</td></tr>
+                    <tr><td>practice drills</td><td>Hack into DMV to get new IDs</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Map story baddees to real life things to avoid</h4>
+            <p>Momentum and consequences regardless of external factors or setbacks. Progress on growth.</p>
+            <p>The big boss of baddees is … your <strong>inner deceiver</strong>. The master of self-doubt and self-sabotage.</p>
+            <p>Subdue the inner deceiver and its five generals:</p>
+            <ul>
+                <li><strong>The JudgeMental</strong> — What you did, what you didn't do, what you should have done. The eternal repetitive negative critic that consumes your internal positivity and replaces it with out of reach external negativity. Gets stronger each time you think you are not good enough and lose sight of what is within your control.</li>
+                <li><strong>The Victimizer</strong> — The producer of excuses and drainer of willpower. Gets stronger each time you give up or stop trying.</li>
+                <li><strong>The Misguided Protector</strong> — Promotes avoidance by exaggerating difficulties to even start. Fake protection from the risk of failure, judgement or criticism. "Safe" but Stuck. Gets stronger each time you are paralyzed and don't take any action.</li>
+                <li><strong>The Ringmaster</strong> — Productivity guilt. Unhealthy drive to keep working, pleasing, saying yes. It is unsustainable and leads to anxiety, crashes, and burnout. Unfulfilling treadmill of achievement addiction linking your worth as a person to how productive you are. Gets stronger each time you believe you will never be good enough or have done enough.</li>
+                <li><strong>The Neglector</strong> — Wins when you feel insecure in your worth, anticipate rejection. Going out of your way to seek approval. Gets stronger each time you seek validation by prioritizing the needs of everyone else at your own expense.</li>
+            </ul>
+            <p><small>Source and inspiration: <a href="https://www.youtube.com/watch?v=4AzpmZ7AjaQ" target="_blank" rel="noopener noreferrer">Master your Mindset, Overcome Self-Deception, Change your Life | Shadé Zahrai | TEDxDRC</a></small></p>
+
+            <p><strong>The Antidote to deceivers:</strong> Create emotional distance from the deceiver. This makes room for more rationality. This helps shift into an internal locus of control. How?</p>
+            <ul>
+                <li>Become aware when under attack.</li>
+                <li>Call it out. Then <strong>choose</strong> not to listen.</li>
+                <li>Write down or go through all the deceiver's arguments:
+                    <ul>
+                        <li><strong>Safe and Stuck</strong> — Is this inside my locus of control? [Y/n] — What first step imperfect action can I make <em>NOW</em>?</li>
+                        <li><strong>Busy Pleaser</strong> — Take a break! Is it not what you do but who you are that matters? Are the healthy boundaries up and active?</li>
+                        <li><strong>Say no</strong> — Your worth is not linked to how you think others see you. Is your choice an avoidance trap?</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>Your power:</strong></p>
+            <ol>
+                <li>What is is. What was was. Acceptance/acknowledgement of situation as part of life.</li>
+                <li>What will be <strong>Restarts</strong> now. You can choose what you focus on at any moment. Selectional attention (focus on things you can change / on positive things, e.g. name three things you are/were grateful for).</li>
+                <li>You don't make perfection the goal. You make the <strong>process</strong> the goal.</li>
+                <li>"Is what you are doing helping or harming you?" (control over situation / be kind to yourself).</li>
+            </ol>
+            <blockquote>
+                <p>"A negative thinker will see the difficulty in every opportunity. A positive thinker will see the opportunity in every difficulty."</p>
+                <footer>— Zig Ziglar</footer>
+            </blockquote>
+
+            <table aria-label="RPG to real life mapping for baddees">
+                <caption>Map RPG obstacles to real-life pitfalls</caption>
+                <thead>
+                    <tr><th scope="col">RPG</th><th scope="col">Real Life</th><th scope="col">In Game NPC</th><th scope="col">Why</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td>Shopping spree</td><td>JudgeMental</td><td>Keep your money</td></tr>
+                    <tr><td>2</td><td>Youtube while "working"</td><td>Victimizer</td><td>Protect your time</td></tr>
+                    <tr><td>3</td><td>Incomplete task switching</td><td>Ringmaster</td><td>Stay on course</td></tr>
+                    <tr><td>4</td><td>Giving up when it's hard</td><td>Neglector</td><td>Be tenacious, persistent</td></tr>
+                    <tr><td>5</td><td>Online "research" without bound</td><td>Protector</td><td>Don't waste working time</td></tr>
+                    <tr><td>6</td><td>Project without time constraint</td><td>TheSiren</td><td>Don't just dream: Do!</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Progression                                           -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-progression-heading">
+            <h2 id="sec-progression-heading">Progression</h2>
+            <p>We track three things:</p>
+            <ul>
+                <li>Time spent on Deep work.</li>
+                <li>Commitment and consistency.</li>
+                <li>Real tangible results.</li>
+            </ul>
+
+            <p><strong>Xp</strong> represents the number of <em>Skcor</em> completed in a period of 5 days. The time spent on deep focused tasks is called <em>Skcor</em>. A <em>Skcor</em> is a chunk or block of 20 minutes. Why <em>Skcor</em>? Because <em>Skcor</em> <strong>rockS</strong>!</p>
+
+            <p><strong>Hp</strong> tracks your consistency streak. Every 5 days without breaking the chain, you add the total of Skcor to the Xp and increment the Hp by 1. You then reset the Xp and start tracking <em>Skcor</em> for another 5 days.</p>
+
+            <p>Optionally, since Hp are incremented 1 by 1, you can use the space to also note the week number (or group of 5 days) and the total <em>Skcor</em> for that week. This gives us an opportunity to also track the progress of our ability to perform deep work.</p>
+
+            <p><strong>Lv</strong> tracks your accomplishments. Actual non-trivial work completed such as projects and certifications … Lv is incremented each time a "real" project with "real" consequences to your life is completed. Impactful stuff such as:</p>
+            <ul>
+                <li>getting a driver's licence</li>
+                <li>publishing a paper</li>
+                <li>creating and managing an Open Source project</li>
+                <li>completing an online course</li>
+                <li>…</li>
+            </ul>
+
+            <table aria-label="Progression metrics table">
+                <caption>RPG progression metrics</caption>
+                <thead>
+                    <tr><th scope="col">RPG</th><th scope="col">Real Life</th><th scope="col">to measure</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Xp</td><td>Skcor completed per 5 days</td><td>Time actually used for meaningful things</td></tr>
+                    <tr><td>Hp</td><td>Number of "5 days" without breaking the chain</td><td>Current consistency streak</td></tr>
+                    <tr><td>Lv</td><td>Number of projects completed</td><td>Compounded achievements</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Running the game                                      -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-running-heading">
+            <h2 id="sec-running-heading">Running the game</h2>
+            <p>Everything above could be seen as a productivity tool and storytelling engine. Real life actions are mapped to in-game scenes.</p>
+            <p>The real gaming begins if you add <strong>Twists and turns</strong> in the unfolding of the story. The story can take different directions without real-life input, thus altering the dynamics of the game. The real-life accomplishments become even more crucial, because you need all the points you can get since you never know what unpredictable mayhem the game can throw at the PIC (Player In Character).</p>
+
+            <!-- Binary (ish) questions -->
+            <h3 id="sec-binary">Binary (ish) questions</h3>
+            <p>Actions in the Scenes can be further enriched with dynamic in-game narratives. You ask a closed-ended question and roll 1D6 and craft the answer.</p>
+
+            <table aria-label="Binary question results table">
+                <caption>Roll 1D6 to determine outcome</caption>
+                <thead>
+                    <tr><th scope="col">Answer</th><th scope="col">Do you get what you want?</th><th scope="col">Harm</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Yes, and…</td><td>You get what you want, and something else.</td><td>Cause 3</td></tr>
+                    <tr><td>Yes…</td><td>You get what you want.</td><td>Cause 2</td></tr>
+                    <tr><td>Yes, but…</td><td>You get what you want, but at a cost.</td><td>Cause 1</td></tr>
+                    <tr><td>No, but…</td><td>You don't get what you want, but it's not a total loss.</td><td>Take 1</td></tr>
+                    <tr><td>No…</td><td>You don't get what you were after.</td><td>Take 2</td></tr>
+                    <tr><td>No, and…</td><td>You don't get what you want, and things get worse.</td><td>Take 3</td></tr>
+                </tbody>
+            </table>
+
+            <!-- DOUBLES AND THE TWIST COUNTER -->
+            <h3 id="sec-doubles">Doubles and the Twist Counter</h3>
+            <p>If you roll twice the same number consecutively, you get to alter the narrative itself.</p>
+
+            <table aria-label="Twist counter table">
+                <caption>Roll double to trigger a narrative twist</caption>
+                <thead>
+                    <tr><th scope="col">D6</th><th scope="col">Subject</th><th scope="col">Action</th></tr>
+                </thead>
+                <tbody>
+                    <tr><th scope="row">1</th><td>A 3rd party</td><td>Appears</td></tr>
+                    <tr><th scope="row">2</th><td>The hero</td><td>Alters the location</td></tr>
+                    <tr><th scope="row">3</th><td>An encounter</td><td>Helps the hero</td></tr>
+                    <tr><th scope="row">4</th><td>A physical event</td><td>Hinders the hero</td></tr>
+                    <tr><th scope="row">5</th><td>An emotional event</td><td>Changes the goal</td></tr>
+                    <tr><th scope="row">6</th><td>An object</td><td>Ends the scene</td></tr>
+                </tbody>
+            </table>
+
+            <!-- DETERMINE THE MOOD OF THE NEXT SCENE -->
+            <h3 id="sec-mood">Determine the mood of the next scene</h3>
+            <p>When the next scene is not clear, you can start by setting the mood.</p>
+
+            <table aria-label="Scene mood table">
+                <caption>Roll D6 for scene mood</caption>
+                <thead>
+                    <tr><th scope="col">D6</th><th scope="col">Next Scene</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>1–3</td><td>Dramatic Scene</td></tr>
+                    <tr><td>4–5</td><td>Quiet Scene</td></tr>
+                    <tr><td>6</td><td>Meanwhile</td></tr>
+                </tbody>
+            </table>
+
+            <!-- DISTRACTION and DIRECTION -->
+            <h3 id="sec-distraction">Distraction and Direction</h3>
+            <p>For skills that are not your <em>forté</em> you can roll and add these modifiers:</p>
+            <ul>
+                <li><strong>Even</strong> — Distracted, not in charge</li>
+                <li><strong>Odd</strong> — Directed, focused, in charge</li>
+            </ul>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: Tips for writing the story arc — PICO·ATTO           -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-picoatto-heading">
+            <h2 id="sec-picoatto-heading">Tips for writing the story arc — PICO·ATTO</h2>
+            <p>PICO·ATTO is a tool for getting unstuck rather than a compliance system. It has <strong>one core story pattern, three optional craft checks, and three simple ways to use it</strong>.</p>
+
+            <h3 id="sec-pico">PICO: The Larger Shape</h3>
+            <p>PICO gives a story or scene its broad direction.</p>
+            <dl>
+                <dt><strong>P — Premise</strong></dt>
+                <dd>What is the situation? Give the reader a reason to care, and, when appropriate, hint at where things might be going.</dd>
+                <dt><strong>I — Intrigue</strong></dt>
+                <dd>What makes us want to continue? Introduce a question, uncertainty, problem, discovery, or complication.</dd>
+                <dt><strong>C — Conflict</strong></dt>
+                <dd>What happens? Something forces a change. It does not have to be a dramatic fight. A realization, decision, mistake, loss, or revelation can do the job.</dd>
+                <dt><strong>O — Outcome</strong></dt>
+                <dd>Where are we now? Something should feel different from the beginning. The change can be large or very quiet.</dd>
+            </dl>
+            <p>That is PICO. You do not need to make every beat elaborate. Sometimes four sentences are enough.</p>
+
+            <h3 id="sec-atto">ATTO: What Happens Inside the Moment</h3>
+            <p>ATTO works at a closer range.</p>
+            <dl>
+                <dt><strong>A — Attention</strong></dt>
+                <dd>Put us somewhere specific. Instead of starting with a general description, give us a moment: <q>That Tuesday morning, she found the envelope beneath the door.</q></dd>
+                <dt><strong>T — Tension</strong></dt>
+                <dd>Something interrupts the ordinary situation. A character notices something, wants something, loses something, or encounters a problem.</dd>
+                <dt><strong>T — Transformation</strong></dt>
+                <dd>Something changes. The character learns something, makes a decision, changes their mind, fails, succeeds, or sees the situation differently.</dd>
+                <dt><strong>O — Outcome</strong></dt>
+                <dd>Let the moment settle. Show what happens immediately afterward and what the new situation feels like.</dd>
+            </dl>
+            <p>ATTO can be a complete little story on its own.</p>
+
+            <h3 id="sec-combined">How PICO and ATTO Work Together</h3>
+            <p>You can think of them as two levels of zoom.</p>
+            <ul>
+                <li><strong>PICO</strong> asks: <q>Where is the story going?</q></li>
+                <li><strong>ATTO</strong> asks: <q>What happens in this particular moment?</q></li>
+            </ul>
+            <p>For a short piece, you might use only ATTO. For a quick outline, you might use only PICO. For a longer story, PICO can give the whole story its direction while ATTO shapes individual scenes. There is no need to build an elaborate hierarchy of nested structures unless that actually helps you.</p>
+
+            <h3 id="sec-craft">Three Simple Craft Questions</h3>
+            <p>When revising a scene, ask:</p>
+            <ol>
+                <li><strong>Does the character feel like a person?</strong> Give characters some interior life. They can have habits, fears, preferences, memories, contradictions, and small details that have nothing to do with the plot. You do not have to explain all of this. A small detail can be enough.</li>
+                <li><strong>Is there something underneath the dialogue?</strong> People do not always say exactly what they mean. A character might avoid a question, change the subject, joke when frightened, or sound calm while actually being angry. You do not need a dialogue technique for every conversation. Just look for places where the words and the underlying feeling are different.</li>
+                <li><strong>Does the reader have a reason to continue?</strong> Give the reader something to wonder about. It might be a mystery, an unanswered question, a difficult choice, an emotional uncertainty, or simply the desire to discover what happens next. Do not force a mystery into every few hundred words. If the story is already carrying the reader forward, leave it alone.</li>
+            </ol>
+
+            <h3 id="sec-drafting">A Simple Drafting Process</h3>
+            <p>Instead of five separate passes, use three.</p>
+            <ol>
+                <li><strong>Find the Moment.</strong> Before writing, ask: Where are we? Who is here? What does the viewpoint character notice? What is happening emotionally? You only need enough to begin.</li>
+                <li><strong>Give It Movement.</strong> Use ATTO as a loose guide: <strong>Attention → Tension → Transformation → Outcome</strong>. Something happens. Something complicates it. Something changes. The moment ends somewhere new. Do not worry about making every step equal in size.</li>
+                <li><strong>Read It Again.</strong> Look for three things: places where the character feels alive, places where the dialogue has something underneath it, and places where the reader has a reason to keep going. Strengthen what is missing. Then stop.</li>
+            </ol>
+
+            <h3 id="sec-ways">Three Ways to Use PICO·ATTO</h3>
+            <p>You do not always need the whole method.</p>
+            <dl>
+                <dt><strong>A Small Moment: ATTO</strong></dt>
+                <dd>Use ATTO when you have one scene, memory, discovery, or emotional moment. You can write it in a few paragraphs. <strong>Attention → Tension → Transformation → Outcome</strong>. That is enough.</dd>
+                <dt><strong>A Story Idea: PICO</strong></dt>
+                <dd>Use PICO when you have a larger story in mind but do not know its shape yet. Write four short statements: <strong>Premise:</strong> What is happening? <strong>Intrigue:</strong> What makes it uncertain? <strong>Conflict:</strong> What changes everything? <strong>Outcome:</strong> Where does it leave us? This gives you a skeleton without forcing you to write the whole story.</dd>
+                <dt><strong>A Longer Story: PICO + ATTO</strong></dt>
+                <dd>For a story with several scenes, use PICO for the larger movement and ATTO for the scenes. You might have: <strong>Story</strong> — P (the situation is established), I (complications develop), C (the central change occurs), O (the consequences settle). Then each important scene can have its own <strong>Attention → Tension → Transformation → Outcome</strong>. You can expand a scene when it needs room and keep it short when it does not.</dd>
+            </dl>
+
+            <h3 id="sec-practice">The Method in Practice</h3>
+            <p>Suppose you have this idea: <q>A woman receives a photograph of herself as a child, but she does not recognize the man standing beside her.</q></p>
+            <p>A quick PICO outline might be:</p>
+            <ul>
+                <li><strong>P:</strong> A woman receives an old photograph of herself.</li>
+                <li><strong>I:</strong> She recognizes herself but not the man beside her.</li>
+                <li><strong>C:</strong> She discovers that the man was someone her family deliberately erased from her history.</li>
+                <li><strong>O:</strong> She cannot recover the past, but she decides to stop pretending it never happened.</li>
+            </ul>
+            <p>Now choose one moment and use ATTO.</p>
+            <ul>
+                <li><strong>Attention:</strong> She opens the envelope at the kitchen table.</li>
+                <li><strong>Tension:</strong> The photograph contains a familiar child and a completely unfamiliar man.</li>
+                <li><strong>Transformation:</strong> She realizes the photograph was taken before the story her family has always told her begins.</li>
+                <li><strong>Outcome:</strong> She puts the photograph beside her coffee and calls her mother.</li>
+            </ul>
+            <p>That is enough to start writing.</p>
+
+            <h3 id="sec-remember">A Few Things to Remember</h3>
+            <ul>
+                <li>PICO·ATTO works best as a <strong>default</strong>, not a set of laws.</li>
+                <li>A scene can begin with tension.</li>
+                <li>A story can end without a clear resolution.</li>
+                <li>A character can change very little.</li>
+                <li>A conversation can be completely direct.</li>
+                <li>A scene can ignore ATTO altogether.</li>
+                <li>You can also mix the approaches. A long story might contain a tiny ATTO moment, followed by a larger PICO sequence, followed by another small ATTO scene.</li>
+                <li>The structure is there to help when you need it. If the story is already working, you do not need to stop and check every box.</li>
+            </ul>
+
+            <h3 id="sec-short">The Short Version</h3>
+            <p>When you are stuck, remember only this:</p>
+            <ul>
+                <li><strong>For a moment:</strong> <strong>ATTO</strong> — Attention → Tension → Transformation → Outcome</li>
+                <li><strong>For a story:</strong> <strong>PICO</strong> — Premise → Intrigue → Conflict → Outcome</li>
+                <li><strong>For revision:</strong> Ask: Does the character feel real? Is there something beneath the words? Does the reader want to know what happens next?</li>
+            </ul>
+            <p>That is the whole method. Start with whichever part helps you begin writing.</p>
+        </section>
+
+        <!-- ============================================================ -->
+        <!-- SECTION: The Kishotenketsu                                     -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="sec-kishotenketsu-heading">
+            <h2 id="sec-kishotenketsu-heading">The Kishotenketsu</h2>
+            <p>The <strong>Kishotenketsu</strong> (from <em>qi cheng zhuan he</em>), a storytelling structure, can actually correspond to the Dan Harmon Story Circle.</p>
+
+            <dl>
+                <dt><strong>Ki (Introduction)</strong></dt>
+                <dd>1. You &nbsp; 2. Need</dd>
+                <dt><strong>Sho (Development)</strong></dt>
+                <dd>3. Go &nbsp; 4. Search</dd>
+                <dt><strong>Ten (Twist)</strong></dt>
+                <dd>5. Find &nbsp; 6. Take</dd>
+                <dt><strong>Ketsu (Conclusion)</strong></dt>
+                <dd>7. Return &nbsp; 8. Change</dd>
+            </dl>
+
+            <p>In a story, the following might happen:</p>
+            <ul>
+                <li><strong>Introduction (ki):</strong> an introduction to the characters, era, and other information required to understand the plot.</li>
+                <li><strong>Development (shō):</strong> follows leads towards the twist in the story. No major changes so far.</li>
+                <li><strong>Twist (ten):</strong> the story turns toward an unexpected development. This is the crux of the story, the <em>yama</em> (ヤマ) or climax. If the narrative takes several turns, this is the biggest one.</li>
+                <li><strong>Conclusion (ketsu),</strong> also called <em>ochi</em> (落ち) or ending, wraps up the story.</li>
+            </ul>
+        </section>
+
+    </main>
+    <!-- end main-content -->
+
+    <!-- ============================================================ -->
+    <!-- JavaScript: theme toggle                                       -->
+    <!-- ============================================================ -->
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+
+</body>
+</html>
