@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 56px; padding-bottom: 56px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 28px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(58px, 12vw, 118px); line-height: 0.86; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 22px; font-size: 14px; letter-spacing: 0.05em; color: var(--riso-yellow); max-width: 42ch; line-height: 1.6; }
+  .cover-foot{ margin-top: 42px; display:flex; gap: 26px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 28px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  .chapters{ margin-top: 18px; display:flex; flex-direction:column; }
+  .chapter{ padding: 18px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 50px 1fr; gap: 16px; align-items:start; }
+  .chapter:first-child{ border-top:none; }
+  .chapter .chnum{ font-family:'Anton', sans-serif; font-size: 24px; color: var(--rule); line-height: 1; }
+  .chapter h4{ margin: 0 0 6px 0; font-size: 14.5px; }
+  .chapter h4 a{ color: var(--riso-pink); text-decoration:none; }
+  .chapter h4 a:hover, .chapter h4 a:focus{ text-decoration: underline; }
+  .chapter p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; max-width: 60ch; }
+  .chapter .filename{ display:block; margin-top:4px; font-size: 10.5px; color: var(--ink-dim); opacity:0.7; }
+
+  .callout{
+    margin-top: 20px; background: var(--paper-3); border: 1px solid var(--riso-pink);
+    box-shadow: 0 0 0 1px rgba(255,46,99,0.15); padding: 24px;
+  }
+  .callout .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-pink); }
+  .callout h3{ margin: 10px 0 8px 0; font-family:'Anton', sans-serif; font-weight:400; font-size: 22px; color: var(--ink); }
+  .callout p{ margin:0 0 14px 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width:62ch; }
+  .callout a.enter{
+    display:inline-block; border: 1px solid var(--riso-yellow); color: var(--riso-yellow);
+    padding: 9px 18px; font-size: 12px; letter-spacing: 0.1em; text-decoration:none;
+  }
+  .callout a.enter:hover, .callout a.enter:focus{ background: var(--riso-yellow); color: var(--paper); }
+
+  .hooks{ margin-top: 16px; display:flex; flex-direction:column; }
+  .hook{ padding: 16px 0; border-top: 1px solid var(--rule); }
+  .hook:first-child{ border-top:none; }
+  .hook h4{ margin: 0 0 6px 0; font-size: 14px; }
+  .hook h4 a{ color: var(--riso-yellow); text-decoration:none; }
+  .hook h4 a:hover, .hook h4 a:focus{ text-decoration:underline; }
+  .hook p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; max-width: 62ch; }
+
+  .archive .hook h4 a{ color: var(--ink-dim); }
+  .archive .hook .tag{ display:inline-block; margin-bottom:4px; font-size: 9.5px; letter-spacing: 0.12em; color: var(--ink-dim); border: 1px solid var(--rule); padding: 2px 7px; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 34px 22px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="SITE INDEX" role="banner">
+      <div class="stamp">SITE INDEX</div>
+      <h1 class="masthead">CAPS<br>LOCK</h1>
+      <div class="tagline">EVERY DOCUMENT, ONE MAP. NO DICE, NO SHEETS, JUST A CLOCK.</div>
+      <div class="cover-foot">
+        <span>6 CORE DOCS</span>
+        <span>1 EXTENDED EDITION</span>
+        <span>2 ARCHIVED DRAFTS</span>
+      </div>
+    </header>
+
+    <main id="main-content">
+
+    <!-- CORE DOCUMENTS -->
+    <section class="panel" aria-labelledby="core-h" data-fold="CORE DOCUMENTS">
+      <div class="kicker">START HERE</div>
+      <h2 class="section" id="core-h">Core Documents</h2>
+      <p class="copy">The base system, in reading order.</p>
+
+      <div class="chapters">
+        <div class="chapter">
+          <div class="chnum">00</div>
+          <div>
+            <h4><a href="00.capslock-pamphlet.html">The Pamphlet</a></h4>
+            <p>Cover and lore only — no rules. The street-flyer pitch for what CAPSLOCK is.</p>
+            <span class="filename">00.capslock-pamphlet.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">01</div>
+          <div>
+            <h4><a href="01.capslock-core-rulebook.html">The Core Rulebook</a></h4>
+            <p>Solo-by-default resolution, character creation, netrunning, world rules, adversaries, and Quest Deconstruction — the whole game in one page.</p>
+            <span class="filename">01.capslock-core-rulebook.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">02</div>
+          <div>
+            <h4><a href="02.capslock-digit-sum-draw.html">The Digit-Sum Draw</a></h4>
+            <p>The recommended method behind the engine — how a clock produces a hat-shaped D6, and why.</p>
+            <span class="filename">02.capslock-digit-sum-draw.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">03</div>
+          <div>
+            <h4><a href="03.capslock-verb-ledger.html">The Verb Ledger</a></h4>
+            <p>A solo journaling case — seven days, three Verbs, a single Standing state instead of a tally.</p>
+            <span class="filename">03.capslock-verb-ledger.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">04</div>
+          <div>
+            <h4><a href="04.capslock-rustcore.html">CAPSLOCK // RUSTCORE</a></h4>
+            <p>A full campaign for assimilating <cite>The Rust Programming Language</cite> — 21 checkpoints, four bosses, one compiler that never lies.</p>
+            <span class="filename">04.capslock-rustcore.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">05</div>
+          <div>
+            <h4><a href="05.capslock-MATE_Terminal-Orca-Helix-Shortcut-Reference.html">Shortcut Reference</a></h4>
+            <p>MATE Terminal, Orca, and Helix keybindings, laid out in the same visual system.</p>
+            <span class="filename">05.capslock-MATE_Terminal-Orca-Helix-Shortcut-Reference.html</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXTENDED EDITION -->
+    <section class="panel" aria-labelledby="ext-h" data-fold="EXTENDED EDITION">
+      <div class="kicker">THE LONGER FORM</div>
+      <h2 class="section" id="ext-h">Extended Edition</h2>
+      <p class="copy">A nine-page companion book. The Rule of Three is lifted, the six-outcome Digit-Sum Draw runs everything from combat to real-life progression, and a full campaign example threads through all eight chapters.</p>
+
+      <div class="callout">
+        <div class="tag">SUB-BOOK · 9 PAGES</div>
+        <h3>CAPSLOCK: Extended Edition</h3>
+        <p>Open Trait characters, an oracle-driven Premise Generator, the eight-phase Story Circle, real-life missions, six Inner Deceivers mapped to the D6, optional progression tracking, and the full twist/mood/direction toolkit.</p>
+        <a class="enter" href="extended/index.html">ENTER THE EXTENDED EDITION &rarr;</a>
+      </div>
+    </section>
+
+    <!-- DEV RESOURCES -->
+    <section class="panel" aria-labelledby="dev-h" data-fold="DEV RESOURCES">
+      <div class="kicker">FOR BUILDING MORE PAGES</div>
+      <h2 class="section" id="dev-h">Template</h2>
+      <div class="hooks">
+        <div class="hook">
+          <h4><a href="capslock-template.html">The CAPSLOCK HTML Template</a></h4>
+          <p>The whole design system in one file — cover, section headers, card grids, tables, hooks lists, back panel — commented and ready to duplicate for the next page.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHIVE -->
+    <section class="panel archive" aria-labelledby="archive-h" data-fold="ARCHIVE">
+      <div class="kicker">SUPERSEDED</div>
+      <h2 class="section" id="archive-h">Archive</h2>
+      <p class="copy">Earlier drafts, kept for reference. Not part of the current reading order.</p>
+      <div class="hooks">
+        <div class="hook">
+          <span class="tag">PRE-REBRAND</span>
+          <h4><a href="old-capslock-rpg.html">old-capslock-rpg.html</a></h4>
+          <p>An earlier accessible-edition draft of the core rulebook, from before the Digit-Sum Draw became central.</p>
+        </div>
+        <div class="hook">
+          <span class="tag">SOURCE MATERIAL</span>
+          <h4><a href="old-the-thrust-rpg.html">old-the-thrust-rpg.html</a></h4>
+          <p>The original productivity-RPG hybrid several Extended Edition chapters were adapted from.</p>
+        </div>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">C A P S L O C K</div>
+      <p class="closer">No dice. No app. No sheet. Just a clock, a city, and however far you can walk before the story runs out of road.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
