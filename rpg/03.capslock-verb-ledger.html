@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK // THE VERB LEDGER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: transparent; color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  /* cover */
+  .cover{ padding-top: 56px; padding-bottom: 56px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 28px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(40px, 9vw, 88px); line-height: 0.92; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  h1.masthead .sub{ display:block; font-size: clamp(16px, 3.4vw, 30px); color: var(--riso-yellow); text-shadow: none; letter-spacing: 0.07em; margin-top: 8px; }
+  .tagline{ margin-top: 22px; font-size: 14px; letter-spacing: 0.05em; color: var(--riso-yellow); max-width: 42ch; line-height: 1.6; }
+  .cover-foot{ margin-top: 42px; display:flex; gap: 26px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  /* section headers */
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 30px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 22px; }
+  p.copy{ font-size: 14.5px; line-height: 1.75; max-width: 64ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 14px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  /* card grid — verbs */
+  .checkpoint-grid{ margin-top: 26px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .cp{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .cp .cp-num{ font-family:'Anton', sans-serif; font-size: 24px; color: var(--rule); line-height: 1; }
+  .cp h4{ margin: 6px 0 6px 0; font-size: 15px; color: var(--riso-yellow); letter-spacing: 0.03em; }
+  .cp p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.55; }
+  @media (max-width: 760px){ .checkpoint-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 480px){ .checkpoint-grid{ grid-template-columns: 1fr; } }
+
+  /* 3-column state cards — Standing */
+  .threats{ margin-top: 26px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat.warn{ border-color: var(--riso-pink); background: var(--paper-3); }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat.warn .tag{ color: var(--riso-pink); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 15px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 760px){ .threats{ grid-template-columns: 1fr; } }
+
+  /* resolution table */
+  table.bandtable{ width:100%; border-collapse: collapse; margin: 22px 0 8px 0; font-size: 13px; }
+  table.bandtable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.14em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 14px 8px 0; text-transform: uppercase;
+  }
+  table.bandtable td{ padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.bandtable tr:last-child td{ border-bottom: none; }
+  table.bandtable td.band{ font-family:'Anton', sans-serif; color: var(--riso-pink); font-size: 16px; }
+
+  /* day chips — quick arc overview */
+  .loop{ margin-top: 26px; display:flex; flex-wrap: wrap; gap: 0; }
+  .loop-step{ flex: 1 1 110px; padding: 14px 14px; border: 1px solid var(--rule); background: var(--paper-2); }
+  .loop-step + .loop-step{ border-left: none; }
+  .loop-step .num{ font-family:'Anton', sans-serif; font-size: 11px; color: var(--riso-pink); letter-spacing: 0.1em; display:block; margin-bottom: 6px; }
+  .loop-step .name{ font-size: 11.5px; color: var(--ink); font-weight: 700; letter-spacing: 0.01em; }
+  @media (max-width: 760px){ .loop-step{ flex-basis: 45%; border-left: 1px solid var(--rule) !important; } }
+
+  /* stacked case entries */
+  .hooks{ margin-top: 10px; display:flex; flex-direction:column; }
+  .hook{ padding: 20px 0; border-top: 1px solid var(--rule); }
+  .hook:first-child{ border-top:none; }
+  .hook h4{ margin: 0 0 8px 0; font-size: 15px; color: var(--riso-pink); letter-spacing: 0.01em; }
+  .hook .hook-verb{ color: var(--riso-yellow); font-style: normal; font-weight:700; }
+  .hook p{ margin:0 0 6px 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 64ch; }
+  .hook p:last-child{ margin-bottom:0; }
+
+  /* back */
+  .back{ text-align:center; padding-top: 58px; padding-bottom: 58px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 17px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 18px; font-size: 13px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .back .strapline{ margin-top: 28px; font-family:'Anton', sans-serif; font-size: 19px; color: var(--riso-yellow); }
+
+  @media (max-width: 640px){ .panel{ padding: 34px 22px; } }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <section class="panel cover" data-fold="PANEL 1 / COVER">
+      <div class="stamp">A CAPSLOCK CASE FILE</div>
+      <h1 class="masthead">THE VERB<br>LEDGER</h1>
+      <div class="tagline">A SOLO JOURNALING CASE. SEVEN DAYS. THREE VERBS. ONE WORD FOR HOW BADLY YOU'RE HOLDING UP.</div>
+      <div class="cover-foot">
+        <span>NO DICE</span>
+        <span>ONE CLOCK</span>
+        <span>ONE WEEK</span>
+      </div>
+    </section>
+
+    <!-- VERBS -->
+    <section class="panel" data-fold="PANEL 2 / THE VERBS">
+      <div class="kicker">PART 1</div>
+      <h2 class="section">Three Verbs, No Numbers</h2>
+      <p class="copy">Pick three. When a prompt turns risky, one of these is what you reach for — no stat behind it, just a description of what your character does under pressure.</p>
+
+      <div class="checkpoint-grid">
+        <div class="cp"><div class="cp-num">01</div><h4>HACK</h4><p>Bypassing firewalls, manipulating networks, overriding drone logic.</p></div>
+        <div class="cp"><div class="cp-num">02</div><h4>PROWL</h4><p>Moving unseen, tailing targets, lifting data-chits.</p></div>
+        <div class="cp"><div class="cp-num">03</div><h4>COAX</h4><p>Fast-talking handlers, bribing informants, quiet intimidation.</p></div>
+        <div class="cp"><div class="cp-num">04</div><h4>SCAN</h4><p>Reading digital footprints, working a scene, piecing together clues.</p></div>
+        <div class="cp"><div class="cp-num">05</div><h4>BRAWL</h4><p>Street violence, desperate shootouts, breaking through what won't move.</p></div>
+      </div>
+      <p class="copy" style="margin-top:20px;">When an action clearly matches one of your three, a "Yes, but" upgrades to a clean "Yes" — the same trick Style already pulls. Both can trigger on the same draw.</p>
+    </section>
+
+    <!-- STANDING -->
+    <section class="panel" data-fold="PANEL 3 / STANDING">
+      <div class="kicker">PART 1, CONTINUED</div>
+      <h2 class="section">Standing</h2>
+      <p class="copy">One word, not a tally. It only ever holds one of three states — and it only ever moves forward.</p>
+
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">START HERE</div>
+          <h4>STEADY</h4>
+          <p>Add a flavor word or two if you like — <span class="anchor">Calculated, Wired, Connected</span>. Texture only, nothing to track.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">FIRST COST</div>
+          <h4>CRACKING</h4>
+          <p>Something specific and visible changes — <span class="anchor">Bleeding, Glitching, Paranoid, Burned</span>. Pick the word that fits the scene.</p>
+        </div>
+        <div class="threat warn">
+          <div class="tag">SECOND COST</div>
+          <h4>BREAKING</h4>
+          <p>Your next entry must contain a catastrophic failure or a narrow, costly escape. No choice about it now.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESOLUTION -->
+    <section class="panel" data-fold="PANEL 4 / THE ORACLE">
+      <div class="kicker">PART 1, CONTINUED</div>
+      <h2 class="section">Reading the Clock Draw Directly</h2>
+      <p class="copy">No difficulty to set here — just "what happens next." Pick your Verb, glance at a clock, read the second straight off the bands.</p>
+
+      <table class="bandtable">
+        <thead><tr><th scope="col">Band</th><th scope="col">Seconds</th><th scope="col">Result</th></tr></thead>
+        <tbody>
+          <tr><td class="band">1</td><td>:00–:19</td><td>Clean success. You get exactly what you wanted.</td></tr>
+          <tr><td class="band">2</td><td>:20–:39</td><td>Success with a cost. You get it — but Standing ratchets forward one stage.</td></tr>
+          <tr><td class="band">3</td><td>:40–:59</td><td>Failure. Standing ratchets forward, and the obstacle remains or mutates.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- THE CASE: ARC OVERVIEW -->
+    <section class="panel" data-fold="PANEL 5 / THE ARC">
+      <div class="kicker">PART 2</div>
+      <h2 class="section">The Ghost in the Ledger</h2>
+      <p class="copy">Seven days. Aisuru Biotech is your Megacorp. The Electric Velvet's broker network is your Street Gang. Your apartment is your Safe Zone — until Day 5.</p>
+      <div class="loop">
+        <div class="loop-step"><span class="num">DAY 1</span><span class="name">COLD DROP</span></div>
+        <div class="loop-step"><span class="num">DAY 2</span><span class="name">WET WORK</span></div>
+        <div class="loop-step"><span class="num">DAY 3</span><span class="name">THE GLITCH</span></div>
+        <div class="loop-step"><span class="num">DAY 4</span><span class="name">UNDERBELLY</span></div>
+        <div class="loop-step"><span class="num">DAY 5</span><span class="name">FRAME-UP</span></div>
+        <div class="loop-step"><span class="num">DAY 6</span><span class="name">SYSTEM CRASH</span></div>
+        <div class="loop-step"><span class="num">DAY 7</span><span class="name">FINAL LOG</span></div>
+      </div>
+    </section>
+
+    <!-- THE CASE: DETAIL -->
+    <section class="panel" data-fold="PANEL 6 / THE CASE FILE">
+      <div class="kicker">PART 2, CONTINUED</div>
+      <h2 class="section">Seven Entries</h2>
+
+      <div class="hooks">
+        <div class="hook">
+          <h4>DAY 1 — THE COLD DROP</h4>
+          <p>3 AM, a burner phone, coordinates to a dead drop in the transit district. Inside: an encrypted data-chit and a stack of cred-sticks.</p>
+          <p>Draw on <span class="hook-verb">SCAN</span> or <span class="hook-verb">HACK</span>. The security proxy plays like a Watcher — it won't fight you, it'll just lock you out and remember you were there. What did you decode first?</p>
+        </div>
+        <div class="hook">
+          <h4>DAY 2 — THE WET WORK</h4>
+          <p>The chit belongs to an Aisuru Biotech executive, missing 48 hours. Their signature leads to a blood-slicked alley behind a noodle shop.</p>
+          <p>Draw on <span class="hook-verb">PROWL</span> to work the scene unnoticed, or <span class="hook-verb">BRAWL</span> if the clean-up drones — Enforcers — spot you first. What clue ties this to the arcologies above?</p>
+        </div>
+        <div class="hook">
+          <h4>DAY 3 — THE GLITCH IN THE MIRROR</h4>
+          <p>Your implants glitch. Unfamiliar code loops at the bottom of your HUD. The chit is a beacon, and it's frying your rig.</p>
+          <p>Draw on <span class="hook-verb">COAX</span> to get a ripperdoc to look at you off the books — a Corporate Paywall — or <span class="hook-verb">HACK</span> to purge it yourself. What did the code change about what you remember?</p>
+        </div>
+        <div class="hook">
+          <h4>DAY 4 — INTO THE UNDERBELLY</h4>
+          <p>The clue leads to The Electric Velvet, hunting a broker called Zero-Day.</p>
+          <p>Draw on <span class="hook-verb">PROWL</span> past biometric security or <span class="hook-verb">COAX</span> your way into the VIP lounge. What does Zero-Day reveal about who actually hired you?</p>
+        </div>
+        <div class="hook">
+          <h4>DAY 5 — THE FRAME-UP</h4>
+          <p>Sirens. Your face is on the billboards. You've been framed. Accounts frozen, apartment compromised — <strong>your Safe Zone stops being safe. Cross it off.</strong></p>
+          <p>Draw on <span class="hook-verb">PROWL</span> past a patrol drone or <span class="hook-verb">BRAWL</span> through a checkpoint. Who just stopped answering your calls?</p>
+        </div>
+        <div class="hook">
+          <h4>DAY 6 — THE SYSTEM CRASH</h4>
+          <p>The unencrypted files reveal the plan: a predatory neural virus, field-tested on the city's lower tiers. The array traces to a server farm — a Hunter, no clean fight available.</p>
+          <p>Draw on <span class="hook-verb">HACK</span> to breach the matrix or <span class="hook-verb">BRAWL</span> to breach the floor. As the alarms scream — save yourself, or expose the corp?</p>
+        </div>
+        <div class="hook">
+          <h4>DAY 7 — THE FINAL LOG</h4>
+          <p>Rain outside the window, or inside the wreck of the server room. Check your Standing.</p>
+          <p><strong>Breaking</strong> → write a noir ending — tragic sacrifice, or cynical survival. <strong>Cracking or Steady</strong> → you came through intact. How do you use what you know now that the city knows your name?</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- BACK -->
+    <section class="panel back" data-fold="PANEL 7 / BACK">
+      <div class="glyph">T H E &nbsp; V E R B &nbsp; L E D G E R</div>
+      <p class="closer">Two good outcomes, one bad one, and a slow spiral toward a breaking point you can see coming — without ever having to count toward it.</p>
+      <div class="strapline">SEVEN DAYS. ONE CLOCK. WRITE THE LOG.</div>
+    </section>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK // THE DIGIT-SUM DRAW</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: transparent; color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  /* cover */
+  .cover{ padding-top: 56px; padding-bottom: 56px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 28px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(36px, 8vw, 76px); line-height: 0.95; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  h1.masthead .sub{ display:block; font-size: clamp(15px, 3vw, 26px); color: var(--riso-yellow); text-shadow: none; letter-spacing: 0.07em; margin-top: 8px; }
+  .tagline{ margin-top: 22px; font-size: 14px; letter-spacing: 0.05em; color: var(--riso-yellow); max-width: 44ch; line-height: 1.6; }
+  .cover-foot{ margin-top: 42px; display:flex; gap: 26px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  /* section headers */
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 28px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 22px; }
+  p.copy{ font-size: 14.5px; line-height: 1.75; max-width: 64ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 14px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  /* numbered step list */
+  .archetypes{ margin-top: 26px; display:flex; flex-direction:column; gap: 22px; }
+  .arch{ display:grid; grid-template-columns: 64px 1fr; gap: 18px; align-items: start; }
+  .arch-mark{ font-family:'Anton', sans-serif; font-size: 38px; line-height: 1; color: var(--rule); }
+  .arch h3{ margin: 2px 0 6px 0; font-size: 16px; color: var(--ink); letter-spacing: 0.02em; }
+  .arch p{ margin: 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 58ch; }
+  .arch code{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12px; }
+
+  /* mapping table */
+  table.bandtable{ width:100%; border-collapse: collapse; margin: 22px 0 8px 0; font-size: 13px; max-width: 420px; }
+  table.bandtable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.14em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 20px 8px 0; text-transform: uppercase;
+  }
+  table.bandtable td{ padding: 10px 20px 10px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.bandtable tr:last-child td{ border-bottom: none; }
+  table.bandtable td.d6{ font-family:'Anton', sans-serif; color: var(--riso-pink); font-size: 18px; }
+
+  /* 2-up reason grid */
+  .pair-grid{ margin-top: 26px; display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .pair{ border-left: 3px solid var(--riso-yellow); padding-left: 14px; }
+  .pair h3{ margin: 0 0 6px 0; font-size: 13px; letter-spacing: 0.1em; color: var(--riso-yellow); font-weight: 700; }
+  .pair p{ margin:0; font-size: 12.5px; line-height: 1.65; color: var(--ink-dim); }
+  @media (max-width: 640px){ .pair-grid{ grid-template-columns: 1fr; } }
+
+  /* use / don't-use cards */
+  .threats{ margin-top: 26px; display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 18px; }
+  .threat.warn{ border-color: var(--riso-pink); background: var(--paper-3); }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat.warn .tag{ color: var(--riso-pink); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 15px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 640px){ .threats{ grid-template-columns: 1fr; } }
+
+  /* back */
+  .back{ text-align:center; padding-top: 58px; padding-bottom: 58px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.9; max-width: 44ch; margin-left:auto; margin-right:auto; }
+  .back .formula{
+    margin-top: 26px; display:inline-block; font-size: 12px; letter-spacing: 0.04em;
+    color: var(--riso-yellow); border: 1px dashed var(--rule); padding: 12px 18px; text-align:left;
+  }
+
+  @media (max-width: 640px){ .panel{ padding: 34px 22px; } }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <section class="panel cover" data-fold="PANEL 1 / COVER">
+      <div class="stamp">RECOMMENDED METHOD</div>
+      <h1 class="masthead">THE DIGIT-SUM<span class="sub">DRAW</span></h1>
+      <div class="tagline">A D6-SHAPED RESULT FROM NOTHING BUT A CLOCK. NO DICE, NO APP, NO SECOND PERSON.</div>
+      <div class="cover-foot">
+        <span>NO DICE</span>
+        <span>ONE CLOCK</span>
+        <span>FOUR STEPS</span>
+      </div>
+    </section>
+
+    <!-- THE METHOD -->
+    <section class="panel" data-fold="PANEL 2 / THE METHOD">
+      <div class="kicker">HOW IT WORKS</div>
+      <h2 class="section">Four Steps</h2>
+
+      <div class="archetypes">
+        <div class="arch">
+          <div class="arch-mark">01</div>
+          <div>
+            <h3>Check the time</h3>
+            <p>Look at the current seconds value — anything from <code>00</code> to <code>59</code>.</p>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">02</div>
+          <div>
+            <h3>Add the two digits together</h3>
+            <p><code>:47 → 4 + 7 = 11</code></p>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">03</div>
+          <div>
+            <h3>Reduce to a single digit</h3>
+            <p>If the sum is more than one digit, add its digits again. <code>11 → 1 + 1 = 2</code></p>
+          </div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">04</div>
+          <div>
+            <h3>Convert to a D6</h3>
+            <p>Look the digit up on the mapping table below.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAPPING TABLE -->
+    <section class="panel" data-fold="PANEL 3 / THE TABLE">
+      <div class="kicker">LOOKUP</div>
+      <h2 class="section">Digit → D6</h2>
+      <table class="bandtable">
+        <thead><tr><th scope="col">Digit</th><th scope="col">D6 Result</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td class="d6">1</td></tr>
+          <tr><td>1 or 2</td><td class="d6">2</td></tr>
+          <tr><td>3 or 4</td><td class="d6">3</td></tr>
+          <tr><td>5 or 6</td><td class="d6">4</td></tr>
+          <tr><td>7 or 8</td><td class="d6">5</td></tr>
+          <tr><td>9</td><td class="d6">6</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- WHY HAT-SHAPED -->
+    <section class="panel" data-fold="PANEL 4 / THE MATH">
+      <div class="kicker">WHY IT WORKS</div>
+      <h2 class="section">Why It's Hat-Shaped, Not Flat</h2>
+      <p class="copy">A single raw digit would be evenly likely across the board. This method isn't that — two things stack on top of each other to pull it toward the middle.</p>
+
+      <div class="pair-grid">
+        <div class="pair">
+          <h3>SUMMING PULLS TOWARD THE MIDDLE</h3>
+          <p>Adding two digits and reducing behaves like rolling two dice instead of one — there are more ways to land on a middle value than an edge value.</p>
+        </div>
+        <div class="pair">
+          <h3>THE TABLE BANDS ARE UNEVEN ON PURPOSE</h3>
+          <p>1 and 6 each come from exactly one digit. 2 through 5 each come from two digits — double the odds of the extremes.</p>
+        </div>
+      </div>
+
+      <p class="copy" style="margin-top:22px;">The result: a curve that peaks in the middle and tapers at both ends — same shape as reading the total on two six-sided dice, produced from a clock instead.</p>
+    </section>
+
+    <!-- RECOMMENDED USES -->
+    <section class="panel" data-fold="PANEL 5 / WHEN TO USE IT">
+      <div class="kicker">APPLICATION</div>
+      <h2 class="section">Recommended Uses</h2>
+
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">USE THIS FOR</div>
+          <h4>Middling outcomes as the norm</h4>
+          <p>Skill checks, reaction rolls, oracle answers — anything where total triumph or total disaster should be a rare, memorable surprise, not a routine 1-in-6.</p>
+        </div>
+        <div class="threat warn">
+          <div class="tag">NOT FOR</div>
+          <h4>A flat, even pick among six</h4>
+          <p>"Which of six NPCs shows up" wants equal odds — the banding over-favors the middle. Use raw <code>seconds mod 6, plus 1</code> instead.</p>
+        </div>
+      </div>
+
+      <p class="copy" style="margin-top:22px;">In CAPSLOCK specifically, this is the exact mechanism behind the <span class="anchor">Six-Degree Draw</span> — reach for it whenever a scene wants the full six-outcome range instead of the base Clock Draw's plain three bands.</p>
+    </section>
+
+    <!-- BACK -->
+    <section class="panel back" data-fold="PANEL 6 / BACK">
+      <div class="glyph">T H E &nbsp; D I G I T - S U M &nbsp; D R A W</div>
+      <p class="closer">No dice. No app. Just whatever clock is already in the room.</p>
+      <div class="formula">seconds → add digits → reduce to one digit → look up → read your D6</div>
+    </section>
+
+  </div>
+</div>
+
+</body>
+</html>
