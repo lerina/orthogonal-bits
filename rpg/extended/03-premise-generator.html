@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Extended Edition — 03. The Premise Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .chapterhead{ padding-top: 50px; padding-bottom: 50px; }
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 24px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(32px, 6.6vw, 60px); line-height: 1.0; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.12em; color:var(--ink-dim); margin-bottom:8px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+  table.reftable th[scope="row"]{ color: var(--riso-pink); font-weight:700; }
+
+  .tip{ background: var(--paper-2); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+  .example{ background: var(--paper-3); border: 1px solid var(--rule); padding: 14px 16px; margin: 14px 0; font-size: 12.5px; color: var(--ink-dim); line-height:1.65; }
+  .example strong{ color: var(--ink); }
+
+  .archetypes{ margin-top: 22px; display:flex; flex-direction:column; gap: 18px; }
+  .arch{ display:grid; grid-template-columns: 56px 1fr; gap: 16px; align-items: start; }
+  .arch-mark{ font-family:'Anton', sans-serif; font-size: 32px; line-height: 1; color: var(--rule); }
+  .arch h4{ margin: 0 0 6px 0; font-size: 14.5px; color: var(--ink); letter-spacing: 0.02em; }
+  .arch p{ margin: 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 58ch; }
+
+  .back{ text-align:center; padding-top: 50px; padding-bottom: 50px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 15px; color: var(--ink-dim); letter-spacing: 0.26em; }
+  .back .closer{ margin-top: 14px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- CHAPTER HEADER -->
+    <header class="panel chapterhead" data-fold="PAGE 4 / CH. 03" role="banner">
+      <div class="breadcrumb"><a href="index.html">&larr; CAPSLOCK EXTENDED EDITION</a> / CHAPTER 03</div>
+      <div class="stamp">CHAPTER 03</div>
+      <h1 class="masthead">THE PREMISE GENERATOR</h1>
+      <p class="tagline">Six draws instead of three fixed hooks. Same One Corp, One Gang, One Bar world — an oracle for when you want a mission the book didn't already write for you.</p>
+    </header>
+
+    <main id="main-content">
+
+    <!-- HOW IT WORKS -->
+    <section class="panel" aria-labelledby="how-h" data-fold="PAGE 4 / HOW IT WORKS">
+      <div class="kicker">BEFORE YOU DRAW</div>
+      <h2 class="section" id="how-h">Six Draws, One Premise</h2>
+      <p class="copy">The base game's three Story Hooks are fixed and ready to use. This chapter replaces them with two three-column tables — draw once per column using the Chapter 01 Digit-Sum Draw, and the six results assemble into a premise nobody wrote in advance.</p>
+      <div class="archetypes">
+        <div class="arch"><div class="arch-mark">A</div><div><h4>Table A — the setup</h4><p>Who's bringing you the job, what they want done, and why it matters to them.</p></div></div>
+        <div class="arch"><div class="arch-mark">B</div><div><h4>Table B — the target</h4><p>What you're actually going after, how you heard about it, and what's standing in the way.</p></div></div>
+      </div>
+    </section>
+
+    <!-- TABLE A -->
+    <section class="panel" aria-labelledby="tablea-h" data-fold="PAGE 4 / TABLE A">
+      <div class="kicker">TABLE A</div>
+      <h2 class="section" id="tablea-h">The Setup</h2>
+      <table class="reftable" aria-label="Premise setup table">
+        <caption>Draw once per column</caption>
+        <thead><tr><th scope="col">D6</th><th scope="col">Proposer (Who)</th><th scope="col">Mission (What)</th><th scope="col">Incentive (Why)</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>A Megacorp handler</td><td>Explore</td><td>Genuine help</td></tr>
+          <tr><th scope="row">2</th><td>A crew or organization</td><td>Protect</td><td>Fortune</td></tr>
+          <tr><th scope="row">3</th><td>An old ally</td><td>Exploit</td><td>Coercion</td></tr>
+          <tr><th scope="row">4</th><td>A mentor</td><td>Rescue</td><td>Impulse</td></tr>
+          <tr><th scope="row">5</th><td>Someone begging for help</td><td>Escape</td><td>Ambition</td></tr>
+          <tr><th scope="row">6</th><td>A blackmailer</td><td>Pursue</td><td>Revenge</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- TABLE B -->
+    <section class="panel" aria-labelledby="tableb-h" data-fold="PAGE 4 / TABLE B">
+      <div class="kicker">TABLE B</div>
+      <h2 class="section" id="tableb-h">The Target</h2>
+      <table class="reftable" aria-label="Premise target table">
+        <caption>Draw once per column</caption>
+        <thead><tr><th scope="col">D6</th><th scope="col">Target (Where)</th><th scope="col">Seed (How you heard)</th><th scope="col">Complication (Obstacle)</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>A person</td><td>A casual encounter</td><td>Direct opposition</td></tr>
+          <tr><th scope="row">2</th><td>A group</td><td>An old acquaintance</td><td>Deception</td></tr>
+          <tr><th scope="row">3</th><td>A location</td><td>Street rumors</td><td>The environment itself</td></tr>
+          <tr><th scope="row">4</th><td>A piece of tech</td><td>A mishap</td><td>A disguise you have to maintain</td></tr>
+          <tr><th scope="row">5</th><td>A device</td><td>A capture</td><td>A ticking clock</td></tr>
+          <tr><th scope="row">6</th><td>A confession or leak</td><td>An object, map, or document</td><td>Distance / open space</td></tr>
+        </tbody>
+      </table>
+
+      <div class="example"><strong>Example draw:</strong> Table A → 4 / 4 / 6: a mentor, rescue, revenge. Table B → 3 / 2 / 6: a location, an old acquaintance, distance. <em>"An old mentor asks you to pull someone out of a corporate datacenter — for revenge, not payment — based on a tip from someone you used to trust, across a stretch of city with nowhere to hide along the way."</em></div>
+    </section>
+
+    <!-- FEEDING IT FORWARD -->
+    <section class="panel" aria-labelledby="feed-h" data-fold="PAGE 4 / NEXT STEP">
+      <div class="kicker">WHAT TO DO WITH IT</div>
+      <h2 class="section" id="feed-h">Feed It Into Quest Deconstruction</h2>
+      <p class="copy">A generated premise isn't a finished scene — it's raw material. Run it straight through the core rulebook's six-step Quest Deconstruction (Section 12):</p>
+      <ol class="plain" style="margin:10px 0 16px 0; padding-left:20px; font-size:13.5px; line-height:1.75; color:var(--ink); max-width:64ch;">
+        <li><strong>Name the Target</strong> from the Mission and Target columns.</li>
+        <li><strong>Find the Obstacle</strong> — already sitting in the Complication column.</li>
+        <li><strong>Set the Stakes</strong> using the Incentive column as your starting motive.</li>
+        <li><strong>Pick an Adversary Type</strong> — most Complications map cleanly to a Watcher, Enforcer, or Hunter.</li>
+        <li><strong>Define the First Move</strong> — usually the Seed, dramatized: how you actually approach what you heard about.</li>
+        <li><strong>Attach a Reward</strong> — your own call, same as always.</li>
+      </ol>
+      <div class="tip">Six draws, six steps — the tables hand you the raw material, Quest Deconstruction turns it into something playable in the same breath.</div>
+    </section>
+
+    </main>
+
+    <!-- FOOTER + NAV -->
+    <footer class="panel back" data-fold="PAGE 4 / END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; E X T E N D E D</div>
+      <p class="closer">A premise built from an oracle instead of picked from a list. Chapter 04 gives it a shape big enough to survive multiple sessions.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="02-character-and-alter-ego.html">&larr; CHARACTER &amp; ALTER-EGO</a>
+        <span class="pagecount">PAGE 4 OF 9</span>
+        <a href="04-story-arc.html">NEXT: THE STORY ARC &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Extended Edition — 06. The Inner Deceivers</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .chapterhead{ padding-top: 50px; padding-bottom: 50px; }
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 24px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(30px, 6.2vw, 56px); line-height: 1.0; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+  ul.plain, ol.plain{ margin: 10px 0 16px 0; padding-left: 20px; font-size: 13.5px; line-height: 1.75; color: var(--ink); max-width: 64ch; }
+  ul.plain li, ol.plain li{ margin-bottom: 6px; }
+
+  /* deceiver cards */
+  .deck{ margin-top: 22px; display:flex; flex-direction:column; }
+  .dcard{ padding: 18px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 48px 1fr; gap: 16px; align-items:start; }
+  .dcard:first-child{ border-top:none; }
+  .dcard .dnum{ font-family:'Anton', sans-serif; font-size: 26px; color: var(--riso-pink); line-height: 1; }
+  .dcard h4{ margin: 0 0 4px 0; font-size: 14.5px; color: var(--ink); }
+  .dcard .advtag{ display:inline-block; font-size: 9.5px; letter-spacing: 0.14em; padding: 2px 8px; border: 1px solid var(--ink-dim); color: var(--ink-dim); margin-bottom:8px; }
+  .dcard .advtag.hunter{ border-color: var(--riso-pink); color: var(--riso-pink); }
+  .dcard .advtag.enforcer{ border-color: var(--riso-yellow); color: var(--riso-yellow); }
+  .dcard p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; max-width: 62ch; }
+
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.12em; color:var(--ink-dim); margin-bottom:8px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+  table.reftable td.hi{ font-family:'Anton',sans-serif; color: var(--riso-pink); font-size:16px; }
+
+  .tip{ background: var(--paper-2); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+  .example{ background: var(--paper-3); border: 1px solid var(--rule); padding: 14px 16px; margin: 14px 0; font-size: 12.5px; color: var(--ink-dim); line-height:1.65; }
+  .example strong{ color: var(--ink); }
+
+  .back{ text-align:center; padding-top: 50px; padding-bottom: 50px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 15px; color: var(--ink-dim); letter-spacing: 0.26em; }
+  .back .closer{ margin-top: 14px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- CHAPTER HEADER -->
+    <header class="panel chapterhead" data-fold="PAGE 7 / CH. 06" role="banner">
+      <div class="breadcrumb"><a href="index.html">&larr; CAPSLOCK EXTENDED EDITION</a> / CHAPTER 06</div>
+      <div class="stamp">CHAPTER 06</div>
+      <h1 class="masthead">THE INNER DECEIVERS</h1>
+      <p class="tagline">Six faces on a die. Six patterns of self-sabotage. For the first time, "which one's in the way today" is a draw, not a guess.</p>
+    </header>
+
+    <main id="main-content">
+
+    <!-- WHY SIX -->
+    <section class="panel" aria-labelledby="why-h" data-fold="PAGE 7 / WHY SIX">
+      <div class="kicker">COMPLETING THE SET</div>
+      <h2 class="section" id="why-h">Why Six, Why Now</h2>
+      <p class="copy">The base rulebook's Adversary table (Section 7) has three types. The Salvaged Systems side text mapped five real-life "deceivers" onto that three-part frame. This chapter goes one step further: a sixth deceiver, and all six lined up one-to-one against the faces of the Digit-Sum Draw's D6. When a real-life quest (Chapter 05) stalls and it isn't obvious what's actually in the way, draw — the table below answers it.</p>
+    </section>
+
+    <!-- THE SIX -->
+    <section class="panel" aria-labelledby="deck-h" data-fold="PAGE 7 / THE SIX">
+      <div class="kicker">THE ROSTER</div>
+      <h2 class="section" id="deck-h">The Six Deceivers</h2>
+
+      <div class="deck">
+        <div class="dcard">
+          <div class="dnum">1</div>
+          <div>
+            <h4>THE JUDGEMENTAL</h4>
+            <span class="advtag hunter">HUNTER</span>
+            <p>The eternal critic — what you did, didn't do, should have done. Grows stronger every time you lose sight of what's actually in your control.</p>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dnum">2</div>
+          <div>
+            <h4>THE VICTIMIZER</h4>
+            <span class="advtag enforcer">ENFORCER</span>
+            <p>The excuse-generator, the willpower-drainer. Grows stronger every time you give up or stop trying.</p>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dnum">3</div>
+          <div>
+            <h4>THE RINGMASTER</h4>
+            <span class="advtag hunter">HUNTER</span>
+            <p>Productivity guilt — the unsustainable drive to keep saying yes. Grows stronger every time your worth gets tied to your output.</p>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dnum">4</div>
+          <div>
+            <h4>THE NEGLECTOR</h4>
+            <span class="advtag hunter">HUNTER</span>
+            <p>Wins when you feel insecure and go looking for approval. Grows stronger every time you prioritize everyone else's needs over your own.</p>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dnum">5</div>
+          <div>
+            <h4>THE MISGUIDED PROTECTOR</h4>
+            <span class="advtag">WATCHER</span>
+            <p>Sells avoidance as safety — exaggerates the difficulty of starting at all. "Safe" but stuck. Grows stronger every time you're paralyzed into no action.</p>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dnum">6</div>
+          <div>
+            <h4>THE SIREN</h4>
+            <span class="advtag hunter">HUNTER</span>
+            <p>The endless-scope dreamer — a project with no deadline, forever almost-starting. Grows stronger every time the plan gets bigger instead of the work getting done.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE DRAW -->
+    <section class="panel" aria-labelledby="draw-h" data-fold="PAGE 7 / THE DRAW">
+      <div class="kicker">WHEN IT'S NOT OBVIOUS</div>
+      <h2 class="section" id="draw-h">Which Deceiver Is Active</h2>
+      <p class="copy">Run the Digit-Sum Draw (Chapter 01) straight through to a D6, then read it here instead of the usual outcome table:</p>
+      <table class="reftable" aria-label="D6 to deceiver mapping">
+        <caption>D6 → Deceiver</caption>
+        <thead><tr><th scope="col">D6</th><th scope="col">Deceiver</th></tr></thead>
+        <tbody>
+          <tr><td class="hi">1</td><td>The JudgeMental</td></tr>
+          <tr><td class="hi">2</td><td>The Victimizer</td></tr>
+          <tr><td class="hi">3</td><td>The Ringmaster</td></tr>
+          <tr><td class="hi">4</td><td>The Neglector</td></tr>
+          <tr><td class="hi">5</td><td>The Misguided Protector</td></tr>
+          <tr><td class="hi">6</td><td>The Siren</td></tr>
+        </tbody>
+      </table>
+      <p class="copy">Feed the result straight into Quest Deconstruction's Adversary Type step (core rulebook, Section 12, step 4) — the Watcher/Enforcer/Hunter tag above tells you how to actually approach it.</p>
+    </section>
+
+    <!-- ANTIDOTE -->
+    <section class="panel" aria-labelledby="antidote-h" data-fold="PAGE 7 / THE ANTIDOTE">
+      <div class="kicker">THE FIRST MOVE, EVERY TIME</div>
+      <h2 class="section" id="antidote-h">The Antidote</h2>
+      <p class="copy">Whichever deceiver comes up, the same First Move works: create distance between yourself and the voice before answering it.</p>
+      <ol class="plain">
+        <li>Notice you're under attack — name the deceiver out loud.</li>
+        <li>Call it out, then choose not to listen to it.</li>
+        <li>Answer the specific argument it's making:
+          <ul class="plain">
+            <li><strong>Safe and stuck?</strong> Ask if this is actually inside your control, then take one small, imperfect action right now.</li>
+            <li><strong>Busy pleaser?</strong> Ask whether it's who you are or what you do that actually matters here — and whether your boundaries are even up.</li>
+            <li><strong>Seeking approval?</strong> Ask whether this choice is really an avoidance trap wearing a nicer name.</li>
+          </ul>
+        </li>
+      </ol>
+      <p class="copy">Underneath all six: what's done is done, what's next is a choice you make right now, the process is the goal rather than perfection, and the only question worth asking in the moment is whether what you're doing is helping or harming you. Two people can look at the same setback and see two different things — one only the obstacle, the other the opening it creates.</p>
+    </section>
+
+    <!-- MAPPING TABLE -->
+    <section class="panel" aria-labelledby="map-h" data-fold="PAGE 7 / RECOGNIZING THEM">
+      <div class="kicker">SPOTTING THEM IN THE WILD</div>
+      <h2 class="section" id="map-h">Real-Life Patterns → Deceiver</h2>
+      <table class="reftable" aria-label="Real life pattern to deceiver mapping">
+        <caption>What each deceiver actually looks like day to day</caption>
+        <thead><tr><th scope="col">Real-Life Pattern</th><th scope="col">Deceiver</th><th scope="col">Why It Matters</th></tr></thead>
+        <tbody>
+          <tr><td>Impulse spending</td><td>The JudgeMental</td><td>Keep your resources.</td></tr>
+          <tr><td>Distracted "working"</td><td>The Victimizer</td><td>Protect your time.</td></tr>
+          <tr><td>Constant task-switching</td><td>The Ringmaster</td><td>Stay on course.</td></tr>
+          <tr><td>Giving up when it's hard</td><td>The Neglector</td><td>Be tenacious.</td></tr>
+          <tr><td>Endless "research," no action</td><td>The Misguided Protector</td><td>Don't waste the window.</td></tr>
+          <tr><td>A project with no deadline</td><td>The Siren</td><td>Don't just dream — ship.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    </main>
+
+    <!-- FOOTER + NAV -->
+    <footer class="panel back" data-fold="PAGE 7 / END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; E X T E N D E D</div>
+      <p class="closer">Six faces, six patterns, one draw. Chapter 07 tracks what happens when you keep beating them.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="05-real-life-missions.html">&larr; REAL-LIFE MISSIONS</a>
+        <span class="pagecount">PAGE 7 OF 9</span>
+        <a href="07-progression.html">NEXT: PROGRESSION &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

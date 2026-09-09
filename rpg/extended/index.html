@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Extended Edition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 56px; padding-bottom: 56px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 28px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(42px, 9vw, 92px); line-height: 0.92; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  h1.masthead .sub{ display:block; font-size: clamp(15px, 3vw, 26px); color: var(--riso-yellow); text-shadow: none; letter-spacing: 0.06em; margin-top: 10px; }
+  .tagline{ margin-top: 22px; font-size: 14px; letter-spacing: 0.04em; color: var(--riso-yellow); max-width: 50ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 42px; display:flex; gap: 26px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 28px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  /* what changed — pair grid */
+  .pair-grid{ margin-top: 24px; display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .pair{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .pair .tag{ font-size: 10px; letter-spacing: 0.14em; color: var(--riso-yellow); }
+  .pair h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .pair p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 640px){ .pair-grid{ grid-template-columns: 1fr; } }
+
+  /* six-outcome strip */
+  .loop{ margin-top: 22px; display:flex; flex-wrap: wrap; gap: 0; }
+  .loop-step{ flex: 1 1 100px; padding: 12px 12px; border: 1px solid var(--rule); background: var(--paper-2); }
+  .loop-step + .loop-step{ border-left: none; }
+  .loop-step .num{ font-family:'Anton', sans-serif; font-size: 10px; color: var(--riso-pink); letter-spacing: 0.08em; display:block; margin-bottom: 5px; }
+  .loop-step .name{ font-size: 10.5px; color: var(--ink); font-weight: 700; letter-spacing: 0.01em; }
+  @media (max-width: 760px){ .loop-step{ flex-basis: 45%; border-left: 1px solid var(--rule) !important; } }
+
+  /* chapter list */
+  .chapters{ margin-top: 18px; display:flex; flex-direction:column; }
+  .chapter{ padding: 18px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 50px 1fr; gap: 16px; align-items:start; }
+  .chapter:first-child{ border-top:none; }
+  .chapter .chnum{ font-family:'Anton', sans-serif; font-size: 26px; color: var(--rule); line-height: 1; }
+  .chapter h4{ margin: 0 0 6px 0; font-size: 15px; }
+  .chapter h4 a{ color: var(--riso-pink); text-decoration:none; }
+  .chapter h4 a:hover, .chapter h4 a:focus{ text-decoration: underline; }
+  .chapter p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; max-width: 60ch; }
+  .chapter .status{ display:inline-block; margin-top:6px; font-size: 9.5px; letter-spacing: 0.12em; color: var(--ink-dim); border: 1px solid var(--rule); padding: 2px 7px; }
+  .chapter .status.next{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+
+  /* page nav */
+  .pagenav{
+    margin-top: 34px; display:flex; justify-content:center; align-items:center; gap: 18px;
+    flex-wrap: wrap;
+  }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 34px 22px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="PAGE 1 / INDEX" role="banner">
+      <div class="stamp">EXTENDED EDITION</div>
+      <h1 class="masthead">CAPSLOCK<span class="sub">EXTENDED EDITION</span></h1>
+      <p class="tagline">The base game fits in one breath. This edition doesn't have to. Six outcomes, deeper character options, oracle tables for premise and persona, and real-life progression — all still run off nothing but a clock.</p>
+      <div class="cover-foot">
+        <span>NO DICE</span>
+        <span>SIX OUTCOMES</span>
+        <span>MULTI-PAGE EDITION</span>
+      </div>
+    </header>
+
+    <main id="main-content">
+
+    <!-- WHAT CHANGED -->
+    <section class="panel" aria-labelledby="changed-h" data-fold="PAGE 1 / WHAT'S DIFFERENT">
+      <div class="kicker">READ THIS FIRST</div>
+      <h2 class="section" id="changed-h">What's Different in This Edition</h2>
+      <p class="copy">The base CAPSLOCK rulebook holds itself to the Rule of Three on purpose — three Gear Slots, two Cyberware Tags, one Style — so a whole character fits in a single breath. Extended Edition lifts that ceiling. It's for players who want more surface area: fuller character generation, oracle tables for building a premise or an alter-ego from scratch, and a real-life progression layer. Everything still resolves off the Digit-Sum Draw — nothing here brings dice back.</p>
+
+      <div class="pair-grid">
+        <div class="pair">
+          <div class="tag">BASE GAME</div>
+          <h4>Three outcomes, capped character</h4>
+          <p>Yes / Yes-but / No-and. Rule of Three keeps the whole character in your head at once.</p>
+        </div>
+        <div class="pair">
+          <div class="tag">EXTENDED EDITION</div>
+          <h4>Six outcomes, open character</h4>
+          <p>The full Digit-Sum Draw range, and as many Gear/Cyberware/traits as a chapter's oracle table hands you.</p>
+        </div>
+      </div>
+
+      <p class="copy" style="margin-top:20px;">Every chapter in this edition reads results off the same six-outcome table:</p>
+      <div class="loop">
+        <div class="loop-step"><span class="num">1</span><span class="name">YES, AND</span></div>
+        <div class="loop-step"><span class="num">2</span><span class="name">YES</span></div>
+        <div class="loop-step"><span class="num">3</span><span class="name">YES, BUT</span></div>
+        <div class="loop-step"><span class="num">4</span><span class="name">NO, BUT</span></div>
+        <div class="loop-step"><span class="num">5</span><span class="name">NO</span></div>
+        <div class="loop-step"><span class="num">6</span><span class="name">NO, AND</span></div>
+      </div>
+    </section>
+
+    <!-- CHAPTERS -->
+    <section class="panel" aria-labelledby="chapters-h" data-fold="PAGE 1 / CHAPTERS">
+      <div class="kicker">THE BOOK, PAGE BY PAGE</div>
+      <h2 class="section" id="chapters-h">Chapters</h2>
+      <p class="copy">Built one at a time. Each page links back here.</p>
+
+      <div class="chapters">
+        <div class="chapter">
+          <div class="chnum">01</div>
+          <div>
+            <h4><a href="01-core-engine.html">The Six-Outcome Core Engine</a></h4>
+            <p>The Digit-Sum Draw as the sole resolution system, and what it means to run everything — combat, hacking, conversation — off one table instead of a simple three-band read.</p>
+            <span class="status next">UP NEXT</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">02</div>
+          <div>
+            <h4><a href="02-character-and-alter-ego.html">Character &amp; Alter-Ego Generator</a></h4>
+            <p>Full character creation beyond the Rule of Three, plus an oracle-driven Alter-Ego Generator for building a persona from nothing.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">03</div>
+          <div>
+            <h4><a href="03-premise-generator.html">The Premise Generator</a></h4>
+            <p>Who, what, why, where, how, and the complication — a full oracle for building a mission from six draws instead of picking a Story Hook.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">04</div>
+          <div>
+            <h4><a href="04-story-arc.html">The Story Arc — Circle &amp; Kishotenketsu</a></h4>
+            <p>The eight-phase story circle and its four-phase Kishotenketsu compression, layered on top of PICO·ATTO for full campaigns.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">05</div>
+          <div>
+            <h4><a href="05-real-life-missions.html">Real-Life Missions</a></h4>
+            <p>The Nine-Item Loadout in full: mapping real do/don't/complete tasks onto scenes, so the story only moves when you do.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">06</div>
+          <div>
+            <h4><a href="06-inner-deceivers.html">The Inner Deceivers</a></h4>
+            <p>Five real-life adversaries — the JudgeMental, the Victimizer, the Misguided Protector, the Ringmaster, the Neglector — cast as full Adversary Types with their own antidotes.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">07</div>
+          <div>
+            <h4><a href="07-progression.html">Progression</a></h4>
+            <p>A real tracking layer for players who want it — deep-work streaks, consistency, and completed real-world projects, now that the one-sentence ceiling is lifted.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">08</div>
+          <div>
+            <h4><a href="08-running-the-game.html">Running the Game — Twists, Mood &amp; Direction</a></h4>
+            <p>Doubles and the Twist Counter, scene-mood draws, and the Distracted/Directed modifier, all rebuilt on the six-outcome engine.</p>
+            <span class="status">STANDBY</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="PAGE 1 / END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; E X T E N D E D</div>
+      <p class="closer">Page one of the extended edition. The rest gets built one chapter at a time.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <span class="disabled">&larr; PREV</span>
+        <span class="pagecount">PAGE 1 OF 9</span>
+        <a href="01-core-engine.html">NEXT: THE CORE ENGINE &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Extended Edition — 02. Character &amp; Alter-Ego</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .chapterhead{ padding-top: 50px; padding-bottom: 50px; }
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 24px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(30px, 6.4vw, 58px); line-height: 1.02; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+  ul.plain, ol.plain{ margin: 10px 0 16px 0; padding-left: 20px; font-size: 13.5px; line-height: 1.75; color: var(--ink); max-width: 64ch; }
+  ul.plain li, ol.plain li{ margin-bottom: 6px; }
+
+  /* oracle tables */
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.12em; color:var(--ink-dim); margin-bottom:8px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+  table.reftable th[scope="row"]{ color: var(--riso-pink); font-weight:700; }
+
+  /* pair grid */
+  .pair-grid{ margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .pair{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .pair .tag{ font-size: 10px; letter-spacing: 0.14em; color: var(--riso-yellow); }
+  .pair h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .pair p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 640px){ .pair-grid{ grid-template-columns: 1fr; } }
+
+  /* trait flavor 3up */
+  .threats{ margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 760px){ .threats{ grid-template-columns: 1fr; } }
+
+  .tip{ background: var(--paper-2); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+  .example{ background: var(--paper-3); border: 1px solid var(--rule); padding: 14px 16px; margin: 14px 0; font-size: 12.5px; color: var(--ink-dim); line-height:1.65; }
+  .example strong{ color: var(--ink); }
+
+  .back{ text-align:center; padding-top: 50px; padding-bottom: 50px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 15px; color: var(--ink-dim); letter-spacing: 0.26em; }
+  .back .closer{ margin-top: 14px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- CHAPTER HEADER -->
+    <header class="panel chapterhead" data-fold="PAGE 3 / CH. 02" role="banner">
+      <div class="breadcrumb"><a href="index.html">&larr; CAPSLOCK EXTENDED EDITION</a> / CHAPTER 02</div>
+      <div class="stamp">CHAPTER 02</div>
+      <h1 class="masthead">CHARACTER &amp; ALTER-EGO GENERATOR</h1>
+      <p class="tagline">The Rule of Three is gone. In its place: two oracle tables, an open Trait list, and a set of questions that turn a handful of draws into a person.</p>
+    </header>
+
+    <main id="main-content">
+
+    <!-- BEYOND RULE OF THREE -->
+    <section class="panel" aria-labelledby="beyond-h" data-fold="PAGE 3 / NO MORE CAP">
+      <div class="kicker">WHAT REPLACES IT</div>
+      <h2 class="section" id="beyond-h">Beyond the Rule of Three</h2>
+      <p class="copy">The base game caps a character at 3 Gear, 2 Cyberware, 1 Style so the whole sheet fits in a breath. Extended Edition trades that ceiling for a single guiding principle instead:</p>
+      <div class="tip">If you can't picture using it in a scene, cut it. Keep drawing and adding Traits until the character feels complete — not until you hit a number.</div>
+      <p class="copy">Traits replace the old Gear/Cyberware/Style split with three open-ended flavors. Draw as many as the character needs:</p>
+      <div class="threats">
+        <div class="threat"><div class="tag">CAPABILITY</div><h4>What they can do</h4><p>Old Gear and Cyberware entries both live here now — an item, an implant, a contact, a skill.</p></div>
+        <div class="threat"><div class="tag">VOICE</div><h4>How they do it</h4><p>The old Style slot, no longer limited to one — a character can carry more than one way of being themselves.</p></div>
+        <div class="threat"><div class="tag">BAGGAGE</div><h4>What complicates them</h4><p>New in this edition — debts, enemies, secrets, and burdens that give the Digit-Sum Draw's "but" and "and" results something specific to land on.</p></div>
+      </div>
+    </section>
+
+    <!-- TABLE 1 -->
+    <section class="panel" aria-labelledby="tableone-h" data-fold="PAGE 3 / TABLE ONE">
+      <div class="kicker">ORACLE, PART ONE</div>
+      <h2 class="section" id="tableone-h">Good At / Known For / Have</h2>
+      <p class="copy">Draw once per column using the Digit-Sum Draw's D6 lookup from Chapter 01. Each result becomes one Capability Trait — invent the concrete detail that fits.</p>
+
+      <table class="reftable" aria-label="Good at, known for, have table">
+        <caption>Roll each column separately</caption>
+        <thead><tr><th scope="col">D6</th><th scope="col">Good at</th><th scope="col">Known for</th><th scope="col">Have</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>Brute strength</td><td>Weapons work</td><td>New tech</td></tr>
+          <tr><th scope="row">2</th><td>Sharp wits</td><td>Hacking</td><td>Corp access</td></tr>
+          <tr><th scope="row">3</th><td>Charm</td><td>Tech savvy</td><td>An enemy</td></tr>
+          <tr><th scope="row">4</th><td>Speed</td><td>Persuasion</td><td>A secret</td></tr>
+          <tr><th scope="row">5</th><td>Focus</td><td>Infiltration</td><td>A dysfunction</td></tr>
+          <tr><th scope="row">6</th><td>Deft hands</td><td>Tracking</td><td>Wealth</td></tr>
+        </tbody>
+      </table>
+
+      <div class="example"><strong>Example draw:</strong> 3 / 2 / 2 → Charm, Hacking, Corp access. Traits: <em>"Charms her way past anyone who isn't already suspicious"</em> (Capability), <em>"reads a corp network like a native"</em> (Capability), <em>"still has her old VIP badge, one login away from revoked"</em> (Capability, doubling as Baggage).</div>
+    </section>
+
+    <!-- TABLE 2 -->
+    <section class="panel" aria-labelledby="tabletwo-h" data-fold="PAGE 3 / TABLE TWO">
+      <div class="kicker">ORACLE, PART TWO</div>
+      <h2 class="section" id="tabletwo-h">Motivated By / Reputation / Burdened By</h2>
+      <p class="copy">This table leans toward Voice and Baggage. Draw as many columns as the character needs — nothing requires all three.</p>
+
+      <table class="reftable" aria-label="Motivated by, reputation, burdened by table">
+        <caption>Roll each column separately</caption>
+        <thead><tr><th scope="col">D6</th><th scope="col">Motivated by</th><th scope="col">Reputation</th><th scope="col">Burdened by</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">1</th><td>Retribution</td><td>Sly</td><td>An old conviction</td></tr>
+          <tr><th scope="row">2</th><td>Money</td><td>Consistency</td><td>Blackmail</td></tr>
+          <tr><th scope="row">3</th><td>A cure</td><td>Being driven</td><td>A mental scar</td></tr>
+          <tr><th scope="row">4</th><td>Justice</td><td>Efficiency</td><td>A physical limit</td></tr>
+          <tr><th scope="row">5</th><td>Fear</td><td>Being a snob</td><td>Being on the run</td></tr>
+          <tr><th scope="row">6</th><td>Self-interest</td><td>Being dangerous</td><td>Family</td></tr>
+        </tbody>
+      </table>
+
+      <p class="copy">Translation: <em>Motivated by</em> and <em>Reputation</em> become Voice Traits — how the character carries themselves. <em>Burdened by</em> becomes a Baggage Trait outright — free ammunition for a future "Yes, but" or "No, and."</p>
+    </section>
+
+    <!-- FLESH OUT -->
+    <section class="panel" aria-labelledby="flesh-h" data-fold="PAGE 3 / IDENTITY">
+      <div class="kicker">AFTER THE DRAWS</div>
+      <h2 class="section" id="flesh-h">Fleshing Out the Alter-Ego</h2>
+      <p class="copy">Name them, then answer whatever subset of these actually sparks something — skip the rest:</p>
+      <ul class="plain">
+        <li>What do they do? What do they wear? What do they eat?</li>
+        <li>Who do they spend time with? What does their daily routine look like?</li>
+        <li>What habits do they practice? What does their life look like?</li>
+        <li>What values do you share with them — and which would you like to?</li>
+      </ul>
+
+      <h3 class="sub">If the alter-ego is also gamifying your real life</h3>
+      <ul class="plain">
+        <li>Why do I want to reinvent myself?</li>
+        <li>What habits and choices would I have to say <em>yes</em> to?</li>
+        <li>What habits and choices would I have to say <em>no</em> to?</li>
+        <li>Will I stay the course even when it gets rough?</li>
+      </ul>
+      <p class="copy">This last set matters more once Chapter 05 (Real-Life Missions) ties the character's progress to things you actually do — the alter-ego isn't just a mask, it's a target you're drawing toward.</p>
+    </section>
+
+    </main>
+
+    <!-- FOOTER + NAV -->
+    <footer class="panel back" data-fold="PAGE 3 / END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; E X T E N D E D</div>
+      <p class="closer">A character built from open Traits instead of a fixed slot count. Chapter 03 does the same thing for the mission itself.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="01-core-engine.html">&larr; THE CORE ENGINE</a>
+        <span class="pagecount">PAGE 3 OF 9</span>
+        <a href="03-premise-generator.html">NEXT: THE PREMISE GENERATOR &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

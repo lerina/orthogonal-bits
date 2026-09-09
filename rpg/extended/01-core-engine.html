@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Extended Edition — 01. The Core Engine</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  /* chapter header */
+  .chapterhead{ padding-top: 50px; padding-bottom: 50px; }
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 24px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(34px, 7vw, 64px); line-height: 0.98; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+
+  /* section headers */
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  /* small lookup tables */
+  table.smalltable{ border-collapse: collapse; margin: 14px 0 20px 0; font-size: 13px; max-width: 480px; }
+  table.smalltable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.12em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 7px 20px 7px 0; text-transform: uppercase;
+  }
+  table.smalltable td{ padding: 9px 20px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); }
+  table.smalltable tr:last-child td{ border-bottom: none; }
+  table.smalltable td.hi{ font-family:'Anton',sans-serif; color: var(--riso-pink); font-size:16px; }
+
+  /* numbered step list */
+  .archetypes{ margin-top: 22px; display:flex; flex-direction:column; gap: 20px; }
+  .arch{ display:grid; grid-template-columns: 56px 1fr; gap: 16px; align-items: start; }
+  .arch-mark{ font-family:'Anton', sans-serif; font-size: 34px; line-height: 1; color: var(--rule); }
+  .arch h4{ margin: 0 0 6px 0; font-size: 14.5px; color: var(--ink); letter-spacing: 0.02em; }
+  .arch p{ margin: 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 58ch; }
+  .arch code{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12px; }
+
+  /* callouts */
+  .tip{ background: var(--paper-2); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+  .example{ background: var(--paper-3); border: 1px solid var(--rule); padding: 14px 16px; margin: 14px 0; font-size: 12.5px; color: var(--ink-dim); line-height:1.65; }
+  .example strong{ color: var(--ink); }
+
+  /* pair grid */
+  .pair-grid{ margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .pair{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .pair .tag{ font-size: 10px; letter-spacing: 0.14em; color: var(--riso-yellow); }
+  .pair h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .pair p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 640px){ .pair-grid{ grid-template-columns: 1fr; } }
+
+  /* three-column application cards */
+  .threats{ margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 760px){ .threats{ grid-template-columns: 1fr; } }
+
+  /* footer + page nav */
+  .back{ text-align:center; padding-top: 50px; padding-bottom: 50px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 15px; color: var(--ink-dim); letter-spacing: 0.26em; }
+  .back .closer{ margin-top: 14px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- CHAPTER HEADER -->
+    <header class="panel chapterhead" data-fold="PAGE 2 / CH. 01" role="banner">
+      <div class="breadcrumb"><a href="index.html">&larr; CAPSLOCK EXTENDED EDITION</a> / CHAPTER 01</div>
+      <div class="stamp">CHAPTER 01</div>
+      <h1 class="masthead">THE SIX-OUTCOME<br>CORE ENGINE</h1>
+      <p class="tagline">One randomizer. One table. Everything in this edition — combat, hacking, conversation, oracles — resolves off the same six-shade read instead of a simple three-band pass/fail.</p>
+    </header>
+
+    <main id="main-content">
+
+    <!-- THE DRAW -->
+    <section class="panel" aria-labelledby="draw-h" data-fold="PAGE 2 / THE DRAW">
+      <div class="kicker">THE RANDOMIZER</div>
+      <h2 class="section" id="draw-h">The Digit-Sum Draw</h2>
+      <p class="copy">Still nothing but a clock. The difference in this edition is what you do with the result once you have it.</p>
+
+      <div class="archetypes">
+        <div class="arch">
+          <div class="arch-mark">01</div>
+          <div><h4>State the action, set a Difficulty</h4><p>Easy / Medium / Hard — a narrative lever, not a probability you calculate by hand.</p></div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">02</div>
+          <div><h4>Check a clock</h4><p>Take the current second (0–59) and add its two digits together.</p></div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">03</div>
+          <div><h4>Reduce to one digit</h4><p><code>:47 → 4+7=11 → 1+1=2</code>. Keep summing until a single digit (0–9) remains.</p></div>
+        </div>
+        <div class="arch">
+          <div class="arch-mark">04</div>
+          <div><h4>Convert to a D6, then read the outcome</h4><p>Two lookups, both below. No clock on hand? The Pulse Draw (heartbeat count, same reduction) works identically.</p></div>
+        </div>
+      </div>
+
+      <table class="smalltable" aria-label="Digit to D6 mapping">
+        <caption>Digit → D6</caption>
+        <thead><tr><th scope="col">Digit</th><th scope="col">D6</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td class="hi">1</td></tr>
+          <tr><td>1 or 2</td><td class="hi">2</td></tr>
+          <tr><td>3 or 4</td><td class="hi">3</td></tr>
+          <tr><td>5 or 6</td><td class="hi">4</td></tr>
+          <tr><td>7 or 8</td><td class="hi">5</td></tr>
+          <tr><td>9</td><td class="hi">6</td></tr>
+        </tbody>
+      </table>
+
+      <table class="smalltable" aria-label="D6 to outcome mapping">
+        <caption>D6 → Outcome (all six, every time — not just three)</caption>
+        <thead><tr><th scope="col">D6</th><th scope="col">Outcome</th></tr></thead>
+        <tbody>
+          <tr><td class="hi">1</td><td>Yes, and — success, plus something extra.</td></tr>
+          <tr><td class="hi">2</td><td>Yes — clean success.</td></tr>
+          <tr><td class="hi">3</td><td>Yes, but — success, at a cost.</td></tr>
+          <tr><td class="hi">4</td><td>No, but — failure, not a total loss.</td></tr>
+          <tr><td class="hi">5</td><td>No — failure.</td></tr>
+          <tr><td class="hi">6</td><td>No, and — failure that escalates.</td></tr>
+        </tbody>
+      </table>
+
+      <p class="copy"><strong>Difficulty shift:</strong> Easy shifts the outcome one step toward "Yes, and." Hard shifts one step toward "No, and." Medium — read the table as-is. Any Style-like trait from Chapter 02 stacks as an extra Easy-tier shift on top.</p>
+    </section>
+
+    <!-- BASE VS EXTENDED -->
+    <section class="panel" aria-labelledby="compare-h" data-fold="PAGE 2 / WHY IT'S DIFFERENT">
+      <div class="kicker">WHY ONE TABLE FOR EVERYTHING</div>
+      <h2 class="section" id="compare-h">Base Game vs. Extended Engine</h2>
+      <p class="copy">The base rulebook reads the clock straight into three bands — a fast, minimal read built for the Rule of Three. Extended Edition keeps the exact same physical action (glance at a clock) but routes it through the full digit-sum pipeline, so every draw carries six shades of consequence instead of three.</p>
+
+      <div class="pair-grid">
+        <div class="pair">
+          <div class="tag">BASE GAME</div>
+          <h4>Raw second → 3 bands</h4>
+          <p>:00–:19 / :20–:39 / :40–:59 compared straight to Difficulty. Fast, minimal, built for a one-breath character.</p>
+        </div>
+        <div class="pair">
+          <div class="tag">EXTENDED EDITION</div>
+          <h4>Digit-sum → D6 → 6 outcomes</h4>
+          <p>Same clock, more resolution. Every draw is hat-shaped, not flat — extremes are rarer and land harder.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ONE TABLE, EVERY SITUATION -->
+    <section class="panel" aria-labelledby="uses-h" data-fold="PAGE 2 / APPLICATION">
+      <div class="kicker">NO SEPARATE SUBSYSTEMS</div>
+      <h2 class="section" id="uses-h">One Engine, Every Situation</h2>
+      <p class="copy">Nothing in this edition gets its own dice mechanic. Combat, netrunning, and conversation all read off the same six-outcome table — only the fictional consequence attached to each result changes.</p>
+
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">PHYSICAL</div>
+          <h4>Combat &amp; movement</h4>
+          <p>A "No, and" doesn't add a damage number — it Glitches your Gear or escalates the Adversary, same as the base game.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">DIGITAL</div>
+          <h4>Netrunning</h4>
+          <p>A "Yes, but" on a dive still costs what your Rig's flavor says it costs — loud, slow, or physical feedback.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">SOCIAL</div>
+          <h4>Conversation &amp; persuasion</h4>
+          <p>A "Yes, and" on a Face's pitch might mean the NPC volunteers something you didn't even ask for.</p>
+        </div>
+      </div>
+
+      <div class="tip">The table never changes. Only the sentence you attach to each result does — that's the whole reason one engine can carry an entire session.</div>
+    </section>
+
+    <!-- DUET + PULSE -->
+    <section class="panel" aria-labelledby="duet-h" data-fold="PAGE 2 / VARIANTS">
+      <div class="kicker">GENERATING THE DIGIT</div>
+      <h2 class="section" id="duet-h">Duet Mode &amp; the Pulse Draw</h2>
+      <p class="copy"><strong>Duet Mode (optional, 2 players):</strong> instead of a clock, the second person silently picks a digit 0–9 and reveals it the moment the action is stated. It runs through the exact same D6 and outcome tables above — nothing else changes.</p>
+      <p class="copy"><strong>Pulse Draw (no clock):</strong> count heartbeats from the moment you state the action until you silently think "now." Add the digits of that count together until one remains. Same pipeline, no clock required.</p>
+      <div class="example"><strong>Example:</strong> Difficulty called Hard. Digit-Sum Draw produces digit 7 → D6 of 5 → base outcome "No." Hard shifts one step further → "No, and." The guard doesn't just stop you — the alarm goes up.</div>
+    </section>
+
+    </main>
+
+    <!-- FOOTER + NAV -->
+    <footer class="panel back" data-fold="PAGE 2 / END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; E X T E N D E D</div>
+      <p class="closer">The engine is the same everywhere in this edition. Chapter 02 builds a character wide enough to use all six outcomes.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="index.html">&larr; INDEX</a>
+        <span class="pagecount">PAGE 2 OF 9</span>
+        <a href="02-character-and-alter-ego.html">NEXT: CHARACTER &amp; ALTER-EGO &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

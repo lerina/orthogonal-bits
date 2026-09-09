@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Extended Edition — 07. Progression</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .chapterhead{ padding-top: 50px; padding-bottom: 50px; }
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 24px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(36px, 7.4vw, 68px); line-height: 1.0; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+  ul.plain, ol.plain{ margin: 10px 0 16px 0; padding-left: 20px; font-size: 13.5px; line-height: 1.75; color: var(--ink); max-width: 64ch; }
+  ul.plain li, ol.plain li{ margin-bottom: 6px; }
+
+  /* three metric cards */
+  .threats{ margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 15px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 760px){ .threats{ grid-template-columns: 1fr; } }
+
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.12em; color:var(--ink-dim); margin-bottom:8px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+
+  .tip{ background: var(--paper-2); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+  .example{ background: var(--paper-3); border: 1px solid var(--rule); padding: 14px 16px; margin: 14px 0; font-size: 12.5px; color: var(--ink-dim); line-height:1.65; }
+  .example strong{ color: var(--ink); }
+
+  .back{ text-align:center; padding-top: 50px; padding-bottom: 50px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 15px; color: var(--ink-dim); letter-spacing: 0.26em; }
+  .back .closer{ margin-top: 14px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- CHAPTER HEADER -->
+    <header class="panel chapterhead" data-fold="PAGE 8 / CH. 07" role="banner">
+      <div class="breadcrumb"><a href="index.html">&larr; CAPSLOCK EXTENDED EDITION</a> / CHAPTER 07</div>
+      <div class="stamp">CHAPTER 07</div>
+      <h1 class="masthead">PROGRESSION</h1>
+      <p class="tagline">The base game keeps this to one number on purpose. Now that the ceiling's lifted, here's the fuller version for players who actually want to watch the trend line.</p>
+    </header>
+
+    <main id="main-content">
+
+    <!-- WHY THIS EXISTS -->
+    <section class="panel" aria-labelledby="why-h" data-fold="PAGE 8 / WHY THIS EXISTS">
+      <div class="kicker">OPTIONAL BY DESIGN</div>
+      <h2 class="section" id="why-h">Why This Is Optional</h2>
+      <p class="copy">Every other side text in this system stops at a single Streak counter, because tracking more than that fights the base game's "fits in your head" philosophy. Extended Edition has already opened that door once, in Chapter 02 — so here's the fuller layer for anyone using CAPSLOCK primarily as a real-life gamification tool, where watching a trend actually matters. If it starts feeling like a chore, drop straight back to a single Streak number. Nothing else in the system depends on this chapter.</p>
+    </section>
+
+    <!-- THE THREE METRICS -->
+    <section class="panel" aria-labelledby="metrics-h" data-fold="PAGE 8 / THE METRICS">
+      <div class="kicker">WHAT GETS TRACKED</div>
+      <h2 class="section" id="metrics-h">Three Numbers</h2>
+
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">XP</div>
+          <h4>Skcor completed per 5 days</h4>
+          <p>A Skcor is one 20-minute block of real, focused deep work. Xp is how many you've banked this 5-day stretch.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">HP</div>
+          <h4>Consistency streak</h4>
+          <p>Every 5 days without breaking the chain, fold that period's Skcor into your total and add 1 to Hp. Reset Xp, start the next stretch.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">LV</div>
+          <h4>Real accomplishments</h4>
+          <p>Increments only for something with real consequences to your life — a license, a shipped project, a finished course. Not busywork.</p>
+        </div>
+      </div>
+
+      <table class="reftable" aria-label="Progression metric mapping" style="margin-top:22px;">
+        <caption>What each number is actually measuring</caption>
+        <thead><tr><th scope="col">Metric</th><th scope="col">Real Life</th><th scope="col">Measures</th></tr></thead>
+        <tbody>
+          <tr><td>Xp</td><td>Skcor completed per 5 days</td><td>Time actually spent on things that mattered</td></tr>
+          <tr><td>Hp</td><td>Unbroken 5-day stretches</td><td>Current consistency streak</td></tr>
+          <tr><td>Lv</td><td>Completed real projects</td><td>Compounded, life-level achievement</td></tr>
+        </tbody>
+      </table>
+
+      <div class="tip">Optional: note the stretch number and total Skcor alongside each Hp increment — a running log of how your deep-work capacity is trending, not just whether you kept the chain.</div>
+    </section>
+
+    <!-- TYING IT TOGETHER -->
+    <section class="panel" aria-labelledby="tie-h" data-fold="PAGE 8 / TYING IT TOGETHER">
+      <div class="kicker">CONNECTING THE CHAPTERS</div>
+      <h2 class="section" id="tie-h">Where the Numbers Come From</h2>
+      <p class="copy">A completed Nine-Item Loadout day (Chapter 05) is a natural place to log Skcor — any of the nine items that involved real focused effort counts. A completed Story Arc (Chapter 04) is a natural place to check whether an Lv-worthy accomplishment happened along the way.</p>
+      <p class="copy"><strong>Lesser and Major Awards:</strong> before starting a Story Arc, define two rewards for finishing it well — a Lesser Award for a clean run, a Major Award for finishing in a way that actually surprised you. Cool gear, a new title, a rare piece of Capability — whatever lands. Decide both before you start; awarding them after the fact turns them into participation trophies instead of goals.</p>
+    </section>
+
+    </main>
+
+    <!-- FOOTER + NAV -->
+    <footer class="panel back" data-fold="PAGE 8 / END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; E X T E N D E D</div>
+      <p class="closer">Three numbers, entirely optional. Chapter 08 closes the book with the tables that keep a running session honest and surprising.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="06-inner-deceivers.html">&larr; THE INNER DECEIVERS</a>
+        <span class="pagecount">PAGE 8 OF 9</span>
+        <a href="08-running-the-game.html">NEXT: RUNNING THE GAME &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
