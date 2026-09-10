@@ -40,8 +40,9 @@
   *{ box-sizing: border-box; }
 
   html,body{
-    margin:0; padding:0; background: transparent;
+    margin:0; padding:0; /*background: transparent;*/
     color: var(--ink);
+    background: var(--paper);
     font-family: 'Space Mono', monospace;
   }
 
@@ -244,7 +245,9 @@
 <body>
 
 <div class="sheet">
-  <div class="panels">
+  <div class="panels"><span class="stamp">
+          <a href="index.html" aria-label="Home (top level)" style="color: var(--ink-dim)">BACK: index <span class="muted">~</span></a>
+      </span>
 
     <!-- ============================================================
          PANEL LIBRARY — duplicate what you need, delete the rest.
@@ -388,7 +391,9 @@
           <p>One to three sentences.</p>
         </div>
       </div>
-    </section>
+    </section><span class="stamp">
+          <a href="index.html" aria-label="Home (top level)" style="color: var(--ink-dim)">BACK: index <span class="muted">~</span></a>
+      </span>
 
     <!-- 8. BACK / CLOSING — always the last panel -->
     <section class="panel back" data-fold="PANEL 8 / BACK">

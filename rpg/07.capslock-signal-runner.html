@@ -51,6 +51,10 @@
     background: var(--paper); padding: 0 8px;
   }
 
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+
   .cover{ padding-top: 54px; padding-bottom: 54px; }
   .stamp{
     display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
@@ -126,7 +130,9 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
 <div class="sheet">
-  <div class="panels">
+  <div class="panels"><span class="stamp">
+          <a href="index.html" aria-label="Home (top level)" style="color: var(--ink-dim)">BACK: index <span class="muted">~</span></a>
+      </span>
 
     <!-- COVER -->
     <header class="panel cover" data-fold="DOCUMENT 07" role="banner">
@@ -219,6 +225,7 @@
           <tr><td>jq</td><td>Filtering chaotic JSON telemetry streamed live off an enemy drone.</td></tr>
           <tr><td>fd</td><td>Locating unindexed shadow servers and private subnets on a local grid.</td></tr>
           <tr><td>strace / perf</td><td>Listening to a hostile process in real time to catch encryption keys the instant they hit cache.</td></tr>
+          <tr><td>lldb / rust-lldb</td><td>lldb and rust-lldb are the instruments used to observe what a program actually does.</td></tr>
         </tbody>
       </table>
       <div class="tip">The full technique — the actual query ladder, question by question — is preserved whole in the RUSTCORE Field Manual (Document 06). Every Signal Runner learns it before they ever touch a live target.</div>
@@ -242,9 +249,14 @@
 
         <p>She vanished not long after — no arrest, no body, no final transmission, just silence on every channel she'd ever used. What she left behind was a single manual, passed hand to hand down the Line ever since, containing nothing about her and everything about the method. Newer runners argue about whether she's dead, retired, or just three checkpoints deeper into RUSTCORE than anyone else has ever gone looking. The argument doesn't really matter. The manual's the part that's real.</p>
 
-        <div class="creed">"You were never going to out-render them. Don't try. Ask the smallest question that gets you closer, and don't ask the next one until the first one's actually answered. The system was never hiding from you. It was just never asked correctly."</div>
+        <div class="creed">"You were never going to out-render them. I mean, 
+        they will always out-render you, so put your effort into asking better questions. Ask the smallest question that gets you closer, and build each next question on the answer you’ve received. The system has been ready to respond all along, it was never hiding from you; it simply needs the right question."
+        </div>
+              <div class="breadcrumb"><a href="stories/compile_story_01.html">&rarr; Read the story </a> / COMPILE / PART ONE</div>
       </div>
-    </section>
+    </section><span class="stamp">
+          <a href="index.html" aria-label="Home (top level)" style="color: var(--ink-dim)">BACK: index <span class="muted">~</span></a>
+      </span>
 
     </main>
 
