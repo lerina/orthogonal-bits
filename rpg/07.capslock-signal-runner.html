@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — The Signal Runner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(40px, 8.6vw, 84px); line-height: 0.94; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 27px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.78; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  /* 3up gear/values grid */
+  .factions{ margin-top: 22px; display:grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .faction{ border-left: 3px solid var(--riso-yellow); padding-left: 14px; }
+  .faction h3{ margin: 0 0 6px 0; font-size: 12.5px; letter-spacing: 0.1em; color: var(--riso-yellow); font-weight: 700; }
+  .faction p{ margin:0; font-size: 12px; line-height: 1.6; color: var(--ink-dim); }
+  @media (max-width: 640px){ .factions{ grid-template-columns: 1fr; } }
+
+  /* threats-style playstyle cards */
+  .threats{ margin-top: 20px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 760px){ .threats{ grid-template-columns: 1fr; } }
+
+  /* arsenal table */
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.12em; color:var(--ink-dim); margin-bottom:8px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+
+  /* legend profile card */
+  .legend{
+    margin-top: 22px; background: var(--paper-3); border: 1px solid var(--riso-pink);
+    box-shadow: 0 0 0 1px rgba(255,46,99,0.15); padding: 26px;
+  }
+  .legend .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-pink); }
+  .legend h3{ margin: 10px 0 4px 0; font-family:'Anton', sans-serif; font-weight:400; font-size: 30px; color: var(--ink); }
+  .legend .role{ font-size: 12px; color: var(--riso-yellow); letter-spacing: 0.05em; margin-bottom: 16px; }
+  .legend p{ margin: 0 0 12px 0; font-size: 13.5px; color: var(--ink); line-height: 1.75; max-width: 66ch; }
+  .legend p:last-child{ margin-bottom: 0; }
+  .legend .creed{
+    margin-top: 16px; padding: 14px 16px; border-left: 3px solid var(--riso-yellow);
+    background: var(--paper-2); font-style: italic; color: var(--riso-yellow); font-size: 13px; line-height: 1.7;
+  }
+
+  .tip{ background: var(--paper-2); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="DOCUMENT 07" role="banner">
+      <div class="stamp">SIGNAL RUNNER</div>
+      <h1 class="masthead">THE SIGNAL<br>RUNNER</h1>
+      <p class="tagline">No goggles. No neon skyline rendered in your skull. Just a matte-black deck, a braille matrix under your fingertips, and a mind that already thinks like a borrow checker.</p>
+      <div class="cover-foot">
+        <span>BARE-METAL MINIMALIST</span>
+        <span>IMMUNE TO VISUAL ICE</span>
+        <span>QUERIES, NEVER SCANS</span>
+      </div>
+    </header>
+
+    <main id="main-content">
+
+    <!-- LORE -->
+    <section class="panel" aria-labelledby="lore-h" data-fold="LORE">
+      <div class="kicker">ORIGINS</div>
+      <h2 class="section" id="lore-h">The Bare-Metal Minimalist</h2>
+      <p class="copy">Every other netrunner in the sprawl jacks in to a rendered skyline — corporate towers as glass icebergs, ICE as strobing serpents, data as neon rain. It's beautiful. It's also a liability. Full-sensory rigs give a Megacorp exactly one thing to attack: your eyes. Photosensitive lockouts, cognitive overload payloads, strobe-based system panics — half of modern ICE was never designed to stop a hacker. It was designed to stop a <em>looking</em> hacker.</p>
+      <p class="copy">Signal Runners were never trying to make a statement. Low vision, no vision, or simply no patience for a rig that renders a city skyline you can't parse fast enough to survive — they built around the problem instead of waiting for someone else to solve it. They dropped the video output first, then the assumptions underneath it. What was left was the net as it always actually was: topology, not scenery. Structure, not spectacle.</p>
+      <p class="copy">The city took its time noticing. For years, Signal Runners were the joke at the bottom of the ladder — "the blind kids with the cane-decks," running jobs nobody flashy wanted. Then a few of the biggest ICE walls in the sprawl started falling to intrusions the visual logs couldn't even explain, and the joke stopped being funny. Immunity to visual ICE was never a design goal. It was a side effect of building for a body the Megacorps forgot existed — and it turned out to be the sharpest edge in the city.</p>
+    </section>
+
+    <!-- WORLDBUILDING -->
+    <section class="panel" aria-labelledby="world-h" data-fold="WORLDBUILDING">
+      <div class="kicker">WHERE THEY FIT</div>
+      <h2 class="section" id="world-h">The Dead Reckoning Line</h2>
+      <p class="copy">Signal Runners don't answer to any one Megacorp, Street Gang, or Safehouse — they run underneath all three, on what the sprawl calls <span class="anchor">the Dead Reckoning Line</span>: an informal, deliberately undocumented relay of safehouses, borrowed server racks, and word-of-mouth vouching. No membership card. No central server to raid. You get on the Line by being good enough that someone already on it decides to vouch for you — and you stay on it by never once being the reason it gets burned.</p>
+      <p class="copy">Their relationship with RUSTCORE — the compiler-entity every hacker in the city eventually has to answer to — is different from anyone else's. Where a flashy netrunner sees RUSTCORE as an obstacle to trick, a Signal Runner recognizes the shape of something they've been training for their whole life: a system that refuses to run anything it hasn't verified, that never explains itself twice, that punishes assumption and rewards precision. Ownership, borrowing, compile-time safety — RUSTCORE speaks their native dialect. Half the reason Signal Runners keep cracking checkpoints nobody else can touch is that they were never fighting the discipline. They were raised on it.</p>
+
+      <div class="factions">
+        <div class="faction">
+          <h3>THE PRAGMATIST</h3>
+          <p>Heavy anti-static techwear, deep pockets built for physical hardware tokens, an opaque visor worn specifically to block out the neon nobody asked them to look at.</p>
+        </div>
+        <div class="faction">
+          <h3>THE ELITIST ARTISAN</h3>
+          <p>Open contempt for "script kiddies" running purely visual rigs. If you can't trace a value's lifetime with your own hands, you're a tourist, not a runner.</p>
+        </div>
+        <div class="faction">
+          <h3>THE VOUCH SYSTEM</h3>
+          <p>No resumes, no ads. You're on the Dead Reckoning Line because someone already on it staked their own reputation on yours.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- GEAR -->
+    <section class="panel" aria-labelledby="gear-h" data-fold="SIGNATURE GEAR">
+      <div class="kicker">SIGNATURE GEAR &amp; INTERFACE</div>
+      <h2 class="section" id="gear-h">What They Carry</h2>
+      <div class="factions">
+        <div class="faction">
+          <h3>THE BRAILLE MATRIX</h3>
+          <p>Thousands of micro-needles refreshing code structure straight against the fingertips — data made into physical geometry, no rendering required.</p>
+        </div>
+        <div class="faction">
+          <h3>ACOUSTIC PINGERS</h3>
+          <p>Spatialized, multi-tonal audio cues that map a firewall's density and architecture the way sonar maps a hull.</p>
+        </div>
+        <div class="faction">
+          <h3>THE RUST DECK</h3>
+          <p>Ruggedized matte-black chassis, zero video output, every spare watt routed into processing cores, error correction, and heat dissipation instead.</p>
+        </div>
+      </div>
+      <p class="copy" style="margin-top:20px;"><strong>New to the line:</strong> <span class="anchor">the Whisper Line</span> — a bone-conduction audio channel routed under the jaw instead of over the ears, so a Signal Runner never has to choose between hearing the network and hearing the footsteps behind them.</p>
+    </section>
+
+    <!-- PLAYSTYLE FLAVOR -->
+    <section class="panel" aria-labelledby="play-h" data-fold="MECHANICS FLAVOR">
+      <div class="kicker">HOW THEY WORK</div>
+      <h2 class="section" id="play-h">Compile-Time Safety</h2>
+      <p class="copy">A Signal Runner spends far longer preparing an exploit than running it — and once it's compiled, it very rarely backfires. The discipline is the defense.</p>
+      <div class="threats">
+        <div class="threat"><div class="tag">PREPARATION</div><h4>Compile-Time Safety</h4><p>Heavy prep phases up front. Once the script compiles clean, hijacking it mid-run is nearly impossible.</p></div>
+        <div class="threat"><div class="tag">DEFENSE</div><h4>Immunity to Visual ICE</h4><p>Strobe feedback, cognitive optical overload, blinding payloads — none of it lands. The interface simply discards the layer it's built on.</p></div>
+        <div class="threat"><div class="tag">FAILURE STATE</div><h4>The Panic</h4><p>A failed script panics safely — the deck drops the connection and isolates memory instantly. You lose the run, never your mind.</p></div>
+      </div>
+    </section>
+
+    <!-- CLI ARSENAL -->
+    <section class="panel" aria-labelledby="cli-h" data-fold="CLI ARSENAL">
+      <div class="kicker">THE TOOLS</div>
+      <h2 class="section" id="cli-h">The Signal Runner's CLI Arsenal</h2>
+      <table class="reftable" aria-label="CLI tool to tactical application table">
+        <caption>What each tool becomes in the field</caption>
+        <thead><tr><th scope="col">Tool</th><th scope="col">Tactical Application</th></tr></thead>
+        <tbody>
+          <tr><td>rg (ripgrep)</td><td>Blazing-fast searches of hostile source for exposed tokens or backdoors.</td></tr>
+          <tr><td>jq</td><td>Filtering chaotic JSON telemetry streamed live off an enemy drone.</td></tr>
+          <tr><td>fd</td><td>Locating unindexed shadow servers and private subnets on a local grid.</td></tr>
+          <tr><td>strace / perf</td><td>Listening to a hostile process in real time to catch encryption keys the instant they hit cache.</td></tr>
+        </tbody>
+      </table>
+      <div class="tip">The full technique — the actual query ladder, question by question — is preserved whole in the RUSTCORE Field Manual (Document 06). Every Signal Runner learns it before they ever touch a live target.</div>
+    </section>
+
+    <!-- THE LEGEND -->
+    <section class="panel" aria-labelledby="legend-h" data-fold="THE LEGEND">
+      <div class="kicker">A ROLE MODEL TO ASPIRE TO</div>
+      <h2 class="section" id="legend-h">Compile</h2>
+
+      <div class="legend">
+        <div class="tag">FOUNDER · GHOST · AUTHOR OF THE FIELD MANUAL</div>
+        <h3>"COMPILE"</h3>
+        <div class="role">Real name unrecorded. Status: unconfirmed — last verified sighting, eleven years ago.</div>
+
+        <p>Every Signal Runner on the Dead Reckoning Line knows the story, and every version of it agrees on the important part: Compile went in blind — not metaphorically, actually blind, since before the sprawl's clinics ever offered an implant that could give it back to her — and came out the only person alive who'd ever cracked a RUSTCORE vault clean, first try, no retries, no panic state triggered once.</p>
+
+        <p>She didn't use a rig. She never had one that worked right for her. What she had was a terminal, a braille display older than most of the runners who now swear by her name, and a method nobody had bothered to write down before she did: state the question, run the smallest query that could answer it, narrow, trace, verify, move to the next question. She treated an entire hostile mainframe the way anyone else treats a single stubborn file — not as a place to get lost in, but as something to interrogate until it ran out of places to hide.</p>
+
+        <p>The vault she cracked belonged to a Megacorp that had spent three years bragging it was unbreachable specifically because its ICE was tuned to overwhelm the eyes. Compile never gave it anything to overwhelm. She was three questions deep into its access logs before its own security even agreed on what had gotten in.</p>
+
+        <p>She vanished not long after — no arrest, no body, no final transmission, just silence on every channel she'd ever used. What she left behind was a single manual, passed hand to hand down the Line ever since, containing nothing about her and everything about the method. Newer runners argue about whether she's dead, retired, or just three checkpoints deeper into RUSTCORE than anyone else has ever gone looking. The argument doesn't really matter. The manual's the part that's real.</p>
+
+        <div class="creed">"You were never going to out-render them. Don't try. Ask the smallest question that gets you closer, and don't ask the next one until the first one's actually answered. The system was never hiding from you. It was just never asked correctly."</div>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END OF DOCUMENT 07">
+      <div class="glyph">S I G N A L &nbsp; R U N N E R</div>
+      <p class="closer">Every runner on the Line is chasing the same unreachable bar: not to become Compile, exactly, but to ask one question today the way she asked all of hers — precisely, and only once.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
