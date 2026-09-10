@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — The BVI Rust Programmer's Manual</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(32px, 6.6vw, 60px); line-height: 1.02; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 58ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 26px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 8px; }
+  h4.subsub{ font-size: 12.5px; color: var(--riso-yellow); letter-spacing: 0.05em; margin: 16px 0 6px 0; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 13.5px; line-height: 1.75; max-width: 70ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 10px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+  ul.plain, ol.plain{ margin: 8px 0 14px 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--ink); max-width: 68ch; }
+  ul.plain li, ol.plain li{ margin-bottom: 4px; }
+
+  pre.code{
+    background: var(--paper-2); border: 1px solid var(--rule); border-left: 3px solid var(--riso-yellow);
+    padding: 10px 14px; margin: 10px 0 16px 0; overflow-x: auto;
+    font-size: 12.5px; line-height: 1.6; color: var(--riso-yellow);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  code.inline{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12.5px; }
+
+  /* TOC */
+  nav.toc ul{ list-style:none; margin:0; padding:0; columns: 2; column-gap: 28px; }
+  nav.toc li{ break-inside: avoid; padding: 5px 0; font-size: 12.5px; }
+  nav.toc a{ color: var(--ink); text-decoration:none; }
+  nav.toc a:hover, nav.toc a:focus{ color: var(--riso-pink); }
+  @media (max-width: 640px){ nav.toc ul{ columns: 1; } }
+
+  /* transmission aside */
+  .transmission{ background: var(--paper-3); border: 1px solid var(--riso-pink); padding: 16px 18px; margin: 20px 0; }
+  .transmission .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-pink); margin-bottom: 8px; display:block; }
+  .transmission p{ margin:0; font-size: 13px; color: var(--ink); line-height: 1.7; font-style: italic; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 15px; color: var(--ink-dim); letter-spacing: 0.26em; }
+  .back .closer{ margin-top: 16px; font-size: 12.5px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+
+  .refs{ font-size: 11px; color: var(--ink-dim); line-height: 1.8; }
+  .refs a{ color: var(--riso-yellow); }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="TERMINAL MANUAL" role="banner">
+      <div class="stamp">RUSTCORE FIELD MANUAL</div>
+      <h1 class="masthead">THE BVI RUST<br>PROGRAMMER'S MANUAL</h1>
+      <p class="tagline">Debian 13.6, MATE, Orca 48.1 — Regex, ripgrep, Helix, ast-grep, and Rust source-code querying. RUSTCORE doesn't hand you a map. It hands you a terminal, a screen reader, and however many questions you're willing to ask.</p>
+      <div class="cover-foot">
+        <span>NO VISUAL SCANNING</span>
+        <span>QUERY, DON'T READ</span>
+        <span>13 PARTS</span>
+      </div>
+    </header>
+
+    <!-- LORE INTRO -->
+    <section class="panel" aria-labelledby="lore-h" data-fold="TRANSMISSION 0">
+      <div class="kicker">FIELD NOTE — SIGNAL RUNNERS CHANNEL</div>
+      <h2 class="section" id="lore-h">Before You Jack In</h2>
+      <p class="copy">Somewhere under the city, an Interface Rogue keeps this file pinned above her deck. Not because the codebase she's cracking tonight is small — it never is — but because she's stopped trying to read it. RUSTCORE doesn't reward the runner who scrolls through every file in a target system hoping something looks wrong. It rewards the one who already knows the next question to ask.</p>
+      <p class="copy">This is that manual, salvaged word-for-word and passed down through the Signal Runners archetype — Cartographers who map by structure instead of sight, Interface Rogues who overclock the search itself. The technique underneath is the same one the Sensory Loop already teaches: get a clue, act on it, get the next clue. Here, the clue is a query, and the terminal is the room.</p>
+    </section>
+
+    <!-- TOC -->
+    <nav class="panel toc" aria-label="Table of Contents" data-fold="CONTENTS">
+      <div class="kicker">THE MANUAL, PART BY PART</div>
+      <h2 class="section">Contents</h2>
+      <ul>
+        <li><a href="#part1">Part 1 — Method (§1–2)</a></li>
+        <li><a href="#part2">Part 2 — Regex Fundamentals (§3–12)</a></li>
+        <li><a href="#part3">Part 3 — Helix (§13–14)</a></li>
+        <li><a href="#part4">Part 4 — ripgrep Basics (§15–19)</a></li>
+        <li><a href="#part5">Part 5 — Rust-Specific Queries (§20–29)</a></li>
+        <li><a href="#part6">Part 6 — ast-grep (§30–34)</a></li>
+        <li><a href="#part7">Part 7 — Choosing Tools &amp; The Ladder (§35–36)</a></li>
+        <li><a href="#part8">Part 8 — Relationship &amp; Tracing (§37–40)</a></li>
+        <li><a href="#part9">Part 9 — Git &amp; Diff (§41–42)</a></li>
+        <li><a href="#part10">Part 10 — Output Control (§43–45)</a></li>
+        <li><a href="#part11">Part 11 — Search Direction &amp; Landmarks (§46–49)</a></li>
+        <li><a href="#part12">Part 12 — Architecture &amp; Config (§50–56)</a></li>
+        <li><a href="#part13">Part 13 — Protocol, Rules &amp; Mantra (§57–63)</a></li>
+        <li><a href="#refs">References</a></li>
+      </ul>
+    </nav>
+
+    <main id="main-content">
+
+    <!-- PART 1 -->
+    <section class="panel" id="part1" aria-labelledby="part1-h" data-fold="PART 1">
+      <div class="kicker">PART 1</div>
+      <h2 class="section" id="part1-h">Method</h2>
+
+      <h3 class="sub">1. The Purpose of This Manual</h3>
+      <p class="copy">A programmer working with a screen reader needs efficient ways to interrogate source code.</p>
+      <p class="copy">The goal is not to read every file from beginning to end.</p>
+      <p class="copy">The goal is to ask precise questions and reduce the codebase until the relevant piece becomes clear.</p>
+      <p class="copy">Typical questions include:</p>
+      <pre class="code">Where is this function defined?
+
+Where is this type defined?
+
+Who calls this function?
+
+Where is this struct constructed?
+
+What modules import this type?
+
+Where is this trait implemented?
+
+What functions return Result?
+
+Where is this error created?
+
+Where does this value come from?
+
+Where does this value go?
+
+Which files changed?
+
+Which dependency provides this type?
+
+Why does this compiler error occur?
+
+What code actually runs for this case?</pre>
+      <p class="copy">Different tools answer different kinds of questions.</p>
+      <p class="copy">The basic progression is:</p>
+      <pre class="code">Literal text
+    ↓
+Regex
+    ↓
+ripgrep
+    ↓
+Helix
+    ↓
+ast-grep
+    ↓
+Rust compiler and rust-analyzer
+    ↓
+Manual code tracing</pre>
+      <p class="copy">The important skill is choosing the simplest tool that can answer the question reliably.</p>
+
+      <h3 class="sub">2. Query the Codebase Instead of Scanning It</h3>
+      <p class="copy">A source tree is a database of information.</p>
+      <p class="copy">Instead of asking:</p>
+      <p class="copy"><em>"How do I read this repository?"</em></p>
+      <p class="copy">ask:</p>
+      <p class="copy"><em>"What do I need to know?"</em></p>
+      <p class="copy">Then turn the question into a query.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">Question:
+Where is Router defined?
+
+Query:
+rg 'struct Router|enum Router|type Router' -t rust</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Question:
+Who creates Router?
+
+Query:
+rg 'Router::|Router\s*\{' -t rust</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Question:
+Who calls the constructor?
+
+Query:
+rg 'Router::new' -t rust</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Question:
+What does Router depend on?
+
+Query:
+Read the definition and its fields.</pre>
+      <p class="copy">This produces a chain of increasingly precise questions.</p>
+      <p class="copy">The basic method is:</p>
+      <p class="copy"><strong>Question → Query → Evidence → Narrow the search → Understand</strong></p>
+
+      <div class="transmission">
+        <span class="tag">TRANSMISSION — CARTOGRAPHER CHANNEL</span>
+        <p>"Structural Echo doesn't map the whole building either. It gives you exits, hazards, routes — the same three things you actually need. Everything else is noise you were never going to use."</p>
+      </div>
+    </section>
+
+    <!-- PART 2 -->
+    <section class="panel" id="part2" aria-labelledby="part2-h" data-fold="PART 2">
+      <div class="kicker">PART 2</div>
+      <h2 class="section" id="part2-h">Regex Fundamentals</h2>
+
+      <h3 class="sub">3. Regex as a Text Query Language</h3>
+      <p class="copy">Regular expressions let you search for patterns rather than only literal strings.</p>
+      <p class="copy">For a screen reader user this is valuable because the search engine can identify the relevant text without requiring visual scanning.</p>
+      <p class="copy">Regex is useful for finding:</p>
+      <ul class="plain">
+        <li>function definitions,</li>
+        <li>struct definitions,</li>
+        <li>enum definitions,</li>
+        <li>trait definitions,</li>
+        <li>imports,</li>
+        <li>error messages,</li>
+        <li>TODO comments,</li>
+        <li>attributes,</li>
+        <li>type names,</li>
+        <li>macros,</li>
+        <li>logging calls,</li>
+        <li>common syntax patterns.</li>
+      </ul>
+      <p class="copy">Regex is a language for describing text.</p>
+      <p class="copy">It is not a programming-language parser.</p>
+      <p class="copy">That distinction is fundamental.</p>
+
+      <h3 class="sub">4. Rust's Regex Syntax</h3>
+      <p class="copy">Helix and ripgrep use Rust's regex technology, but their commands and search interfaces are different.</p>
+      <p class="copy">The Rust <code class="inline">regex</code> syntax intentionally leaves out some features found in other regex engines, including look-around and backreferences. ([Docs.rs][2])</p>
+
+      <h3 class="sub">5. Basic Regex Syntax</h3>
+      <h4 class="subsub">The dot</h4>
+      <pre class="code">.</pre>
+      <p class="copy">matches any single character except a newline by default.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">a.b</pre>
+      <p class="copy">can match:</p>
+      <pre class="code">aab
+acb
+a1b</pre>
+
+      <h4 class="subsub">Digits</h4>
+      <pre class="code">\d</pre>
+      <p class="copy">matches a Unicode decimal digit by default.</p>
+      <p class="copy">For ASCII digits specifically:</p>
+      <pre class="code">[0-9]</pre>
+      <p class="copy">This distinction matters.</p>
+      <p class="copy">Rust's regex engine is Unicode-aware by default. ([Docs.rs][2])</p>
+
+      <h4 class="subsub">Word characters</h4>
+      <pre class="code">\w</pre>
+      <p class="copy">matches a Unicode word character by default.</p>
+      <p class="copy">For source-code searches, this is sometimes broader than what you actually mean.</p>
+      <p class="copy">When searching Rust identifiers, a literal pattern or a more specific character class may be preferable.</p>
+
+      <h4 class="subsub">Whitespace</h4>
+      <pre class="code">\s</pre>
+      <p class="copy">matches Unicode whitespace by default.</p>
+      <p class="copy">For ASCII whitespace specifically, use an explicit class such as:</p>
+      <pre class="code">[ \t]</pre>
+
+      <h4 class="subsub">Line start</h4>
+      <pre class="code">^</pre>
+      <p class="copy">matches the beginning of a line when multiline mode is active.</p>
+      <p class="copy">In line-oriented command-line searches, it is commonly used to find lines beginning with a particular pattern.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">^\s*fn</pre>
+
+      <h4 class="subsub">Line end</h4>
+      <pre class="code">$</pre>
+      <p class="copy">matches the end of a line when multiline mode is active.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">;$</pre>
+      <p class="copy">matches lines ending with a semicolon.</p>
+
+      <h4 class="subsub">Character classes</h4>
+      <pre class="code">[abc]</pre>
+      <p class="copy">matches one character from the set.</p>
+      <pre class="code">[a-z]</pre>
+      <p class="copy">matches one character in the ASCII range <code class="inline">a</code> through <code class="inline">z</code>.</p>
+      <pre class="code">[^0-9]</pre>
+      <p class="copy">matches one character that is not an ASCII digit.</p>
+
+      <h4 class="subsub">Alternation</h4>
+      <pre class="code">error|warning</pre>
+      <p class="copy">matches either <code class="inline">error</code> or <code class="inline">warning</code>.</p>
+      <p class="copy">For related Rust declarations:</p>
+      <pre class="code">struct|enum|trait</pre>
+
+      <h3 class="sub">6. Quantifiers</h3>
+      <p class="copy">Quantifiers control repetition.</p>
+      <pre class="code">*</pre>
+      <p class="copy">means zero or more. Example: <code class="inline">\d*</code></p>
+      <pre class="code">+</pre>
+      <p class="copy">means one or more. Example: <code class="inline">\w+</code></p>
+      <pre class="code">?</pre>
+      <p class="copy">means zero or one. Example: <code class="inline">pub\s+fn</code> with <code class="inline">(pub\s+)?</code> when <code class="inline">pub</code> is optional.</p>
+      <pre class="code">{n}</pre>
+      <p class="copy">means exactly <code class="inline">n</code> repetitions. Example: <code class="inline">\d{3}</code></p>
+      <pre class="code">{n,m}</pre>
+      <p class="copy">means between <code class="inline">n</code> and <code class="inline">m</code> repetitions. Example: <code class="inline">\d{2,4}</code></p>
+
+      <h3 class="sub">7. Character Classes and Boundaries</h3>
+      <p class="copy">Rust's regex engine provides:</p>
+      <pre class="code">\d    digit
+\D    non-digit
+\w    word character
+\W    non-word character
+\s    whitespace
+\S    non-whitespace
+\b    word boundary
+\B    non-word-boundary position</pre>
+      <p class="copy">These are Unicode-aware by default. ([Docs.rs][2])</p>
+      <p class="copy">For ASCII-only behavior, use explicit classes or disable Unicode mode locally.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">(?-u:\d)</pre>
+      <p class="copy">matches an ASCII digit.</p>
+
+      <h3 class="sub">8. Word Boundaries</h3>
+      <pre class="code">\b</pre>
+      <p class="copy">matches a word boundary.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">\bResult\b</pre>
+      <p class="copy">searches for <code class="inline">Result</code> as a word rather than matching it inside a larger word.</p>
+      <p class="copy">Because Rust's default word definition is Unicode-aware, <code class="inline">\b</code> is also Unicode-aware. ([Docs.rs][2])</p>
+      <p class="copy">For ordinary Rust source navigation, this is usually sufficient.</p>
+
+      <h3 class="sub">9. Anchors for the Whole Input</h3>
+      <p class="copy">Rust's regex engine also provides:</p>
+      <pre class="code">\A</pre>
+      <p class="copy">for the beginning of the entire input. And:</p>
+      <pre class="code">\z</pre>
+      <p class="copy">for the end of the entire input.</p>
+      <p class="copy">These differ conceptually from line-oriented <code class="inline">^</code> and <code class="inline">$</code>.</p>
+      <p class="copy">Use <code class="inline">^ and $</code> when thinking about lines. Use <code class="inline">\A and \z</code> when thinking about the entire input.</p>
+
+      <h3 class="sub">10. Capture Groups</h3>
+      <p class="copy">Parentheses create capture groups.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">(fn)\s+(\w+)</pre>
+      <p class="copy">For:</p>
+      <pre class="code">fn main</pre>
+      <p class="copy">the groups contain:</p>
+      <pre class="code">Group 1: fn
+Group 2: main</pre>
+      <p class="copy">Named captures use:</p>
+      <pre class="code">(?P&lt;name&gt;\w+)</pre>
+      <p class="copy">Capture groups become particularly useful when a search result is being processed by another tool.</p>
+      <p class="copy">ripgrep can also use capture groups for output replacement with its <code class="inline">--replace</code> option, but that replacement affects printed output rather than modifying files. ([ripgrep][3])</p>
+
+      <h3 class="sub">11. Regex Features Missing from Rust's Regex Engine</h3>
+      <p class="copy">Rust's <code class="inline">regex</code> crate does not support general lookahead or lookbehind.</p>
+      <p class="copy">These are unavailable:</p>
+      <pre class="code">(?=pattern)
+(?!pattern)
+(?&lt;=pattern)
+(?&lt;!pattern)</pre>
+      <p class="copy">Backreferences are also unsupported.</p>
+      <p class="copy">This is intentional. The engine trades some expressive features for predictable search performance. ([Docs.rs][2])</p>
+      <p class="copy">When a search requires such logic, consider:</p>
+      <pre class="code">Reformulate the regex.
+
+Run two searches.
+
+Pipe one search into another.
+
+Use rg filtering.
+
+Use awk, sed, or another text-processing tool.
+
+Use ast-grep.
+
+Use rust-analyzer or compiler information.
+
+Inspect the relevant source directly.</pre>
+
+      <h3 class="sub">12. Regex Is a Heuristic for Rust</h3>
+      <p class="copy">Consider:</p>
+      <pre class="code">^\s*fn\s+\w+</pre>
+      <p class="copy">This is a useful search for likely Rust function declarations.</p>
+      <p class="copy">It is not a Rust parser.</p>
+      <p class="copy">Rust permits syntax that makes simple regex searches incomplete.</p>
+      <p class="copy">For example, the function name may involve syntax that your pattern does not anticipate.</p>
+      <p class="copy">Therefore:</p>
+      <p class="copy"><strong>Regex answers "where does text resembling this occur?"</strong></p>
+      <p class="copy">It does not reliably answer:</p>
+      <p class="copy"><strong>"What does the Rust program mean?"</strong></p>
+      <p class="copy">Use regex to locate candidates.</p>
+      <p class="copy">Then inspect or parse the candidates.</p>
+    </section>
+
+    <!-- PART 3 -->
+    <section class="panel" id="part3" aria-labelledby="part3-h" data-fold="PART 3">
+      <div class="kicker">PART 3</div>
+      <h2 class="section" id="part3-h">Helix</h2>
+
+      <h3 class="sub">13. Helix Search</h3>
+      <p class="copy">Helix uses <code class="inline">/</code> for forward regex search.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">/^\s*fn\s+\w+</pre>
+      <p class="copy">Search backward with:</p>
+      <pre class="code">?pattern</pre>
+      <p class="copy">Useful commands include:</p>
+      <pre class="code">n</pre>
+      <p class="copy">for the next match. And:</p>
+      <pre class="code">N</pre>
+      <p class="copy">for the previous match.</p>
+      <p class="copy">Helix also provides selection-based searching.</p>
+      <p class="copy">The <code class="inline">*</code> command searches the current selection using word boundaries, while <code class="inline">Alt-*</code> searches the current selection directly. ([GitHub][4])</p>
+      <p class="copy">For screen-reader use, selection-based searching can be particularly useful because it avoids manually retyping a long identifier.</p>
+
+      <h3 class="sub">14. Helix Search Settings</h3>
+      <p class="copy">Helix's search configuration supports smart case.</p>
+      <p class="copy">The current default is:</p>
+      <pre class="code">smart-case = true</pre>
+      <p class="copy">This means searches are generally case-insensitive until the pattern contains uppercase characters. ([Helix Editor][5])</p>
+      <p class="copy">For a precise code query, be aware of this behavior.</p>
+      <p class="copy">If case matters, make the query explicit.</p>
+    </section>
+
+    <!-- PART 4 -->
+    <section class="panel" id="part4" aria-labelledby="part4-h" data-fold="PART 4">
+      <div class="kicker">PART 4</div>
+      <h2 class="section" id="part4-h">ripgrep Basics</h2>
+
+      <h3 class="sub">15. ripgrep Basics</h3>
+      <p class="copy">The basic command is:</p>
+      <pre class="code">rg 'pattern'</pre>
+      <p class="copy">It searches recursively from the current directory while respecting normal ignore rules.</p>
+      <p class="copy">Always quote regex patterns in the shell:</p>
+      <pre class="code">rg '^\s*fn\s+\w+'</pre>
+      <p class="copy">This ensures that the shell does not interpret special characters before ripgrep receives them.</p>
+
+      <h3 class="sub">16. The Most Useful ripgrep Options</h3>
+      <p class="copy">Case-insensitive:</p>
+      <pre class="code">rg -i 'error'</pre>
+      <p class="copy">Smart case:</p>
+      <pre class="code">rg -S 'Parser'</pre>
+      <p class="copy">Fixed literal search:</p>
+      <pre class="code">rg -F 'Router::new'</pre>
+      <p class="copy">Whole-word search:</p>
+      <pre class="code">rg -w 'Result'</pre>
+      <p class="copy">Print filenames only:</p>
+      <pre class="code">rg -l 'TODO'</pre>
+      <p class="copy">Count matching lines:</p>
+      <pre class="code">rg -c 'TODO'</pre>
+      <p class="copy">Show two lines after each match:</p>
+      <pre class="code">rg -A 2 'TODO'</pre>
+      <p class="copy">Show two lines before:</p>
+      <pre class="code">rg -B 2 'TODO'</pre>
+      <p class="copy">Show two lines around:</p>
+      <pre class="code">rg -C 2 'TODO'</pre>
+      <p class="copy">Numbered output is enabled by default in normal terminal output when appropriate, but it can be made explicit with:</p>
+      <pre class="code">rg -n 'pattern'</pre>
+
+      <h3 class="sub">17. Restrict Searches to Rust</h3>
+      <p class="copy">One of the most useful habits is restricting a search to the language you actually care about.</p>
+      <p class="copy">Use:</p>
+      <pre class="code">rg 'pattern' -t rust</pre>
+      <p class="copy">For example:</p>
+      <pre class="code">rg 'struct\s+\w+' -t rust</pre>
+      <p class="copy">You can inspect available file types with:</p>
+      <pre class="code">rg --type-list</pre>
+      <p class="copy">ripgrep also allows exclusions:</p>
+      <pre class="code">rg 'unsafe' -t rust -T test</pre>
+      <p class="copy">This can be useful when searching implementation code while excluding test files. ([ripgrep][3])</p>
+
+      <h3 class="sub">18. Restrict Searches with Globs</h3>
+      <p class="copy">You can use globs directly.</p>
+      <p class="copy">Only Rust source:</p>
+      <pre class="code">rg 'pattern' -g '*.rs'</pre>
+      <p class="copy">Rust and TOML:</p>
+      <pre class="code">rg 'pattern' -g '*.rs' -g '*.toml'</pre>
+      <p class="copy">Exclude tests:</p>
+      <pre class="code">rg 'pattern' -g '!tests/**'</pre>
+      <p class="copy">Exclude a generated directory:</p>
+      <pre class="code">rg 'pattern' -g '!target/**'</pre>
+      <p class="copy">Globs are useful when the repository's normal ignore rules are not enough. ([ripgrep][3])</p>
+
+      <h3 class="sub">19. Find Files Before Searching Them</h3>
+      <p class="copy">Sometimes the first question is simply:</p>
+      <p class="copy"><em>What files exist?</em></p>
+      <p class="copy">Use:</p>
+      <pre class="code">rg --files</pre>
+      <p class="copy">Rust source files:</p>
+      <pre class="code">rg --files -g '*.rs'</pre>
+      <p class="copy">Cargo manifests:</p>
+      <pre class="code">rg --files -g 'Cargo.toml'</pre>
+      <p class="copy">Markdown:</p>
+      <pre class="code">rg --files -g '*.md'</pre>
+      <p class="copy">This is often easier than navigating a large directory tree.</p>
+    </section>
+
+    <!-- PART 5 -->
+    <section class="panel" id="part5" aria-labelledby="part5-h" data-fold="PART 5">
+      <div class="kicker">PART 5</div>
+      <h2 class="section" id="part5-h">Rust-Specific Queries</h2>
+
+      <h3 class="sub">20. Search by Rust Declaration</h3>
+      <p class="copy">Find functions:</p>
+      <pre class="code">rg '^\s*(pub\s+)?fn\s+\w+' -t rust</pre>
+      <p class="copy">Find structs:</p>
+      <pre class="code">rg '^\s*(pub\s+)?struct\s+\w+' -t rust</pre>
+      <p class="copy">Find enums:</p>
+      <pre class="code">rg '^\s*(pub\s+)?enum\s+\w+' -t rust</pre>
+      <p class="copy">Find traits:</p>
+      <pre class="code">rg '^\s*(pub\s+)?trait\s+\w+' -t rust</pre>
+      <p class="copy">Find implementations:</p>
+      <pre class="code">rg '^\s*impl\b' -t rust</pre>
+      <p class="copy">Find public declarations:</p>
+      <pre class="code">rg '^\s*pub\b' -t rust</pre>
+      <p class="copy">These are navigation queries, not complete parsers.</p>
+
+      <h3 class="sub">21. Find a Specific Rust Symbol</h3>
+      <p class="copy">Suppose the symbol is:</p>
+      <pre class="code">Router</pre>
+      <p class="copy">Start with a literal search:</p>
+      <pre class="code">rg -F 'Router' -t rust</pre>
+      <p class="copy">Then narrow the question.</p>
+      <p class="copy">Definition candidates:</p>
+      <pre class="code">rg 'struct\s+Router|enum\s+Router|type\s+Router|trait\s+Router' -t rust</pre>
+      <p class="copy">Construction:</p>
+      <pre class="code">rg 'Router\s*\{' -t rust</pre>
+      <p class="copy">Associated functions:</p>
+      <pre class="code">rg 'Router::' -t rust</pre>
+      <p class="copy">Imports:</p>
+      <pre class="code">rg 'use .*Router' -t rust</pre>
+      <p class="copy">The important principle is:</p>
+      <p class="copy"><strong>Start literal. Add structure only when the literal search produces too much noise.</strong></p>
+
+      <h3 class="sub">22. Find Function Callers</h3>
+      <p class="copy">Suppose you have:</p>
+      <pre class="code">parse_config()</pre>
+      <p class="copy">Start with:</p>
+      <pre class="code">rg -F 'parse_config(' -t rust</pre>
+      <p class="copy">Then distinguish the definition:</p>
+      <pre class="code">rg 'fn\s+parse_config\b' -t rust</pre>
+      <p class="copy">and the likely calls:</p>
+      <pre class="code">rg -F 'parse_config(' -t rust</pre>
+      <p class="copy">This is usually enough for ordinary Rust functions.</p>
+      <p class="copy">For methods:</p>
+      <pre class="code">router.handle()</pre>
+      <p class="copy">search:</p>
+      <pre class="code">rg -F '.handle(' -t rust</pre>
+      <p class="copy">Then investigate the receiver's type.</p>
+      <p class="copy">This is an important limitation:</p>
+      <p class="copy">Text search can find likely callers, but it cannot reliably determine which method implementation Rust's type system selects.</p>
+      <p class="copy">For that, compiler-backed tools are preferable.</p>
+
+      <h3 class="sub">23. Find Where a Struct Is Constructed</h3>
+      <p class="copy">Suppose:</p>
+      <pre class="code">struct Config {
+    path: PathBuf,
+    debug: bool,
+}</pre>
+      <p class="copy">Search:</p>
+      <pre class="code">rg 'Config\s*\{' -t rust</pre>
+      <p class="copy">Also search:</p>
+      <pre class="code">rg 'Config::' -t rust</pre>
+      <p class="copy">Then search for functions returning it:</p>
+      <pre class="code">rg '->\s*(Result&lt;)?\s*Config\b' -t rust</pre>
+      <p class="copy">The question is not merely:</p>
+      <p class="copy"><em>"Where is Config defined?"</em></p>
+      <p class="copy">The more useful questions are:</p>
+      <pre class="code">Where is Config defined?
+
+Where is Config constructed?
+
+Who owns each Config?
+
+Where is Config passed?
+
+Where is Config transformed?
+
+Where is Config destroyed or consumed?</pre>
+      <p class="copy">This is source-code archaeology.</p>
+
+      <h3 class="sub">24. Find Trait Implementations</h3>
+      <p class="copy">Suppose you want implementations of:</p>
+      <pre class="code">Display</pre>
+      <p class="copy">Start:</p>
+      <pre class="code">rg 'impl\s+Display\s+for\s+\w+' -t rust</pre>
+      <p class="copy">For a specific type:</p>
+      <pre class="code">rg 'impl\s+Display\s+for\s+User' -t rust</pre>
+      <p class="copy">Also search:</p>
+      <pre class="code">rg 'impl.*Display' -t rust</pre>
+      <p class="copy">The regex is useful for finding candidates.</p>
+      <p class="copy">The compiler remains the authority for whether a particular implementation is actually applicable.</p>
+
+      <h3 class="sub">25. Find Error Creation and Propagation</h3>
+      <p class="copy">Rust error investigation benefits from several searches.</p>
+      <p class="copy">Find <code class="inline">Result</code>:</p>
+      <pre class="code">rg '\bResult\b' -t rust</pre>
+      <p class="copy">Find <code class="inline">?</code>:</p>
+      <pre class="code">rg '\?' -t rust</pre>
+      <p class="copy">Find explicit errors:</p>
+      <pre class="code">rg 'Err\s*\(' -t rust</pre>
+      <p class="copy">Find common error constructors:</p>
+      <pre class="code">rg 'Error::|Error\s*\{' -t rust</pre>
+      <p class="copy">Find <code class="inline">unwrap</code>:</p>
+      <pre class="code">rg '\.unwrap\(\)' -t rust</pre>
+      <p class="copy">Find <code class="inline">expect</code>:</p>
+      <pre class="code">rg '\.expect\(' -t rust</pre>
+      <p class="copy">Then trace the error backward:</p>
+      <pre class="code">Where is the error created?
+
+Who returns it?
+
+Who receives it?
+
+Who converts it?
+
+Who handles it?
+
+Where does it become user-visible?</pre>
+
+      <h3 class="sub">26. Search for Ownership and Borrowing Clues</h3>
+      <p class="copy">Regex cannot understand Rust's ownership model, but it can locate relevant syntax.</p>
+      <p class="copy">Search references:</p>
+      <pre class="code">rg '&\w+' -t rust</pre>
+      <p class="copy">Search mutable references:</p>
+      <pre class="code">rg '&mut\b' -t rust</pre>
+      <p class="copy">Search cloning:</p>
+      <pre class="code">rg '\.clone\(\)' -t rust</pre>
+      <p class="copy">Search moves into closures:</p>
+      <pre class="code">rg '\bmove\b' -t rust</pre>
+      <p class="copy">Search explicit lifetimes:</p>
+      <pre class="code">rg "'[a-zA-Z_][a-zA-Z0-9_]*" -t rust</pre>
+      <p class="copy">These searches locate places worth investigating.</p>
+      <p class="copy">They do not explain ownership.</p>
+      <p class="copy">Use compiler diagnostics for that.</p>
+
+      <h3 class="sub">27. Compiler Errors Are Queries</h3>
+      <p class="copy">A Rust compiler error is already a highly specific query.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">error[E0382]</pre>
+      <p class="copy">can be investigated with:</p>
+      <pre class="code">rustc --explain E0382</pre>
+      <p class="copy">The general pattern is:</p>
+      <pre class="code">rustc --explain E####</pre>
+      <p class="copy">This is often more useful than immediately searching the entire internet.</p>
+      <p class="copy">First understand the compiler's classification of the problem.</p>
+      <p class="copy">Then inspect your code.</p>
+      <p class="copy">Then search external documentation if necessary.</p>
+
+      <h3 class="sub">28. Cargo as a Source-Code Query Tool</h3>
+      <p class="copy">Cargo contains useful information about the architecture of a Rust project.</p>
+      <p class="copy">List workspace packages:</p>
+      <pre class="code">cargo metadata --no-deps --format-version 1</pre>
+      <p class="copy">Inspect dependency relationships:</p>
+      <pre class="code">cargo tree</pre>
+      <p class="copy">Find why a dependency exists:</p>
+      <pre class="code">cargo tree -i crate_name</pre>
+      <p class="copy">Inspect enabled features:</p>
+      <pre class="code">cargo tree -e features</pre>
+      <p class="copy">Check the project without building executable output:</p>
+      <pre class="code">cargo check</pre>
+      <p class="copy">Check a specific package:</p>
+      <pre class="code">cargo check -p package_name</pre>
+      <p class="copy">Run a specific test:</p>
+      <pre class="code">cargo test test_name</pre>
+      <p class="copy">Run tests for a package:</p>
+      <pre class="code">cargo test -p package_name</pre>
+      <p class="copy">Cargo is therefore not only a build tool.</p>
+      <p class="copy">It is also a source and dependency investigation tool.</p>
+
+      <h3 class="sub">29. Search the Dependency Source</h3>
+      <p class="copy">When your code calls something from another crate, the answer may not be in your repository.</p>
+      <p class="copy">Ask:</p>
+      <p class="copy"><em>What does this dependency actually do?</em></p>
+      <p class="copy">First identify the dependency:</p>
+      <pre class="code">cargo tree</pre>
+      <p class="copy">Then locate its source through Cargo's registry/cache or your IDE tooling.</p>
+      <p class="copy">For a specific type or function, search the dependency source:</p>
+      <pre class="code">rg -F 'TypeName' /path/to/dependency</pre>
+      <p class="copy">The important shift is:</p>
+      <p class="copy"><strong>A dependency is part of the program's behavior even when its source is outside your repository.</strong></p>
+      <p class="copy">When understanding a difficult API, reading the implementation can be more informative than repeatedly guessing from the call site.</p>
+    </section>
+
+    <!-- PART 6 -->
+    <section class="panel" id="part6" aria-labelledby="part6-h" data-fold="PART 6">
+      <div class="kicker">PART 6</div>
+      <h2 class="section" id="part6-h">ast-grep</h2>
+
+      <h3 class="sub">30. ast-grep: Structural Search</h3>
+      <p class="copy">Regex searches text.</p>
+      <p class="copy">ast-grep searches parsed source structure using AST patterns.</p>
+      <p class="copy">This makes it useful when formatting, whitespace, comments, or superficial textual differences should not matter.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">ast-grep -l rs -p '$OBJECT.unwrap()'</pre>
+      <p class="copy">can search for <code class="inline">unwrap()</code> calls structurally.</p>
+      <p class="copy">The short form:</p>
+      <pre class="code">ast-grep -p 'pattern'</pre>
+      <p class="copy">is equivalent to:</p>
+      <pre class="code">ast-grep run -p 'pattern'</pre>
+      <p class="copy">according to the current CLI documentation. ([Ast Grep][6])</p>
+
+      <h3 class="sub">31. ast-grep Metavariables</h3>
+      <p class="copy">A single-dollar metavariable:</p>
+      <pre class="code">$NAME</pre>
+      <p class="copy">matches one AST node.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">ast-grep -l rs -p '$OBJECT.unwrap()'</pre>
+      <p class="copy">Here:</p>
+      <pre class="code">$OBJECT</pre>
+      <p class="copy">can represent different receiver expressions.</p>
+      <p class="copy">A triple-dollar metavariable:</p>
+      <pre class="code">$$$ARGS</pre>
+      <p class="copy">matches a sequence of AST nodes.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">ast-grep -l rs -p 'process($$$ARGS)'</pre>
+      <p class="copy">can find calls to <code class="inline">process</code> regardless of the number of arguments.</p>
+      <p class="copy">This is one of the main advantages of structural search.</p>
+
+      <h3 class="sub">32. ast-grep Outline</h3>
+      <p class="copy"><code class="inline">ast-grep outline</code> provides a compact structural overview of source code.</p>
+      <p class="copy">For one file:</p>
+      <pre class="code">ast-grep outline src/main.rs</pre>
+      <p class="copy">For a directory:</p>
+      <pre class="code">ast-grep outline src</pre>
+      <p class="copy">For exported items:</p>
+      <pre class="code">ast-grep outline src --items exports</pre>
+      <p class="copy">For structures and functions:</p>
+      <pre class="code">ast-grep outline src --type struct,enum,function</pre>
+      <p class="copy">For signatures:</p>
+      <pre class="code">ast-grep outline src --view signatures</pre>
+      <p class="copy">For a more detailed view:</p>
+      <pre class="code">ast-grep outline src/main.rs --view expanded</pre>
+      <p class="copy">Current ast-grep documentation describes <code class="inline">outline</code> as a compact source-code map of items, imports, exports, and direct members. ([Ast Grep][1])</p>
+
+      <h3 class="sub">33. An Important ast-grep Limitation</h3>
+      <p class="copy"><code class="inline">ast-grep outline</code> is syntax-aware but local.</p>
+      <p class="copy">It does not:</p>
+      <pre class="code">resolve types,
+follow references,
+build a call graph,
+infer ownership,
+or understand the complete meaning of the program.</pre>
+      <p class="copy">This distinction matters.</p>
+      <p class="copy">Use <code class="inline">outline</code> to ask: <em>What is structurally present here?</em></p>
+      <p class="copy">Use <code class="inline">ast-grep run</code> to ask: <em>Where does this structural pattern occur?</em></p>
+      <p class="copy">Use <code class="inline">rg</code> to ask: <em>Where does this text occur?</em></p>
+      <p class="copy">Use <code class="inline">rust-analyzer / compiler</code> to ask questions requiring semantic information.</p>
+      <p class="copy">The current ast-grep documentation explicitly describes <code class="inline">outline</code> as intentionally local and recommends other tools for reference and call-graph questions. ([Ast Grep][7])</p>
+
+      <h3 class="sub">34. ast-grep Rules</h3>
+      <p class="copy">For repeated structural checks, ast-grep supports YAML rules.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">id: find-unsafe-blocks
+language: rust
+rule:
+  pattern: unsafe { $$$BODY }</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">ast-grep scan -r find-unsafe.yaml</pre>
+      <p class="copy">Rules become useful when a one-off search becomes a recurring code-quality query.</p>
+
+      <div class="transmission">
+        <span class="tag">TRANSMISSION — INTERFACE ROGUE CHANNEL</span>
+        <p>"Overclock doesn't care what the code looks like. It cares what the code is. ast-grep is the same trick, run on a compiler instead of a nervous system."</p>
+      </div>
+    </section>
+
+    <!-- PART 7 -->
+    <section class="panel" id="part7" aria-labelledby="part7-h" data-fold="PART 7">
+      <div class="kicker">PART 7</div>
+      <h2 class="section" id="part7-h">Choosing Tools &amp; The Ladder</h2>
+
+      <h3 class="sub">35. When Regex Becomes the Wrong Tool</h3>
+      <p class="copy">Use regex when the question is about text.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">Where is TODO used?
+
+Where does this error message occur?
+
+Where is this identifier written?
+
+Which files contain unwrap()?</pre>
+      <p class="copy">Use ast-grep when the question is about syntax structure.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">Find every call with this shape.
+
+Find this kind of function invocation.
+
+Find this AST pattern regardless of formatting.</pre>
+      <p class="copy">Use compiler-backed tools when the question is semantic.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">Which implementation does this method call?
+
+What type does this expression have?
+
+Where is this symbol actually defined?
+
+What references this symbol?
+
+Why does this borrow fail?</pre>
+      <p class="copy">This distinction prevents a lot of increasingly complicated regex.</p>
+
+      <h3 class="sub">36. The Rust Source-Query Ladder</h3>
+      <p class="copy">When investigating unfamiliar Rust code, use the lowest level that can answer the question.</p>
+      <p class="copy">Start with:</p>
+      <pre class="code">1. Literal search</pre>
+      <p class="copy">Example:</p>
+      <pre class="code">rg -F 'Router'</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">2. Regex search</pre>
+      <p class="copy">Example:</p>
+      <pre class="code">rg 'struct\s+Router' -t rust</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">3. Restricted search</pre>
+      <p class="copy">Example:</p>
+      <pre class="code">rg 'Router' -t rust -g '!tests/**'</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">4. Structural search</pre>
+      <p class="copy">Example:</p>
+      <pre class="code">ast-grep -l rs -p 'Router::new($$$ARGS)'</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">5. Syntax outline</pre>
+      <p class="copy">Example:</p>
+      <pre class="code">ast-grep outline src</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">6. Compiler-backed investigation</pre>
+      <p class="copy">Use rust-analyzer, compiler diagnostics, or IDE symbol/reference information.</p>
+      <p class="copy">Finally:</p>
+      <pre class="code">7. Read the relevant implementation.</pre>
+      <p class="copy">The objective is not to stay at the most sophisticated level.</p>
+      <p class="copy">The objective is to stop as soon as the question has been answered reliably.</p>
+    </section>
+
+    <!-- PART 8 -->
+    <section class="panel" id="part8" aria-labelledby="part8-h" data-fold="PART 8">
+      <div class="kicker">PART 8</div>
+      <h2 class="section" id="part8-h">Relationship &amp; Tracing</h2>
+
+      <h3 class="sub">37. Query by Relationship</h3>
+      <p class="copy">A powerful way to understand Rust is to stop searching only for names.</p>
+      <p class="copy">Search for relationships.</p>
+      <p class="copy">For a type:</p>
+      <pre class="code">Where is it defined?
+
+Who constructs it?
+
+Who owns it?
+
+Who receives it?
+
+Who modifies it?
+
+Who returns it?
+
+Who stores it?
+
+Who converts it?
+
+Who destroys or consumes it?</pre>
+      <p class="copy">For a function:</p>
+      <pre class="code">Where is it defined?
+
+Who calls it?
+
+What does it call?
+
+What arguments does it receive?
+
+What does it return?
+
+What errors can it produce?
+
+What state does it modify?</pre>
+      <p class="copy">For a module:</p>
+      <pre class="code">Who imports it?
+
+What does it import?
+
+What does it expose?
+
+Who calls its public functions?
+
+What types does it own?</pre>
+      <p class="copy">This is much closer to understanding architecture than simply searching for keywords.</p>
+
+      <h3 class="sub">38. Trace One Value</h3>
+      <p class="copy">When the behavior of a program is confusing, choose one important value.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">Config</pre>
+      <p class="copy">Then trace:</p>
+      <pre class="code">Where is Config created?
+
+        ↓
+
+What fields are initialized?
+
+        ↓
+
+Where is it passed?
+
+        ↓
+
+Which functions transform it?
+
+        ↓
+
+Where is it stored?
+
+        ↓
+
+Where is it consumed?</pre>
+      <p class="copy">Use searches to find each transition.</p>
+      <p class="copy">This is often more manageable than trying to understand the entire repository simultaneously.</p>
+
+      <h3 class="sub">39. Trace One Function</h3>
+      <p class="copy">For a function:</p>
+      <pre class="code">handle_request()</pre>
+      <p class="copy">build the smallest useful call chain.</p>
+      <p class="copy">Start:</p>
+      <pre class="code">rg -n -F 'handle_request(' -t rust</pre>
+      <p class="copy">Find the definition:</p>
+      <pre class="code">rg -n 'fn\s+handle_request\b' -t rust</pre>
+      <p class="copy">Read the function signature.</p>
+      <p class="copy">Identify:</p>
+      <pre class="code">inputs
+outputs
+errors
+state
+dependencies
+called functions</pre>
+      <p class="copy">Then investigate the most important called function.</p>
+      <p class="copy">Repeat only as far as necessary.</p>
+      <p class="copy">This prevents uncontrolled code reading.</p>
+
+      <h3 class="sub">40. Trace a Construction Path</h3>
+      <p class="copy">A particularly useful Rust question is:</p>
+      <p class="copy"><em>Who creates this object?</em></p>
+      <p class="copy">Suppose:</p>
+      <pre class="code">Router</pre>
+      <p class="copy">Start:</p>
+      <pre class="code">rg -n 'Router\s*\{' -t rust</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">rg -n 'Router::' -t rust</pre>
+      <p class="copy">Then inspect functions returning it:</p>
+      <pre class="code">rg -n '->\s*Router\b' -t rust</pre>
+      <p class="copy">Then follow callers.</p>
+      <p class="copy">You are building:</p>
+      <pre class="code">creator
+    ↓
+constructor
+    ↓
+object
+    ↓
+consumer</pre>
+      <p class="copy">This often reveals ownership and architecture faster than reading modules sequentially.</p>
+    </section>
+
+    <!-- PART 9 -->
+    <section class="panel" id="part9" aria-labelledby="part9-h" data-fold="PART 9">
+      <div class="kicker">PART 9</div>
+      <h2 class="section" id="part9-h">Git &amp; Diff</h2>
+
+      <h3 class="sub">41. Search Git History</h3>
+      <p class="copy">Source-code understanding sometimes requires historical information.</p>
+      <p class="copy">Find recent changes:</p>
+      <pre class="code">git log --oneline --all</pre>
+      <p class="copy">Inspect a file's history:</p>
+      <pre class="code">git log -- path/to/file.rs</pre>
+      <p class="copy">Inspect a specific change:</p>
+      <pre class="code">git show COMMIT</pre>
+      <p class="copy">Find when a line changed:</p>
+      <pre class="code">git blame path/to/file.rs</pre>
+      <p class="copy">Search commit messages:</p>
+      <pre class="code">git log --all --grep='router'</pre>
+      <p class="copy">Search removed or historical code:</p>
+      <pre class="code">git log -S'Router::new' --all -- path/to/file.rs</pre>
+      <p class="copy">Search for changes matching a regex:</p>
+      <pre class="code">git log -G'Router::new' --all -- path/to/file.rs</pre>
+      <p class="copy">History can answer questions that the current source cannot.</p>
+      <p class="copy">For example:</p>
+      <p class="copy"><em>Why is this strange workaround here?</em></p>
+      <p class="copy">The current code may show what it does.</p>
+      <p class="copy">Git history may show why it exists.</p>
+
+      <h3 class="sub">42. Query the Current Diff</h3>
+      <p class="copy">Before and after a change:</p>
+      <pre class="code">git diff</pre>
+      <p class="copy">List changed files:</p>
+      <pre class="code">git status --short</pre>
+      <p class="copy">Show names only:</p>
+      <pre class="code">git diff --name-only</pre>
+      <p class="copy">Inspect a particular file:</p>
+      <pre class="code">git diff -- path/to/file.rs</pre>
+      <p class="copy">Then use source queries against the changed area.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">git diff --name-only | xargs rg 'TODO'</pre>
+      <p class="copy">This can help keep investigation focused on what actually changed.</p>
+
+      <div class="transmission">
+        <span class="tag">TRANSMISSION — GHOST IN THE SYSTEM</span>
+        <p>"Progressive Generation says nothing exists until you look at it. Git log is the one place in RUSTCORE where that's not true — the room already happened, you're just asking it to admit it."</p>
+      </div>
+    </section>
+
+    <!-- PART 10 -->
+    <section class="panel" id="part10" aria-labelledby="part10-h" data-fold="PART 10">
+      <div class="kicker">PART 10</div>
+      <h2 class="section" id="part10-h">Output Control</h2>
+
+      <h3 class="sub">43. Search Without Producing Too Much Output</h3>
+      <p class="copy">Screen-reader workflows benefit from controlling output volume.</p>
+      <p class="copy">Prefer:</p>
+      <pre class="code">rg -n 'pattern'</pre>
+      <p class="copy">over dumping entire files.</p>
+      <p class="copy">Restrict the scope:</p>
+      <pre class="code">rg 'pattern' src/</pre>
+      <p class="copy">Restrict the language:</p>
+      <pre class="code">rg 'pattern' -t rust</pre>
+      <p class="copy">Restrict the files:</p>
+      <pre class="code">rg 'pattern' -g '*.rs'</pre>
+      <p class="copy">Show only filenames:</p>
+      <pre class="code">rg -l 'pattern'</pre>
+      <p class="copy">Show a small context:</p>
+      <pre class="code">rg -C 2 'pattern'</pre>
+      <p class="copy">Sort when deterministic output helps:</p>
+      <pre class="code">rg --sort path 'pattern'</pre>
+      <p class="copy">The goal is:</p>
+      <p class="copy"><strong>Enough output to answer the next question, not enough output to overwhelm the reader.</strong></p>
+
+      <h3 class="sub">44. Multiline ripgrep Searches</h3>
+      <p class="copy">Normal ripgrep searches operate line by line.</p>
+      <p class="copy">If the query genuinely requires multiple lines:</p>
+      <pre class="code">rg -U 'pattern'</pre>
+      <p class="copy">or:</p>
+      <pre class="code">rg --multiline 'pattern'</pre>
+      <p class="copy">Multiline searches can be useful for source structures that span lines.</p>
+      <p class="copy">But they also increase complexity.</p>
+      <p class="copy">Start with a line-oriented search.</p>
+      <p class="copy">Use multiline mode when the problem actually requires it.</p>
+
+      <h3 class="sub">45. Search Context Is a Tool</h3>
+      <p class="copy">When a match appears, context can often answer the next question immediately.</p>
+      <p class="copy">Use:</p>
+      <pre class="code">rg -C 3 'pattern'</pre>
+      <p class="copy">Then adjust:</p>
+      <pre class="code">rg -C 10 'pattern'</pre>
+      <p class="copy">if necessary.</p>
+      <p class="copy">This is often better than opening the entire file.</p>
+      <p class="copy">A good progression is:</p>
+      <pre class="code">match
+→ small context
+→ larger context
+→ exact source range
+→ full function</pre>
+      <p class="copy">Read only as much as the question requires.</p>
+    </section>
+
+    <!-- PART 11 -->
+    <section class="panel" id="part11" aria-labelledby="part11-h" data-fold="PART 11">
+      <div class="kicker">PART 11</div>
+      <h2 class="section" id="part11-h">Search Direction &amp; Landmarks</h2>
+
+      <h3 class="sub">46. Search from General to Specific</h3>
+      <p class="copy">A good source query usually starts broad.</p>
+      <p class="copy">Example:</p>
+      <pre class="code">Router</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Router::</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Router::new</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Router::new(...)</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">Who calls Router::new?</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">What type does Router::new return?</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">What does that caller do with the returned value?</pre>
+      <p class="copy">Each query should reduce uncertainty.</p>
+
+      <h3 class="sub">47. Search from Specific to General</h3>
+      <p class="copy">The reverse is also useful.</p>
+      <p class="copy">If you find:</p>
+      <pre class="code">ConfigError::MissingPath</pre>
+      <p class="copy">search:</p>
+      <pre class="code">rg -n -F 'ConfigError::MissingPath' -t rust</pre>
+      <p class="copy">Then:</p>
+      <pre class="code">rg -n 'enum\s+ConfigError' -t rust</pre>
+      <p class="copy">Then inspect:</p>
+      <pre class="code">Who creates the error?
+
+Who propagates it?
+
+Who handles it?
+
+Where does it become visible?</pre>
+      <p class="copy">This moves from a concrete observation toward the surrounding architecture.</p>
+
+      <h3 class="sub">48. Use Search Results as Landmarks</h3>
+      <p class="copy">Search results should become landmarks.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">src/config.rs:42
+src/parser.rs:81
+src/loader.rs:117</pre>
+      <p class="copy">Now you know:</p>
+      <pre class="code">config.rs
+    definition
+
+parser.rs
+    transformation
+
+loader.rs
+    consumer</pre>
+      <p class="copy">You do not need to remember the entire repository.</p>
+      <p class="copy">You only need to maintain the current chain of landmarks.</p>
+      <p class="copy">This is especially useful for auditory code reading.</p>
+
+      <h3 class="sub">49. Build a Small Vocabulary While Investigating</h3>
+      <p class="copy">When exploring an unfamiliar repository, maintain a small dictionary.</p>
+      <p class="copy">For example:</p>
+      <pre class="code">Router
+    central request dispatcher
+
+Config
+    application configuration
+
+Loader
+    creates Config from external input
+
+Parser
+    converts text into internal representation
+
+Handler
+    performs request-specific work</pre>
+      <p class="copy">Then extend it:</p>
+      <pre class="code">Router owns HandlerRegistry.
+
+Loader creates Config.
+
+Parser produces Request.
+
+Router passes Request to Handler.</pre>
+      <p class="copy">This turns disconnected search results into a model of the program.</p>
+    </section>
+
+    <!-- PART 12 -->
+    <section class="panel" id="part12" aria-labelledby="part12-h" data-fold="PART 12">
+      <div class="kicker">PART 12</div>
+      <h2 class="section" id="part12-h">Architecture &amp; Config</h2>
+
+      <h3 class="sub">50. Search for Architecture, Not Just Syntax</h3>
+      <p class="copy">Useful architectural searches include:</p>
+      <pre class="code">rg 'mod\s+' -t rust</pre>
+      <p class="copy">for module declarations.</p>
+      <pre class="code">rg 'use\s+' -t rust</pre>
+      <p class="copy">for imports.</p>
+      <pre class="code">rg 'pub\s+' -t rust</pre>
+      <p class="copy">for public API.</p>
+      <pre class="code">rg 'trait\s+' -t rust</pre>
+      <p class="copy">for abstractions.</p>
+      <pre class="code">rg 'impl\s+' -t rust</pre>
+      <p class="copy">for implementations.</p>
+      <pre class="code">rg '#\[derive\(' -t rust</pre>
+      <p class="copy">for derived behavior.</p>
+      <pre class="code">rg '#\[cfg' -t rust</pre>
+      <p class="copy">for conditional compilation.</p>
+      <pre class="code">rg '#\[feature' -t rust</pre>
+      <p class="copy">for feature-related declarations.</p>
+      <p class="copy">These queries help expose the architecture behind the individual functions.</p>
+
+      <h3 class="sub">51. Search Cargo Configuration</h3>
+      <p class="copy">The program's behavior can also be controlled by Cargo configuration.</p>
+      <p class="copy">Search:</p>
+      <pre class="code">rg '^\[dependencies\]' -g 'Cargo.toml'</pre>
+      <p class="copy">Search workspace declarations:</p>
+      <pre class="code">rg '^\[workspace\]' -g 'Cargo.toml'</pre>
+      <p class="copy">Search features:</p>
+      <pre class="code">rg '^\[features\]' -g 'Cargo.toml'</pre>
+      <p class="copy">Search dependency names:</p>
+      <pre class="code">rg 'some_crate' -g 'Cargo.toml'</pre>
+      <p class="copy">Then compare the manifest with:</p>
+      <pre class="code">cargo tree</pre>
+      <p class="copy">The manifest tells you what the project declares.</p>
+      <p class="copy">The dependency tree tells you what Cargo actually resolves into the dependency graph.</p>
+
+      <h3 class="sub">52. Search Conditional Compilation</h3>
+      <p class="copy">Rust code can exist only under particular configurations.</p>
+      <p class="copy">Search:</p>
+      <pre class="code">rg '#\[cfg' -t rust</pre>
+      <p class="copy">and:</p>
+      <pre class="code">rg '#\[cfg_attr' -t rust</pre>
+      <p class="copy">Then inspect Cargo features:</p>
+      <pre class="code">cargo tree -e features</pre>
+      <p class="copy">When code seems to "disappear," ask:</p>
+      <pre class="code">Is it behind cfg?
+
+Is it feature-gated?
+
+Is it platform-specific?
+
+Is it test-only?
+
+Is it generated?
+
+Is it conditionally compiled?</pre>
+      <p class="copy">This can prevent incorrect conclusions from searching only the default source path.</p>
+
+      <h3 class="sub">53. Generated Code</h3>
+      <p class="copy">When a symbol cannot be found where expected, consider generated code.</p>
+      <p class="copy">Search:</p>
+      <pre class="code">rg 'include!\(' -t rust</pre>
+      <p class="copy">and:</p>
+      <pre class="code">rg 'include_str!\(' -t rust</pre>
+      <p class="copy">and:</p>
+      <pre class="code">rg 'include_bytes!\(' -t rust</pre>
+      <p class="copy">Also inspect:</p>
+      <pre class="code">build.rs</pre>
+      <p class="copy">and:</p>
+      <pre class="code">Cargo.toml</pre>
+      <p class="copy">A build script may generate Rust source or other artifacts.</p>
+
+      <h3 class="sub">54. Macros</h3>
+      <p class="copy">Macros can make source queries misleading.</p>
+      <p class="copy">Search:</p>
+      <pre class="code">rg 'macro_rules!' -t rust</pre>
+      <p class="copy">Search macro invocations:</p>
+      <pre class="code">rg '\w+!' -t rust</pre>
+      <p class="copy">Then distinguish:</p>
+      <pre class="code">What is written?
+
+What does the macro expand to?
+
+Where is the macro defined?
+
+Which crate provides it?</pre>
+      <p class="copy">For difficult macro behavior, compiler diagnostics and rust-analyzer are generally more reliable than regex.</p>
+
+      <h3 class="sub">55. Tests as Executable Queries</h3>
+      <p class="copy">Tests are another form of source-code documentation.</p>
+      <p class="copy">Search:</p>
+      <pre class="code">rg '#\[test\]' -t rust</pre>
+      <p class="copy">Search test modules:</p>
+      <pre class="code">rg 'mod\s+tests' -t rust</pre>
+      <p class="copy">Search a behavior:</p>
+      <pre class="code">rg 'empty|invalid|error|timeout' -t rust</pre>
+      <p class="copy">Then run the relevant test:</p>
+      <pre class="code">cargo test test_name</pre>
+      <p class="copy">A test can answer:</p>
+      <p class="copy"><em>What behavior does the author consider important?</em></p>
+      <p class="copy">This is often more useful than comments.</p>
+
+      <h3 class="sub">56. Documentation as a Query Target</h3>
+      <p class="copy">Search documentation:</p>
+      <pre class="code">rg 'Router' -g '*.md'</pre>
+      <p class="copy">Search examples:</p>
+      <pre class="code">rg 'Router' -g '*.rs' -g '*.md'</pre>
+      <p class="copy">Search TODOs:</p>
+      <pre class="code">rg 'TODO|FIXME' -g '*.rs' -g '*.md'</pre>
+      <p class="copy">Search design terminology:</p>
+      <pre class="code">rg 'architecture|design|pipeline|backend|frontend' -g '*.md'</pre>
+      <p class="copy">The code explains implementation.</p>
+      <p class="copy">Documentation may explain intent.</p>
+      <p class="copy">Both are part of understanding the system.</p>
+    </section>
+
+    <!-- PART 13 -->
+    <section class="panel" id="part13" aria-labelledby="part13-h" data-fold="PART 13">
+      <div class="kicker">PART 13 · FINAL</div>
+      <h2 class="section" id="part13-h">Protocol, Rules &amp; Mantra</h2>
+
+      <h3 class="sub">57. A Practical Investigation Protocol</h3>
+      <p class="copy">When a Rust codebase is unfamiliar:</p>
+      <h4 class="subsub">Step 1 — Map the files</h4>
+      <pre class="code">rg --files -t rust</pre>
+      <h4 class="subsub">Step 2 — Map the public structure</h4>
+      <pre class="code">ast-grep outline src --items exports</pre>
+      <h4 class="subsub">Step 3 — Find the relevant symbol</h4>
+      <pre class="code">rg -n -F 'SymbolName' -t rust</pre>
+      <h4 class="subsub">Step 4 — Find its definition</h4>
+      <p class="copy">Use regex or ast-grep.</p>
+      <h4 class="subsub">Step 5 — Find its callers or constructors</h4>
+      <pre class="code">rg -n -F 'SymbolName(' -t rust</pre>
+      <p class="copy">or an appropriate structural query.</p>
+      <h4 class="subsub">Step 6 — Read the definition</h4>
+      <p class="copy">Read the signature first. Then the fields. Then the body.</p>
+      <h4 class="subsub">Step 7 — Follow the important dependency</h4>
+      <p class="copy">Choose one function, type, or module that determines the behavior.</p>
+      <h4 class="subsub">Step 8 — Verify assumptions</h4>
+      <p class="copy">Use:</p>
+      <pre class="code">cargo check</pre>
+      <p class="copy">or:</p>
+      <pre class="code">cargo test</pre>
+      <p class="copy">or a more specific command.</p>
+      <h4 class="subsub">Step 9 — Record the model</h4>
+      <p class="copy">Write:</p>
+      <pre class="code">Definition:
+Creator:
+Caller:
+Input:
+Output:
+Owner:
+Important dependency:
+Next question:</pre>
+      <p class="copy">This produces an external memory of the investigation.</p>
+
+      <h3 class="sub">58. The Query Escalation Rule</h3>
+      <p class="copy">Use this escalation order:</p>
+      <pre class="code">1. Exact literal
+
+2. Fixed-string search
+
+3. Simple regex
+
+4. Restricted regex search
+
+5. Search with context
+
+6. ast-grep structural search
+
+7. ast-grep outline
+
+8. Cargo dependency information
+
+9. Compiler diagnostics
+
+10. rust-analyzer semantic information
+
+11. Direct source reading
+
+12. Git history</pre>
+      <p class="copy">The order is not absolute.</p>
+      <p class="copy">Choose the cheapest reliable method.</p>
+      <p class="copy">A complicated AST query is unnecessary if:</p>
+      <pre class="code">rg -F 'Router::new'</pre>
+      <p class="copy">already answers the question.</p>
+      <p class="copy">Likewise, a complicated regex is unnecessary when the question requires semantic information.</p>
+
+      <h3 class="sub">59. Common Search Mistakes</h3>
+      <h4 class="subsub">Searching too broadly</h4>
+      <p class="copy">Instead of:</p>
+      <pre class="code">rg 'error'</pre>
+      <p class="copy">try:</p>
+      <pre class="code">rg 'error' -t rust src/</pre>
+      <h4 class="subsub">Using regex when literal search is enough</h4>
+      <p class="copy">Instead of:</p>
+      <pre class="code">rg 'Router::new'</pre>
+      <p class="copy">if the string is literal, use:</p>
+      <pre class="code">rg -F 'Router::new'</pre>
+      <h4 class="subsub">Reading entire files too early</h4>
+      <p class="copy">First find:</p>
+      <pre class="code">definition
+caller
+constructor
+dependency</pre>
+      <p class="copy">Then read the relevant ranges.</p>
+      <h4 class="subsub">Treating search results as proof</h4>
+      <p class="copy">A regex match is evidence. It is not necessarily semantic truth.</p>
+      <h4 class="subsub">Trying to make regex parse Rust</h4>
+      <p class="copy">When the query becomes a miniature Rust parser, switch tools. Use ast-grep or compiler-backed information.</p>
+      <h4 class="subsub">Following too many branches</h4>
+      <p class="copy">Choose one important value, function, or type. Trace it. Return to the broader system only when necessary.</p>
+
+      <h3 class="sub">60. The Core Mental Model</h3>
+      <p class="copy">Think of source-code querying as asking progressively stronger questions.</p>
+      <p class="copy">Literal search asks: <strong>Where does this text occur?</strong></p>
+      <p class="copy">Regex asks: <strong>Where does text matching this shape occur?</strong></p>
+      <p class="copy">ripgrep asks: <strong>Where does this pattern occur across the project?</strong></p>
+      <p class="copy">ast-grep asks: <strong>Where does this syntactic structure occur?</strong></p>
+      <p class="copy">Cargo asks: <strong>What packages, dependencies, and features make up this project?</strong></p>
+      <p class="copy">The compiler asks: <strong>What does Rust determine this program means, and where is it invalid?</strong></p>
+      <p class="copy">rust-analyzer asks: <strong>Where are these semantic symbols and references connected?</strong></p>
+      <p class="copy">Reading asks: <strong>What does this particular implementation actually do?</strong></p>
+      <p class="copy">Git asks: <strong>How and why did this code become what it is?</strong></p>
+
+      <h3 class="sub">61. The Master Rules</h3>
+      <ol class="plain">
+        <li>Start with the question, not the tool.</li>
+        <li>Start with a literal search when possible.</li>
+        <li>Use regex when the shape of the text matters.</li>
+        <li>Quote regex patterns in the shell.</li>
+        <li>Remember that Rust's <code class="inline">\d</code>, <code class="inline">\w</code>, <code class="inline">\s</code>, and <code class="inline">\b</code> are Unicode-aware by default. ([Docs.rs][2])</li>
+        <li>Use explicit ASCII classes when ASCII behavior is what you actually mean.</li>
+        <li>Use <code class="inline">-F</code> when you want literal text.</li>
+        <li>Restrict ripgrep with <code class="inline">-t rust</code>, <code class="inline">-g</code>, or a directory path.</li>
+        <li>Use context options to control output volume.</li>
+        <li>Use <code class="inline">rg --files</code> to discover the source tree.</li>
+        <li>Use ast-grep when the question is structural rather than textual.</li>
+        <li>Use <code class="inline">ast-grep outline</code> to map local source structure.</li>
+        <li>Remember that ast-grep outline does not resolve references or build call graphs. ([Ast Grep][7])</li>
+        <li>Use Cargo to investigate packages, dependencies, and features.</li>
+        <li>Use compiler diagnostics for semantic Rust questions.</li>
+        <li>Use rust-analyzer for symbol and reference relationships.</li>
+        <li>Use Git history when the current source does not explain why something exists.</li>
+        <li>Treat search results as evidence, not proof.</li>
+        <li>Narrow the search after every useful discovery.</li>
+        <li>Read only enough source to answer the current question.</li>
+        <li>Trace relationships: definition, creator, caller, owner, consumer.</li>
+        <li>When a regex starts becoming a parser, change tools.</li>
+        <li>When the tool cannot answer the semantic question, ask the compiler.</li>
+        <li>When the compiler cannot explain the design intent, read the implementation and history.</li>
+      </ol>
+
+      <h3 class="sub">62. The Source-Code Investigation Mantra</h3>
+      <p class="copy">When entering an unfamiliar Rust codebase, ask:</p>
+      <pre class="code">What am I trying to understand?
+
+What is the smallest query that could answer that?
+
+Where is the relevant definition?
+
+Who creates it?
+
+Who calls it?
+
+What does it depend on?
+
+What depends on it?
+
+What happens to the data?
+
+What does the compiler say?
+
+What does the test prove?
+
+Why was the code written this way?
+
+What remains unknown?</pre>
+      <p class="copy">The essential loop is:</p>
+      <p class="copy"><strong>Question → Query → Evidence → Narrow → Trace → Verify → Understand</strong></p>
+      <p class="copy">Regex is one instrument in that process.</p>
+      <p class="copy">ripgrep is another.</p>
+      <p class="copy">Helix is the working environment.</p>
+      <p class="copy">ast-grep exposes syntax structure.</p>
+      <p class="copy">Cargo exposes the project and dependency system.</p>
+      <p class="copy">The compiler exposes semantic truth.</p>
+      <p class="copy">Git exposes history.</p>
+      <p class="copy">And the programmer connects the evidence into an understanding of the system.</p>
+
+      <h3 class="sub">63. Final Principle</h3>
+      <p class="copy">Source-code navigation is not primarily a reading task.</p>
+      <p class="copy">It is an investigation task.</p>
+      <p class="copy">A large Rust repository becomes manageable when you stop asking:</p>
+      <p class="copy"><strong>"How do I read all of this?"</strong></p>
+      <p class="copy">and start asking:</p>
+      <p class="copy"><strong>"What question do I need answered next?"</strong></p>
+      <p class="copy">Then query the code.</p>
+      <p class="copy">Reduce the result.</p>
+      <p class="copy">Trace the relationship.</p>
+      <p class="copy">Verify the conclusion.</p>
+      <p class="copy">Move to the next question.</p>
+      <p class="copy">That is the foundation of practical code archaeology for a blind Rust programmer.</p>
+
+      <div class="transmission">
+        <span class="tag">TRANSMISSION — SIGNAL RUNNERS, SIGNING OFF</span>
+        <p>"RUSTCORE never once cared whether you could see the map. It only ever checked whether you knew what to ask it. Query, don't scan. Same rule in the city as in the codebase."</p>
+      </div>
+    </section>
+
+    <!-- REFERENCES -->
+    <section class="panel refs" id="refs" aria-labelledby="refs-h" data-fold="REFERENCES">
+      <div class="kicker">SOURCES</div>
+      <h2 class="section" id="refs-h">References</h2>
+      <p>[1]: <a href="https://ast-grep.github.io/reference/cli/outline?utm_source=chatgpt.com">https://ast-grep.github.io/reference/cli/outline</a> — "ast-grep outline | ast-grep"<br>
+      [2]: <a href="https://docs.rs/regex/latest/regex/?utm_source=chatgpt.com">https://docs.rs/regex/latest/regex/</a> — "regex - Rust"<br>
+      [3]: <a href="https://ripgrep.dev/docs/guide/?utm_source=chatgpt.com">https://ripgrep.dev/docs/guide/</a> — "ripgrep User Guide - Complete Documentation"<br>
+      [4]: <a href="https://github.com/helix-editor/helix/blob/master/book/src/keymap.md?utm_source=chatgpt.com">https://github.com/helix-editor/helix/blob/master/book/src/keymap.md</a> — "helix/book/src/keymap.md at master · helix-editor/helix · GitHub"<br>
+      [5]: <a href="https://docs.helix-editor.com/editor.html?utm_source=chatgpt.com">https://docs.helix-editor.com/editor.html</a> — "Editor"<br>
+      [6]: <a href="https://ast-grep.github.io/reference/cli?utm_source=chatgpt.com">https://ast-grep.github.io/reference/cli</a> — "Command Line Reference | ast-grep"<br>
+      [7]: <a href="https://ast-grep.github.io/guide/outline-code?utm_source=chatgpt.com">https://ast-grep.github.io/guide/outline-code</a> — "Outline Code | ast-grep"</p>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END OF MANUAL">
+      <div class="glyph">R U S T C O R E &nbsp; F I E L D &nbsp; M A N U A L</div>
+      <p class="closer">Sixty-three sections. One loop underneath all of them: Question → Query → Evidence → Narrow → Trace → Verify → Understand. The city runs on the same one.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
