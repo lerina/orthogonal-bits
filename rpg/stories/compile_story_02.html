@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Compile, Part Two</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+
+  .cover{ padding-top: 50px; padding-bottom: 50px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 24px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(40px, 9vw, 84px); line-height: 0.94; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  h1.masthead .sub{ display:block; font-size: clamp(14px, 2.6vw, 20px); color: var(--riso-yellow); text-shadow: none; letter-spacing: 0.08em; margin-top: 10px; font-family:'Space Mono',monospace; font-weight:700; }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 27px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 16px; color: var(--riso-yellow); letter-spacing: 0.03em; margin: 22px 0 6px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.8; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  pre.code{
+    background: var(--paper-2); border: 1px solid var(--rule); border-left: 3px solid var(--riso-yellow);
+    padding: 12px 16px; margin: 14px 0 18px 0; overflow-x: auto;
+    font-size: 13px; line-height: 1.7; color: var(--riso-yellow);
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .pull{
+    margin: 18px 0; padding: 16px 18px; border-left: 3px solid var(--riso-pink);
+    background: var(--paper-2); font-style: italic; color: var(--ink); font-size: 14px; line-height: 1.75;
+  }
+
+  /* method loop steps */
+  .loop{ margin-top: 22px; display:flex; flex-wrap: wrap; gap: 0; }
+  .loop-step{ flex: 1 1 140px; padding: 16px 16px; border: 1px solid var(--rule); background: var(--paper-2); }
+  .loop-step + .loop-step{ border-left: none; }
+  .loop-step .num{ font-family:'Anton', sans-serif; font-size: 12px; color: var(--riso-pink); letter-spacing: 0.1em; display:block; margin-bottom: 8px; }
+  .loop-step .name{ font-size: 13px; color: var(--ink); font-weight: 700; letter-spacing: 0.02em; display:block; margin-bottom:6px; }
+  .loop-step p{ margin:0; font-size: 11.5px; color: var(--ink-dim); line-height: 1.5; }
+  @media (max-width: 760px){ .loop-step{ flex-basis: 45%; border-left: 1px solid var(--rule) !important; } }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="PART TWO" role="banner">
+      <div class="breadcrumb"><a href="compile_story_01.html">&larr; COMPILE, PART ONE</a> / PART TWO</div>
+      <div class="stamp">METHOD &amp; TEACHING</div>
+      <h1 class="masthead">COMPILE<span class="sub">THE METHOD SHE LEFT BEHIND</span></h1>
+    </header>
+
+    <main id="main-content">
+
+    <!-- THE METHOD -->
+    <section class="panel" aria-labelledby="method-h" data-fold="THE METHOD">
+      <div class="kicker">FORMALIZED, YEARS LATER</div>
+      <h2 class="section" id="method-h">Compile's Method</h2>
+      <p class="copy">Compile eventually wrote her approach down — not because she thought it needed her name attached to it, but because she'd watched enough apprentices reinvent it badly to decide it was worth doing once, properly. The result became the document the Line now calls the <strong>RUSTCORE Field Manual</strong>. Its central idea is almost embarrassingly simple:</p>
+      <div class="pull">Ask the smallest question that moves the investigation forward.</div>
+      <p class="copy">On the Line, the method has a name: <strong>Question → Query → Answer → Narrow → Trace → Verify.</strong> Six steps, none of them clever on their own, all of them useless if skipped.</p>
+
+      <div class="loop">
+        <div class="loop-step"><span class="num">01</span><span class="name">QUESTION</span><p>State exactly what you need to know. Not "understand the system" — <em>"where is this function defined?"</em></p></div>
+        <div class="loop-step"><span class="num">02</span><span class="name">QUERY</span><p>Use the smallest tool that can answer it. A search, a symbol lookup, a process trace. Nothing larger than necessary.</p></div>
+        <div class="loop-step"><span class="num">03</span><span class="name">ANSWER</span><p>Accept the result as evidence, not conclusion. It tells you what to ask next — nothing more.</p></div>
+        <div class="loop-step"><span class="num">04</span><span class="name">NARROW</span><p>Reduce the field. Fewer files, fewer processes, fewer symbols, fewer possibilities.</p></div>
+        <div class="loop-step"><span class="num">05</span><span class="name">TRACE</span><p>Follow the thing that matters through the system. Where did it come from — where does it go?</p></div>
+        <div class="loop-step"><span class="num">06</span><span class="name">VERIFY</span><p>Test the understanding against reality. If behavior doesn't match the model, the model loses. Start again.</p></div>
+      </div>
+    </section>
+
+    <!-- WHY IT WORKED -->
+    <section class="panel" aria-labelledby="why-h" data-fold="WHY IT WORKED">
+      <div class="kicker">THE REAL ADVANTAGE</div>
+      <h2 class="section" id="why-h">Why the Method Worked</h2>
+      <p class="copy">Compile's greatest advantage was never blindness itself. It was that she couldn't rely on appearance — which meant she never got the shortcut every visual runner leaned on without noticing they were leaning on it.</p>
+      <p class="copy">A visual runner could glance at a diagram and form an immediate mental model, correct or not, and proceed as though it were correct. Compile had to construct hers deliberately, one confirmed relationship at a time. What looked like an inconvenience from the outside became, over years, a discipline nobody else on the Line had been forced to develop.</p>
+      <p class="copy">Every relationship had to be established. Every name had to mean something specific. Every conclusion had to trace back to somewhere real. She got exceptionally good — better than almost anyone who came after her — at telling apart four things that most runners let blur together without noticing:</p>
+      <div class="pull">What the system said. What the tool said. What she knew. What she merely suspected.</div>
+      <p class="copy">That distinction, more than any single exploit, is what the Signal Runner tradition actually inherited from her.</p>
+    </section>
+
+    <!-- THE ARTISAN -->
+    <section class="panel" aria-labelledby="artisan-h" data-fold="THE ARTISAN">
+      <div class="kicker">HER STANDARDS</div>
+      <h2 class="section" id="artisan-h">The Artisan</h2>
+      <p class="copy">Compile had little patience for improvisation dressed up as expertise. She disliked enormous scripts trying to do twenty things simultaneously. She disliked undocumented shortcuts passed around without explanation. Most of all, she disliked runners who could operate a tool fluently without being able to say what its output actually meant.</p>
+      <p class="copy">Her opinion of visual rigs became something close to notorious on the Line:</p>
+      <div class="pull">"A picture can show you where something is. It cannot tell you why it is there."</div>
+      <p class="copy">But she was just as suspicious of command-line cargo cults. Knowing <code style="color:var(--riso-yellow);">rg</code>, <code style="color:var(--riso-yellow);">jq</code>, <code style="color:var(--riso-yellow);">strace</code>, or a debugger by name didn't make someone a Signal Runner in her book. Knowing <em>when</em> to reach for one, <em>what question</em> it actually answers, and <em>what its answer does and doesn't prove</em> — that was the line she drew between an apprentice and an artisan, and she drew it without much patience for anyone standing on the wrong side of it.</p>
+    </section>
+
+    <!-- THE FIELD MANUAL -->
+    <section class="panel" aria-labelledby="manual-h" data-fold="THE FIELD MANUAL">
+      <div class="kicker">WHAT SHE ACTUALLY WROTE DOWN</div>
+      <h2 class="section" id="manual-h">The Field Manual</h2>
+      <p class="copy">Compile's manual contains surprisingly little autobiography. No portrait. No account of her childhood. No manifesto explaining who she was or why she mattered. What it contains instead is procedure — questions, examples, failure cases, small investigations, and a repeatable way of reducing an unfamiliar codebase to something a person could actually hold in their head.</p>
+      <p class="copy">The manual ends without a conclusion. There's no closing chapter, no summary of her legacy. There's simply another investigation. Another question. Another command. Another result. Then the text just stops.</p>
+      <p class="copy">The Line's oldest runners consider this deliberate, not unfinished. They say Compile understood something most legends never bother to learn about themselves:</p>
+      <div class="pull">A method that depends on its author eventually dies with its author. A method that can be taught survives.</div>
+      <p class="copy">She wasn't writing her story. She was making sure the part that mattered could outlive whether anyone remembered her name at all.</p>
+    </section>
+
+    </main>
+
+    <!-- FOOTER + NAV -->
+    <footer class="panel back" data-fold="END OF PART TWO">
+      <div class="glyph">C O M P I L E &nbsp; · &nbsp; P A R T &nbsp; T W O</div>
+      <p class="closer">The method, and the standards she held it to. Part Three covers what happened after she vanished — and why the Line still argues about what she meant by it.</p>
+
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="compile_story_01.html">&larr; PART ONE</a>
+        <span class="pagecount">PAGE 2 OF 3</span>
+        <a href="compile_story_03.html">NEXT: THE DISAPPEARANCE &rarr;</a>
+      </nav>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
