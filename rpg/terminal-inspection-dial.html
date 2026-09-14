@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Terminal Code Inspection and Navigation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(32px, 6.8vw, 62px); line-height: 1.02; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 58ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 13.5px; line-height: 1.78; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  pre.code{
+    background: var(--paper-2); border: 1px solid var(--rule); border-left: 3px solid var(--riso-yellow);
+    padding: 10px 14px; margin: 10px 0 16px 0; overflow-x: auto;
+    font-size: 12.5px; line-height: 1.6; color: var(--riso-yellow);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  code.inline{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12.5px; }
+
+  /* narrative log entries */
+  .log{
+    background: var(--paper-3); border: 1px solid var(--riso-pink); box-shadow: 0 0 0 1px rgba(255,46,99,0.15);
+    padding: 18px 20px; margin: 22px 0; font-size: 13.5px; line-height: 1.8; color: var(--ink);
+  }
+  .log .tag{ display:block; font-size: 10px; letter-spacing: 0.16em; color: var(--riso-pink); margin-bottom: 10px; }
+  .log p{ margin: 0 0 10px 0; }
+  .log p:last-child{ margin-bottom: 0; }
+  .log em{ color: var(--riso-yellow); font-style: italic; }
+
+  /* part intro */
+  .partintro{ font-size: 14px; line-height: 1.8; color: var(--ink); max-width: 68ch; margin-bottom: 4px; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="TERMINAL MANUAL" role="banner">
+      <div class="stamp">DEAD RECKONING ARCHIVE</div>
+      <h1 class="masthead">TERMINAL CODE INSPECTION<br>AND NAVIGATION</h1>
+      <p class="tagline">A BVI Rust programmer's discovery layer, built from rg, ast-grep, Helix, Tree-sitter, rust-analyzer, and Orca. Found — not written, <em>found</em> — by a recruit still learning what any of that means.</p>
+      <div class="cover-foot">
+        <span>DISCOVER · LOCATE · STRUCTURE · READ</span>
+        <span>26 SECTIONS</span>
+        <span>FOUR NIGHTS</span>
+      </div>
+    </header>
+
+    <!-- PROLOGUE -->
+    <section class="panel" aria-labelledby="prologue-h" data-fold="PROLOGUE">
+      <div class="kicker">BEFORE PART ONE</div>
+      <h2 class="section" id="prologue-h">The File on the Borrowed Terminal</h2>
+      <p class="copy">Nobody on the Dead Reckoning Line handed Dial a rulebook when the vouching finally went through. What they got instead was a login on a safehouse machine nobody was using that week, a single file sitting in the home directory with no author line, and four words from their sponsor on the way out the door: <em>read it before you touch anything.</em></p>
+      <p class="copy">Dial had heard about the Field Manual the way every new arrival does — secondhand, half-legend, more quoted than read. This wasn't that. This was smaller, plainer, a working document with a title instead of a myth attached to it: <em>Terminal Code Inspection and Navigation.</em> No ceremony. Just a login prompt, a blinking cursor, and — for the first time since the augmentation trials had told Dial that better hardware was still years out — no visual interface standing between them and the actual work.</p>
+    </section>
+
+    <main id="main-content">
+
+    <!-- PART ONE -->
+    <section class="panel" aria-labelledby="p1-h" data-fold="PART ONE">
+      <div class="kicker">NIGHT ONE — DISCOVER</div>
+      <h2 class="section" id="p1-h">Sections 1 – 8: Find the Text</h2>
+      <p class="partintro">The file opened with a claim Dial didn't understand yet and would only really believe after using it: that the terminal wasn't a lesser way to work, it was a <em>layer</em>, sitting in front of the real editor, doing a job of its own.</p>
+
+      <div class="log">
+        <span class="tag">DIAL'S LOG — NIGHT ONE</span>
+        <p>First command I ever actually understood the reason for. Not "type this," but "ask this." The file called it a pipeline. Felt more like being handed a flashlight in a room I'd been told for years I wasn't allowed to enter.</p>
+      </div>
+
+# Terminal Code Inspection and Navigation
+
+<p class="copy">A BVI Rust programmer can treat the terminal as a <strong>code-discovery and navigation layer in front of Helix</strong>.</p>
+
+<p class="copy">The basic division is:</p>
+
+<ul style="margin:10px 0 16px 0; padding-left:20px; font-size:13.5px; line-height:1.7; color:var(--ink); max-width:68ch;">
+<li><code class="inline">rg</code> — find text.</li>
+<li><code class="inline">ast-grep</code> — find syntactic structure.</li>
+<li><code class="inline">ast-grep outline</code> — map the structure of a file or directory.</li>
+<li>Helix — open, read, navigate, select, and edit.</li>
+<li>Tree-sitter — provide syntax-aware navigation inside Helix.</li>
+<li><code class="inline">rust-analyzer</code> — provide semantic information when syntax alone is insufficient.</li>
+<li>Orca — read the resulting screen.</li>
+</ul>
+
+<p class="copy">The goal is not to dump entire source files into the terminal.</p>
+<p class="copy">The goal is to progressively narrow the codebase until only the relevant code remains.</p>
+<p class="copy">The overall workflow is:</p>
+
+<pre class="code">DISCOVER
+LOCATE
+STRUCTURE
+OPEN
+NAVIGATE
+READ
+UNDERSTAND</pre>
+
+<h3 class="sub">1. The Inspection Pipeline</h3>
+<p class="copy">Think of code archaeology as a sequence of questions.</p>
+<p class="copy">Start with the <strong>codebase</strong>:</p>
+<p class="copy"><em>What am I looking for?</em></p>
+<p class="copy">Use <code class="inline">rg</code>: <em>Where is it?</em></p>
+<p class="copy">Use <code class="inline">ast-grep</code>: <em>What syntactic structure is involved?</em></p>
+<p class="copy">Use Helix: <em>Let me open and inspect it.</em></p>
+<p class="copy">Use Tree-sitter navigation: <em>Let me move through its structures.</em></p>
+<p class="copy">Use <code class="inline">rust-analyzer</code>: <em>What are the semantic relationships?</em></p>
+<p class="copy">Use Orca: <em>Read the current screen to me.</em></p>
+<p class="copy">The tools therefore have distinct roles:</p>
+<ul style="margin:10px 0 16px 0; padding-left:20px; font-size:13.5px; line-height:1.7; color:var(--ink); max-width:68ch;">
+<li><code class="inline">rg</code> locates.</li>
+<li><code class="inline">ast-grep</code> identifies structure.</li>
+<li><code class="inline">ast-grep outline</code> maps code.</li>
+<li>Helix inspects and edits.</li>
+<li>Tree-sitter navigates syntax.</li>
+<li><code class="inline">rust-analyzer</code> explains semantic relationships.</li>
+<li>Orca provides speech output.</li>
+</ul>
+
+<h3 class="sub">2. rg: Find the Text</h3>
+<p class="copy">Use <code class="inline">rg</code> when you know something textual about the code.</p>
+<p class="copy">Find a name:</p>
+<pre class="code">rg 'my_function'</pre>
+<p class="copy">Find a function declaration:</p>
+<pre class="code">rg 'fn my_function'</pre>
+<p class="copy">Find public functions:</p>
+<pre class="code">rg 'pub fn'</pre>
+<p class="copy">Find <code class="inline">use</code> declarations:</p>
+<pre class="code">rg '^use\s+'</pre>
+<p class="copy">Find a word:</p>
+<pre class="code">rg 'Todo'</pre>
+<p class="copy">Restrict the search to Rust:</p>
+<pre class="code">rg -t rust 'Todo'</pre>
+<p class="copy"><code class="inline">rg</code> automatically respects common ignore rules such as <code class="inline">.gitignore</code>.</p>
+
+<h3 class="sub">3. Add Context</h3>
+<p class="copy">Once <code class="inline">rg</code> finds something interesting, inspect a small amount of surrounding source.</p>
+<p class="copy">Show the match and 15 lines after it:</p>
+<pre class="code">rg -A 15 'pub fn process_data'</pre>
+<p class="copy">Show five lines before it:</p>
+<pre class="code">rg -B 5 'pub fn process_data'</pre>
+<p class="copy">Show five lines on both sides:</p>
+<pre class="code">rg -C 5 'pub fn process_data'</pre>
+<p class="copy">Add line numbers:</p>
+<pre class="code">rg -n -C 5 'fn process_data'</pre>
+<p class="copy">This is a <strong>preview</strong>. It helps answer: <em>Is this the code I am looking for?</em> Once you know that it is, move into Helix rather than continually expanding the terminal output.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — STILL NIGHT ONE</span>
+  <p>Kept expanding the context window instead of just opening the file, because it felt safer to stay where I already knew the commands. Sponsor's voice in my head the whole time: <em>a preview isn't proof, and proof isn't the terminal's job past a certain point.</em> Had to actually open Helix eventually. Didn't want to. Did it anyway.</p>
+</div>
+
+<h3 class="sub">4. Search for Rust Definitions</h3>
+<p class="copy">Textual searches are useful for rapid discovery.</p>
+<p class="copy">Find function declarations:</p>
+<pre class="code">rg -n '^(pub\s+)?fn\s+'</pre>
+<p class="copy">Find structs:</p>
+<pre class="code">rg -n '^(pub\s+)?struct\s+'</pre>
+<p class="copy">Find enums:</p>
+<pre class="code">rg -n '^(pub\s+)?enum\s+'</pre>
+<p class="copy">Find traits:</p>
+<pre class="code">rg -n '^(pub\s+)?trait\s+'</pre>
+<p class="copy">Find type aliases:</p>
+<pre class="code">rg -n '^(pub\s+)?type\s+'</pre>
+<p class="copy">Find implementation blocks:</p>
+<pre class="code">rg -n '^impl'</pre>
+<p class="copy">These are <strong>textual patterns</strong>, not Rust syntax analysis. For example, a regular expression is not the right tool for reliably determining the complete extent of a Rust function containing nested blocks. That is where AST-based inspection becomes useful.</p>
+
+<h3 class="sub">5. Search Imports and Dependencies</h3>
+<p class="copy">Imports are useful when determining how a module connects to the rest of the codebase.</p>
+<p class="copy">Find imports:</p>
+<pre class="code">rg -n '^use\s+'</pre>
+<p class="copy">Search for a crate:</p>
+<pre class="code">rg -n 'use\s+tokio'</pre>
+<p class="copy">Search for a module:</p>
+<pre class="code">rg -n 'use\s+crate::parser'</pre>
+<p class="copy">Search for references:</p>
+<pre class="code">rg -n 'Parser'</pre>
+<p class="copy">Search Cargo manifests:</p>
+<pre class="code">rg -n 'tokio' Cargo.toml</pre>
+<p class="copy">Search all workspace manifests:</p>
+<pre class="code">rg -n 'tokio' --glob 'Cargo.toml'</pre>
+<p class="copy">This helps answer: <em>Where does this dependency or symbol enter the codebase?</em></p>
+
+<h3 class="sub">6. Control the Search Scope</h3>
+<p class="copy">Explicitly restrict the files being searched when useful.</p>
+<p class="copy">Rust source:</p>
+<pre class="code">rg 'pattern' --glob '*.rs'</pre>
+<p class="copy">Cargo files:</p>
+<pre class="code">rg 'pattern' --glob '*.toml'</pre>
+<p class="copy">Documentation:</p>
+<pre class="code">rg 'pattern' --glob '*.md'</pre>
+<p class="copy">Multiple file types:</p>
+<pre class="code">rg 'pattern' \
+  --glob '*.rs' \
+  --glob '*.toml'</pre>
+<p class="copy">Exclude a directory:</p>
+<pre class="code">rg 'pattern' --glob '!target/**'</pre>
+<p class="copy">This makes the inspection boundary explicit.</p>
+
+<h3 class="sub">7. Get Exact Locations</h3>
+<p class="copy">When a match matters, get its location.</p>
+<pre class="code">rg -n 'fn process_data'</pre>
+<p class="copy">Typical output:</p>
+<pre class="code">src/parser.rs:42:pub fn process_data(...)</pre>
+<p class="copy">For <code class="inline">file:line:column</code> output:</p>
+<pre class="code">rg --vimgrep 'fn process_data'</pre>
+<p class="copy">Example:</p>
+<pre class="code">src/parser.rs:42:8:pub fn process_data(...)</pre>
+<p class="copy">The important information is: file, line, column. That turns a repository-wide search result into a navigation target.</p>
+
+<h3 class="sub">8. Open the Target in Helix</h3>
+<p class="copy">Once you have the location:</p>
+<pre class="code">hx src/parser.rs:42</pre>
+<p class="copy">Helix opens the file at the specified location.</p>
+<p class="copy">If you already know the file:</p>
+<pre class="code">hx src/parser.rs</pre>
+<p class="copy">Then search inside Helix:</p>
+<pre class="code">/process_data</pre>
+<p class="copy">Move between matches:</p>
+<pre class="code">n</pre>
+<p class="copy">Next match.</p>
+<pre class="code">N</pre>
+<p class="copy">Previous match.</p>
+<p class="copy">This establishes an important boundary: <strong><code class="inline">rg</code> searches the repository. Helix searches the file you are currently inspecting.</strong></p>
+
+    </section>
+
+    <!-- PART TWO -->
+    <section class="panel" aria-labelledby="p2-h" data-fold="PART TWO">
+      <div class="kicker">NIGHT TWO — THE READING BOUNDARY</div>
+      <h2 class="section" id="p2-h">Sections 9 – 14: Configure, Position, Read, Navigate</h2>
+      <p class="partintro">Night two was the one Dial almost skipped — a whole section on editor configuration, three unfamiliar words deep before a single new command showed up. It turned out to be the part that mattered most.</p>
+
+<h3 class="sub">9. Configure Helix for Orca</h3>
+<p class="copy">Helix and Orca work better together when Helix's scrolling behavior is predictable.</p>
+<p class="copy">The goal is: <em>Put the line you want to read at the top of the visible editor area, then let Orca read from there.</em></p>
+<p class="copy"><strong>Configure scrolloff.</strong> Edit:</p>
+<pre class="code">~/.config/helix/config.toml</pre>
+<p class="copy">Under the existing <code class="inline">[editor]</code> section, add:</p>
+<pre class="code">[editor]
+scrolloff = 0</pre>
+<p class="copy">If <code class="inline">[editor]</code> already exists, add only:</p>
+<pre class="code">scrolloff = 0</pre>
+<p class="copy">Do not create a second <code class="inline">[editor]</code> section. With <code class="inline">scrolloff = 0</code>, Helix can place the current line directly against the edge of the editor viewport.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — NIGHT TWO</span>
+  <p>Edited a config file for the first time like it actually mattered. It's one line. Took me forty minutes to trust I hadn't broken anything, because nothing about "editing scroll behavior" sounded like it would change how *loud* the room felt. It changed how loud the room felt.</p>
+</div>
+
+<h3 class="sub">10. Use zt as an Orca Reading Boundary</h3>
+<p class="copy">After searching in Helix:</p>
+<pre class="code">zt</pre>
+<p class="copy">This positions the current line at the top of the visible editor area. With <code class="inline">scrolloff = 0</code>, the current line can occupy the first visible editor line. This is particularly useful for screen-reader work because the current line becomes a deliberate <strong>reading boundary</strong>.</p>
+<p class="copy">The workflow is:</p>
+<pre class="code">Search
+zt
+Read</pre>
+
+<h3 class="sub">11. Orca Laptop Mode Reading Workflow</h3>
+<p class="copy">Orca has its own reading position, while Helix has its cursor and viewport. It is useful to keep these concepts separate:</p>
+<ul style="margin:10px 0 16px 0; padding-left:20px; font-size:13.5px; line-height:1.7; color:var(--ink); max-width:68ch;">
+<li>Helix determines <strong>what is visible</strong>.</li>
+<li>Orca determines <strong>what is spoken</strong>.</li>
+</ul>
+<p class="copy">A practical workflow is:</p>
+<ol style="margin:10px 0 16px 0; padding-left:20px; font-size:13.5px; line-height:1.7; color:var(--ink); max-width:68ch;">
+<li>Search for a structural landmark.</li>
+<li>Use <code class="inline">zt</code>.</li>
+<li>Start Orca's reading.</li>
+<li>Listen to the surrounding code.</li>
+<li>Interrupt when you have enough information.</li>
+<li>Search for the next landmark.</li>
+<li>Use <code class="inline">zt</code> again.</li>
+<li>Resume reading.</li>
+</ol>
+<p class="copy">In Orca Laptop Mode, use:</p>
+<pre class="code">Orca + Enter</pre>
+<p class="copy">to start reading the current application window. The important idea is that <code class="inline">zt</code> establishes the <strong>visual reading boundary</strong>, while Orca provides the speech.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG</span>
+  <p>Search, zt, read, interrupt, search again. I didn't notice I'd stopped thinking about the individual steps until I was four landmarks deep and realized my hands had just been doing it. First time this whole file felt like a rhythm instead of a checklist.</p>
+</div>
+
+<h3 class="sub">12. Helix Regex Search</h3>
+<p class="copy">Use Helix when the search has become local to one file.</p>
+<p class="copy">Examples:</p>
+<pre class="code">/parse_expression</pre>
+<pre class="code">/fn\s+\w+</pre>
+<pre class="code">/Result<</pre>
+<pre class="code">/unsafe\s*\{</pre>
+<p class="copy">Then:</p>
+<pre class="code">n</pre>
+<p class="copy">moves to the next match.</p>
+<pre class="code">N</pre>
+<p class="copy">moves to the previous match.</p>
+<p class="copy">The progression is:</p>
+<pre class="code">rg
+repository search
+
+Helix /
+file search
+
+n / N
+move between matches</pre>
+<p class="copy">This prevents the terminal from becoming a large source-code dump.</p>
+
+<h3 class="sub">13. Helix Textobjects</h3>
+<p class="copy">Helix provides syntax-aware textobjects through Tree-sitter.</p>
+<p class="copy">Instead of thinking: <em>Select lines 42 through 67.</em></p>
+<p class="copy">you can think: <em>Select this function.</em> Or: <em>Select this type.</em> Or: <em>Select this parameter list.</em></p>
+<p class="copy">The selection therefore represents a meaningful syntactic region.</p>
+<p class="copy">The general forms are:</p>
+<pre class="code">mi + object</pre>
+<p class="copy">Select inside the object.</p>
+<pre class="code">ma + object</pre>
+<p class="copy">Select around the object.</p>
+<p class="copy">For example:</p>
+<pre class="code">mif</pre>
+<p class="copy">selects inside a function.</p>
+<pre class="code">maf</pre>
+<p class="copy">selects around a function.</p>
+<p class="copy">For Rust, useful textobjects include structures such as:</p>
+<pre class="code">f    function
+t    type
+a    argument
+c    comment
+T    test</pre>
+<p class="copy">The exact available textobjects depend on Helix's language configuration.</p>
+
+<h3 class="sub">14. Tree-sitter Navigation</h3>
+<p class="copy">Helix also provides Tree-sitter-aware movement.</p>
+<p class="copy">For example:</p>
+<pre class="code">]f</pre>
+<p class="copy">moves to the next function.</p>
+<pre class="code">[f</pre>
+<p class="copy">moves to the previous function.</p>
+<p class="copy">Likewise:</p>
+<pre class="code">]t</pre>
+<p class="copy">moves to the next type.</p>
+<pre class="code">[t</pre>
+<p class="copy">moves to the previous type.</p>
+<p class="copy">This gives you two different kinds of search:</p>
+<p class="copy"><strong>Text search</strong></p>
+<pre class="code">/parse_expression</pre>
+<p class="copy">means: <em>Find this text pattern.</em></p>
+<p class="copy"><strong>Structural navigation</strong></p>
+<pre class="code">]f</pre>
+<p class="copy">means: <em>Move to the next function.</em></p>
+<p class="copy">Use the one that matches the question you are asking.</p>
+
+    </section>
+
+    <!-- PART THREE -->
+    <section class="panel" aria-labelledby="p3-h" data-fold="PART THREE">
+      <div class="kicker">NIGHT THREE — STRUCTURE</div>
+      <h2 class="section" id="p3-h">Sections 15 – 19: From Words to Shapes</h2>
+      <p class="partintro">Everything up to now had been Dial finding words. Night three was the one where the file finally admitted that words were never going to be enough on their own.</p>
+
+<h3 class="sub">15. ast-grep: Find Code Structure</h3>
+<p class="copy"><code class="inline">ast-grep</code> becomes useful when the question is structural rather than textual.</p>
+<p class="copy">The basic form is:</p>
+<pre class="code">ast-grep -p 'PATTERN'</pre>
+<p class="copy">For example:</p>
+<pre class="code">ast-grep -p '$OBJECT.unwrap()'</pre>
+<p class="copy">This searches for method calls structurally resembling:</p>
+<pre class="code">something.unwrap()</pre>
+<p class="copy">The exact receiver can vary. A metavariable such as <code class="inline">$OBJECT</code> represents one AST node. A multi-metavariable such as <code class="inline">$$$ARGS</code> can represent multiple AST nodes.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — NIGHT THREE</span>
+  <p>Ran the unwrap search on a training repo the sponsor left me. Fourteen hits. Read the file's line about text vs. shape three times before it actually landed: I wasn't looking for the word "unwrap" anymore. I was looking for a *kind of mistake*, wearing however many different names it happened to be wearing that day.</p>
+</div>
+
+<h3 class="sub">16. Structural Function Searches</h3>
+<p class="copy">A function pattern can describe the structure of a Rust function:</p>
+<pre class="code">ast-grep -p 'fn $NAME($$$ARGS) { $$$BODY }'</pre>
+<p class="copy">A public function:</p>
+<pre class="code">ast-grep -p 'pub fn $NAME($$$ARGS) { $$$BODY }'</pre>
+<p class="copy">A particular function:</p>
+<pre class="code">ast-grep -p 'fn process_data($$$ARGS) { $$$BODY }'</pre>
+<p class="copy">The important difference from regex is that ast-grep parses the source and matches its syntax tree. You are describing: <em>a Rust function with this structure</em> rather than attempting to make a regular expression understand nested Rust syntax.</p>
+
+<h3 class="sub">17. Structural Searches for Types</h3>
+<p class="copy">Struct:</p>
+<pre class="code">ast-grep -p 'struct $NAME { $$$FIELDS }'</pre>
+<p class="copy">Public struct:</p>
+<pre class="code">ast-grep -p 'pub struct $NAME { $$$FIELDS }'</pre>
+<p class="copy">Enum:</p>
+<pre class="code">ast-grep -p 'enum $NAME { $$$VARIANTS }'</pre>
+<p class="copy">Trait:</p>
+<pre class="code">ast-grep -p 'trait $NAME { $$$BODY }'</pre>
+<p class="copy">Implementation:</p>
+<pre class="code">ast-grep -p 'impl $TYPE { $$$BODY }'</pre>
+<p class="copy">The goal is not to memorize every pattern. The goal is to recognize the progression:</p>
+<pre class="code">text
+regex
+AST pattern
+semantic analysis</pre>
+<p class="copy">Use the simplest level that answers the question.</p>
+
+<h3 class="sub">18. Search for Calls</h3>
+<p class="copy">Structural searches are especially useful for function and method calls.</p>
+<p class="copy">Find <code class="inline">.unwrap()</code> calls:</p>
+<pre class="code">ast-grep -p '$OBJECT.unwrap()'</pre>
+<p class="copy">Find <code class="inline">.expect(...)</code> calls:</p>
+<pre class="code">ast-grep -p '$OBJECT.expect($MESSAGE)'</pre>
+<p class="copy">Find <code class="inline">println!</code> calls:</p>
+<pre class="code">ast-grep -p 'println!($$$ARGS)'</pre>
+<p class="copy">The structural pattern can be more useful than searching for the literal text because it describes the syntax you care about.</p>
+
+<h3 class="sub">19. ast-grep outline: Map the Code</h3>
+<p class="copy">Before reading an unfamiliar source file, inspect its structure.</p>
+<pre class="code">ast-grep outline src/parser.rs</pre>
+<p class="copy">This gives you a structural overview rather than dumping the complete source.</p>
+<p class="copy">For signatures:</p>
+<pre class="code">ast-grep outline src/parser.rs --view signatures</pre>
+<p class="copy">For a more detailed view:</p>
+<pre class="code">ast-grep outline src/parser.rs --view expanded</pre>
+<p class="copy">For a compact view:</p>
+<pre class="code">ast-grep outline src/parser.rs --view digest</pre>
+<p class="copy">This is especially valuable for a terminal-first workflow. Instead of immediately doing:</p>
+<pre class="code">cat src/parser.rs</pre>
+<p class="copy">start with:</p>
+<pre class="code">ast-grep outline src/parser.rs</pre>
+<p class="copy">Then decide which symbol deserves closer inspection.</p>
+
+    </section>
+
+    <!-- PART FOUR -->
+    <section class="panel" aria-labelledby="p4-h" data-fold="PART FOUR">
+      <div class="kicker">NIGHT FOUR — THE FULL DESCENT</div>
+      <h2 class="section" id="p4-h">Sections 20 – 26: Run It for Real</h2>
+      <p class="partintro">By night four, Dial wasn't reading the file anymore so much as checking it — running the sequence first, from memory, and only opening the document when something didn't land.</p>
+
+<h3 class="sub">20. A Code-Archaeology Sequence</h3>
+<p class="copy">When entering an unfamiliar Rust module, progressively reduce the search space.</p>
+<p class="copy"><strong>Step 1: Map the file</strong></p>
+<pre class="code">ast-grep outline src/parser.rs</pre>
+<p class="copy">Ask: <em>What is in this file?</em></p>
+<p class="copy"><strong>Step 2: Locate a symbol</strong></p>
+<pre class="code">rg -n 'Parser'</pre>
+<p class="copy">Ask: <em>Where does this name occur?</em></p>
+<p class="copy"><strong>Step 3: Identify its structure</strong></p>
+<pre class="code">ast-grep -p 'struct Parser { $$$FIELDS }' src/parser.rs</pre>
+<p class="copy">Ask: <em>What is the actual syntactic object?</em></p>
+<p class="copy"><strong>Step 4: Open it</strong></p>
+<pre class="code">hx src/parser.rs:LINE</pre>
+<p class="copy"><strong>Step 5: Position the reading boundary</strong></p>
+<pre class="code">zt</pre>
+<p class="copy"><strong>Step 6: Read with Orca</strong></p>
+<pre class="code">Orca + Enter</pre>
+<p class="copy"><strong>Step 7: Navigate structurally</strong></p>
+<pre class="code">]f
+[f
+]t
+[t</pre>
+<p class="copy"><strong>Step 8: Select a meaningful region when needed</strong></p>
+<pre class="code">mif
+maf
+mit
+mat</pre>
+<p class="copy">The important point is that you do not begin by reading the entire file. You first establish <strong>where you are and what you are looking at</strong>.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — NIGHT FOUR</span>
+  <p>Sponsor gave me a real one tonight. Small — a training repo dressed up to look like a live target, I found out after — but I didn't know that going in. Ran the eight steps without opening the file once beforehand. Found the struct, found the field that mattered, never touched a line I didn't need. First time it felt less like following a manual and more like it had actually become the way I think.</p>
+</div>
+
+<h3 class="sub">21. Three Levels of Search</h3>
+<p class="copy">There are three particularly useful levels.</p>
+<p class="copy"><strong>Level 1: Text.</strong> Question: <em>Where does this text occur?</em> Tool: <code class="inline">rg</code>. Example:</p>
+<pre class="code">rg -n 'process_data'</pre>
+<p class="copy"><strong>Level 2: Syntax.</strong> Question: <em>Where does this code shape occur?</em> Tool: <code class="inline">ast-grep</code>. Example:</p>
+<pre class="code">ast-grep -p '$OBJECT.unwrap()'</pre>
+<p class="copy"><strong>Level 3: Semantics.</strong> Question: <em>What does this symbol mean, and what is related to it?</em> Tool: <code class="inline">rust-analyzer</code>. Examples include: finding references, going to definitions, determining types, inspecting diagnostics, understanding symbol relationships.</p>
+<p class="copy">This distinction is important: <strong>ast-grep understands syntax; rust-analyzer understands Rust semantics.</strong></p>
+
+<h3 class="sub">22. Read-Only Inspection Discipline</h3>
+<p class="copy">Keep reconnaissance separate from modification.</p>
+<p class="copy">Use <code class="inline">rg</code> for discovery:</p>
+<pre class="code">rg ...</pre>
+<p class="copy">Use ast-grep for structural inspection:</p>
+<pre class="code">ast-grep -p '...'
+ast-grep outline ...</pre>
+<p class="copy">Use Helix for reading and navigation. Use Helix when you are ready to edit.</p>
+<p class="copy">The mental separation is:</p>
+<pre class="code">DISCOVER
+rg
+
+MAP
+ast-grep outline
+
+IDENTIFY STRUCTURE
+ast-grep
+
+READ
+Helix + Orca
+
+UNDERSTAND RELATIONSHIPS
+rust-analyzer
+
+EDIT
+Helix</pre>
+<p class="copy">This keeps code archaeology safer and cognitively simpler.</p>
+
+<h3 class="sub">23. ast-grep Metavariables</h3>
+<p class="copy">ast-grep metavariables are pattern placeholders. The names are chosen by you. There is no special <code class="inline">$OBJECT</code> or <code class="inline">$MESSAGE</code> variable.</p>
+<p class="copy">For example:</p>
+<pre class="code">$OBJECT.unwrap()</pre>
+<p class="copy">Here <code class="inline">$OBJECT</code> is simply a name you chose for the captured AST node.</p>
+<p class="copy"><strong>Single-node capture</strong></p>
+<pre class="code">$NAME</pre>
+<p class="copy">Matches one AST node. Example:</p>
+<pre class="code">$OBJECT.unwrap()</pre>
+<p class="copy"><strong>Dropped single-node capture</strong></p>
+<pre class="code">$_</pre>
+<p class="copy">Matches one AST node without giving the capture a useful name. Example:</p>
+<pre class="code">foo($_)</pre>
+<p class="copy"><strong>Named multi-node capture</strong></p>
+<pre class="code">$$$ARGS</pre>
+<p class="copy">Matches zero or more AST nodes. Example:</p>
+<pre class="code">console.log($$$ARGS)</pre>
+<p class="copy"><strong>Unnamed multi-node capture</strong></p>
+<pre class="code">$$$</pre>
+<p class="copy">Matches zero or more AST nodes without naming the capture.</p>
+<p class="copy"><strong>Unnamed-node capture</strong></p>
+<pre class="code">$$OP</pre>
+<p class="copy">This form is useful for matching unnamed syntax nodes such as operators. For example:</p>
+<pre class="code">$A $$OP $B</pre>
+
+<h3 class="sub">24. Metavariable Naming</h3>
+<p class="copy">The important distinction is:</p>
+<pre class="code">$NAME</pre>
+<p class="copy">captures one node.</p>
+<pre class="code">$$$NAME</pre>
+<p class="copy">captures zero or more nodes. The identifier is yours to choose.</p>
+<p class="copy">Examples:</p>
+<pre class="code">$TYPE
+$NAME
+$OBJECT
+$ARGS
+$BODY
+$FIELD</pre>
+<p class="copy">The same metavariable can also be reused to require the same AST node. For example:</p>
+<pre class="code">$A == $A</pre>
+<p class="copy">requires the two sides to match the same captured node. Conceptually:</p>
+<pre class="code">x == x</pre>
+<p class="copy">matches.</p>
+<pre class="code">x == y</pre>
+<p class="copy">does not.</p>
+
+<h3 class="sub">25. The Core Toolkit</h3>
+<p class="copy"><strong>rg</strong></p>
+<pre class="code">rg 'text'
+rg -n 'text'
+rg -C 5 'text'
+rg -A 15 'text'
+rg -t rust 'text'
+rg --glob '*.rs' 'text'
+rg --vimgrep 'text'</pre>
+<p class="copy"><strong>ast-grep</strong></p>
+<pre class="code">ast-grep outline src/
+ast-grep outline src/file.rs --view signatures
+ast-grep -p 'PATTERN'
+ast-grep -p 'PATTERN' src/
+ast-grep -p 'PATTERN' -l rust</pre>
+<p class="copy"><strong>Helix</strong></p>
+<pre class="code">hx src/file.rs
+hx src/file.rs:42</pre>
+<p class="copy">Inside Helix:</p>
+<pre class="code">/regex
+n
+N
+zt
+[f
+]f
+[t
+]t
+mif
+maf
+mit
+mat</pre>
+<p class="copy"><strong>Orca</strong></p>
+<p class="copy">Use Orca Laptop Mode to turn the current screen into speech. The important interaction is:</p>
+<pre class="code">Helix search
+zt
+Orca reading</pre>
+
+<h3 class="sub">26. The Practical Mental Model</h3>
+<p class="copy">Think of the tools as answering different questions.</p>
+<p class="copy"><code class="inline">rg</code> asks: <strong>Where is this text?</strong></p>
+<p class="copy"><code class="inline">ast-grep</code> asks: <strong>Where is this code shape?</strong></p>
+<p class="copy"><code class="inline">ast-grep outline</code> asks: <strong>What is the structure of this file?</strong></p>
+<p class="copy">Helix asks: <strong>How do I move through and inspect this source?</strong></p>
+<p class="copy">Tree-sitter asks: <strong>What syntactic structure am I currently inside?</strong></p>
+<p class="copy"><code class="inline">rust-analyzer</code> asks: <strong>What are the semantic relationships?</strong></p>
+<p class="copy">Orca asks: <strong>What is currently on the screen?</strong></p>
+<p class="copy">The result is a terminal-first code-archaeology workflow:</p>
+<pre class="code">DISCOVER
+LOCATE
+MAP
+STRUCTURE
+OPEN
+POSITION
+READ
+NAVIGATE
+UNDERSTAND
+EDIT</pre>
+<p class="copy">The terminal becomes the <strong>discovery layer</strong>. Helix becomes the <strong>inspection, navigation, and editing layer</strong>. Orca becomes the <strong>speech layer</strong>.</p>
+<p class="copy">The key principle is:</p>
+<p class="copy"><strong>Progressively reduce the amount of code you need to hold in attention.</strong></p>
+<p class="copy">You do not need to read the repository. You need to identify the relevant file, identify the relevant structure, position it predictably, and read only the code necessary to answer the current question.</p>
+
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">D I A L &nbsp; · &nbsp; F I R S T &nbsp; D E S C E N T</div>
+      <p class="closer">Four nights, twenty-six sections, and by the end Dial had stopped calling it a manual out loud. The sponsor never asked for it back. On the Line, that's usually the only graduation anyone gets — nobody tells you the training's over. You just notice, one ordinary night, that you're not reading the file anymore. You're just working, and the file turned out to be how you learned to.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
