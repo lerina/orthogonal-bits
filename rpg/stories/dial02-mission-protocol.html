@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — The Mission Protocol</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(38px, 8.2vw, 78px); line-height: 0.98; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 56ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--riso-yellow); letter-spacing: 0.02em; margin: 22px 0 6px 0; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.78; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  code.inline{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12.5px; }
+
+  /* letter breakdown */
+  .letters{ margin-top: 20px; display:flex; flex-direction:column; }
+  .letter{ padding: 16px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 46px 1fr; gap: 16px; align-items:start; }
+  .letter:first-child{ border-top:none; }
+  .letter .lg{ font-family:'Anton', sans-serif; font-size: 30px; color: var(--riso-pink); line-height: 1; }
+  .letter h4{ margin: 0 0 6px 0; font-size: 14px; color: var(--ink); }
+  .letter p{ margin: 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 62ch; }
+  .letter .tactics{ margin-top:8px; font-size:12px; color:var(--ink); }
+
+  .chain{
+    margin: 20px 0; padding: 14px 18px; border: 1px dashed var(--rule); background: var(--paper-2);
+    font-size: 12.5px; color: var(--riso-yellow); text-align:center; letter-spacing:0.02em;
+  }
+
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+
+  /* narrative log entries */
+  .log{
+    background: var(--paper-3); border: 1px solid var(--riso-pink); box-shadow: 0 0 0 1px rgba(255,46,99,0.15);
+    padding: 18px 20px; margin: 22px 0; font-size: 13.5px; line-height: 1.8; color: var(--ink);
+  }
+  .log .tag{ display:block; font-size: 10px; letter-spacing: 0.16em; color: var(--riso-pink); margin-bottom: 10px; }
+  .log p{ margin: 0 0 10px 0; }
+  .log p:last-child{ margin-bottom: 0; }
+  .log em{ color: var(--riso-yellow); font-style: italic; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } .letter{ grid-template-columns: 36px 1fr; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="THE SECOND FILE" role="banner">
+      <div class="stamp">DEAD RECKONING ARCHIVE</div>
+      <h1 class="masthead">THE MISSION<br>PROTOCOL</h1>
+      <p class="tagline">An upgrade to Quest Deconstruction — a Brief up front, Verification at the back, and the whole thing spelling out the game's own name. The second file Dial's sponsor ever handed them, and the shortest one yet.</p>
+      <div class="cover-foot">
+        <span>C-A-P-S-L-O-C-K</span>
+        <span>NINE STEPS</span>
+        <span>NIGHT FIVE</span>
+      </div>
+    </header>
+
+    <!-- PROLOGUE -->
+    <section class="panel" aria-labelledby="prologue-h" data-fold="PROLOGUE">
+      <div class="kicker">AFTER THE FIRST DESCENT</div>
+      <h2 class="section" id="prologue-h">The File That Wasn't About Code</h2>
+      <p class="copy">The sponsor's message came through two days after Dial closed out the training repo clean. No congratulations — the Line didn't really do those. Just a second file, smaller than the first, and a single line above the login: <em>the terminal manual teaches you to find things. This one teaches you to finish them.</em></p>
+      <p class="copy">Dial opened it expecting more commands. There weren't any. Just a shape — eight letters, spelling the one word Dial had been hearing since the vouching went through, that they'd never once thought to read as instructions.</p>
+    </section>
+
+    <main id="main-content">
+
+    <!-- THE DOCUMENT -->
+    <section class="panel" aria-labelledby="doc-h" data-fold="THE PROTOCOL">
+      <div class="kicker">THE FILE, IN FULL</div>
+      <h2 class="section" id="doc-h">CAPSLOCK Quick Rules: The Mission Protocol</h2>
+      <p class="copy">An upgrade to Quest Deconstruction (core rulebook, Section 12). Same six-step spine, plus a setup line and a verification step the original was missing — and the whole thing now spells the game's own name.</p>
+
+      <h3 class="sub">Before You Start — The Brief</h3>
+      <p class="copy">Three lines, optional but recommended for anything non-trivial:</p>
+      <ul style="margin:10px 0 16px 0; padding-left:20px; font-size:13.5px; line-height:1.7; color:var(--ink); max-width:66ch;">
+        <li><strong>Mission:</strong> What am I actually doing?</li>
+        <li><strong>Win condition:</strong> What does "complete" look like?</li>
+        <li><strong>Status:</strong> Where am I starting from right now?</li>
+      </ul>
+      <p class="copy">This is the part that makes the Protocol work equally well on a boss fight, a broken Rust test, and a sink full of dishes — it forces the vague feeling of "I should do something" into a sentence you can check against later.</p>
+
+      <div class="log">
+        <span class="tag">DIAL'S LOG — NIGHT FIVE</span>
+        <p>Ran the Brief on the first thing in front of me before I even understood the rest of the file: the pile of laundry I'd been stepping over for four days. Mission — get it done. Win condition — basket empty, clothes put away. Status — currently the reason I can't find my other boot. Took eleven seconds to write. Felt stupid writing it. Did the laundry anyway, first time in a week without arguing with myself about it first.</p>
+      </div>
+    </section>
+
+    <!-- THE LETTERS -->
+    <section class="panel" aria-labelledby="letters-h" data-fold="C-A-P-S-L-O-C-K">
+      <div class="kicker">THE PROTOCOL</div>
+      <h2 class="section" id="letters-h">C-A-P-S-L-O-C-K</h2>
+
+      <div class="letters">
+        <div class="letter">
+          <div class="lg">C</div>
+          <div>
+            <h4>Checkable Target</h4>
+            <p>State the concrete win condition in one sentence. Not "clean the kitchen," but "counter's clear and the sink is empty." If you can't check it, it isn't a target yet.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">A</div>
+          <div>
+            <h4>Acknowledge the Obstacle</h4>
+            <p>Name exactly what's standing between you and the target. No obstacle named means it isn't a mission — it's just a fact sitting there.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">P</div>
+          <div>
+            <h4>Penalties (the Stakes)</h4>
+            <p>What actually gets worse if this is skipped? A real cost, not a vague one. No real cost means the target's not worth a mission — shrink it or drop it.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">S</div>
+          <div>
+            <h4>Select the Adversary</h4>
+            <p>Cast the obstacle by how it's behaving <em>right now</em>, not by what kind of task it technically is.</p>
+            <div class="tactics">
+              <strong>Watcher</strong> — avoidance, hesitation, awkwardness. Tactic: <strong>circumvent it.</strong> Slip past quietly, start before it notices.<br>
+              <strong>Enforcer</strong> — resistance that just takes sustained effort. Tactic: <strong>focus fire.</strong> Push straight through with the smallest real push.<br>
+              <strong>Hunter</strong> — too big or too dangerous to face head-on. Tactic: <strong>kite and chip.</strong> Don't confront it directly — wear it down, or route around it entirely.
+            </div>
+            <p style="margin-top:8px;">The same task can be a different adversary on a different day. Washing dishes is a Watcher when you're just avoiding starting, and an Enforcer once your arms are actually tired. Cast the obstacle as experienced, not as labeled.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">L</div>
+          <div>
+            <h4>Launch the First Move</h4>
+            <p>One physical, observable action. Small enough to start inside two minutes. This is the only step you're required to know before you begin.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">O</div>
+          <div>
+            <h4>Observe &amp; Verify</h4>
+            <p>Produce actual evidence the target's been hit — a fact, not a feeling. <code class="inline">cargo test</code> passes. The counter's clear and the sink's empty. The email shows as sent. If you can't point to the evidence, you're not done, you just stopped.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">C</div>
+          <div>
+            <h4>Claim the Reward</h4>
+            <p>Immediate, not big — delivered the instant O confirms. A scene resolved, a Glitch cleared, a coffee, a mental checkmark. The point is speed, so it registers as <em>done</em> instead of <em>still open</em>.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">K</div>
+          <div>
+            <h4>Kill the Mission</h4>
+            <p>Once verified, stop. Don't keep polishing a mission that's already complete — that's not diligence, it's a new mission wearing the old one's name. If you want to keep going, that's Checkable Target, step one, again, honestly.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="chain">Activity → Target → Obstacle → Stakes → Adversary → Tactic → First Move → Verification → Reward → Kill</div>
+
+      <div class="log">
+        <span class="tag">DIAL'S LOG</span>
+        <p>K was the one that got me. I don't stop. Sponsor already knew that about me before I did, I think — why else would they have made it the last letter of the recruiter's own name. Read it four times before I let myself believe it was actually a rule and not just a suggestion I was allowed to argue with.</p>
+      </div>
+    </section>
+
+    <!-- EXAMPLES -->
+    <section class="panel" aria-labelledby="ex-h" data-fold="EXAMPLES">
+      <div class="kicker">THE FILE'S OWN EXAMPLES</div>
+      <h2 class="section" id="ex-h">Quick Examples</h2>
+
+      <table class="reftable" aria-label="Mission protocol examples">
+        <thead><tr><th scope="col">Activity</th><th scope="col">C — Target</th><th scope="col">S — Adversary</th><th scope="col">O — Verification</th></tr></thead>
+        <tbody>
+          <tr><td>Wash the dishes</td><td>Sink empty, dishes drying</td><td>Watcher (avoidance) → Enforcer (fatigue)</td><td>Sink visibly empty</td></tr>
+          <tr><td>Read the Rust Book</td><td>Three pages read, notes taken</td><td>Watcher</td><td>Notes exist for those pages</td></tr>
+          <tr><td>Fix the failing test</td><td>Target function passes</td><td>Enforcer</td><td><code class="inline">cargo test</code> passes</td></tr>
+          <tr><td>Pay the electricity bill</td><td>Payment confirmed</td><td>Watcher</td><td>Confirmation email received</td></tr>
+          <tr><td>Write the next scene</td><td>Scene drafted to the end</td><td>Hunter (blank page)</td><td>Draft file has an ending</td></tr>
+          <tr><td>Investigate the prod bug</td><td>Root cause identified</td><td>Hunter</td><td>Root cause named in the ticket</td></tr>
+        </tbody>
+      </table>
+
+      <p class="copy">This runs alongside the original Quest Deconstruction exactly as before — same Watcher/Enforcer/Hunter vocabulary, same core philosophy. The Protocol just adds the Brief up front and Verification at the back, so a mission has a checkable start and a checkable end, not just a vague middle.</p>
+    </section>
+
+    <!-- DIAL'S FIRST REAL RUN -->
+    <section class="panel" aria-labelledby="run-h" data-fold="THE FIRST REAL RUN">
+      <div class="kicker">A WEEK LATER</div>
+      <h2 class="section" id="run-h">The First One That Wasn't Practice</h2>
+      <p class="copy">The job itself was small — small enough that the sponsor almost didn't bother routing it through the Line at all. A contact needed a name confirmed inside a firm's low-security personnel directory, nothing RUSTCORE would ever notice, nothing worth a real Rig. But it was real. Someone was actually going to use what Dial found.</p>
+
+      <div class="log">
+        <span class="tag">DIAL'S LOG — FIRST REAL RUN</span>
+        <p><strong>Brief.</strong> Mission: confirm the name. Win condition: name and role verified against two independent fields. Status: I have a company name and nothing else.</p>
+        <p><strong>C.</strong> Target: the employee's current role, confirmed. <strong>A.</strong> Obstacle: directory's not public, needs a foothold. <strong>P.</strong> Stakes: contact's next move depends on this being right, not fast. <strong>S.</strong> Cast it Watcher — nothing here is going to fight back, I just have to not be noticed finding it. <strong>L.</strong> First move: open the terminal, <code class="inline">rg</code> the leaked directory dump for the surname.</p>
+        <p>Found it in four minutes using exactly what the first file taught me. Text search, then context, then done — never even needed ast-grep. <strong>O.</strong> Two independent fields matched. <strong>C.</strong> Reward: told the sponsor it was done before I let myself second-guess it. <strong>K.</strong> Closed the terminal. Didn't reopen it to check a third time. That part was the actual hard part.</p>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">D I A L &nbsp; · &nbsp; F I R S T &nbsp; M I S S I O N</div>
+      <p class="closer">Two files, five nights, one small job that mattered anyway. Dial still has both documents open in separate panes most nights — one for finding things, one for finishing them. Nobody on the Line has told them yet that most runners never actually stop needing both.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
