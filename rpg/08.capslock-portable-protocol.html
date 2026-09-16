@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK ⠠⠏ — The Portable Voice-First Mission Protocol</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(32px, 7vw, 66px); line-height: 1.0; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 58ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--riso-yellow); letter-spacing: 0.02em; margin: 22px 0 6px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.8; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+  ul.plain, ol.plain{ margin: 8px 0 16px 0; padding-left: 20px; font-size: 13.5px; line-height: 1.75; color: var(--ink); max-width: 66ch; }
+  ul.plain li, ol.plain li{ margin-bottom: 5px; }
+
+  .quote{
+    margin: 14px 0; padding: 12px 16px; border-left: 3px solid var(--riso-pink);
+    background: var(--paper-2); font-style: italic; color: var(--ink); font-size: 13.5px; line-height: 1.7;
+  }
+
+  /* letter breakdown */
+  .letters{ margin-top: 20px; display:flex; flex-direction:column; }
+  .letter{ padding: 16px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 46px 1fr; gap: 16px; align-items:start; }
+  .letter:first-child{ border-top:none; }
+  .letter .lg{ font-family:'Anton', sans-serif; font-size: 30px; color: var(--riso-pink); line-height: 1; }
+  .letter h4{ margin: 0 0 6px 0; font-size: 14px; color: var(--ink); }
+  .letter p{ margin: 0; font-size: 13px; color: var(--ink-dim); line-height: 1.65; max-width: 62ch; }
+  .letter ul{ margin: 6px 0 0 0; padding-left: 18px; font-size: 12.5px; color: var(--ink-dim); }
+
+  /* mode cards */
+  .threats{ margin-top: 18px; display:grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .threat{ background: var(--paper-2); border: 1px solid var(--rule); padding: 16px; }
+  .threat .tag{ font-size: 10px; letter-spacing: 0.16em; color: var(--riso-yellow); }
+  .threat h4{ margin: 8px 0 8px 0; font-size: 14px; color: var(--ink); }
+  .threat p{ margin:0; font-size: 12px; color: var(--ink-dim); line-height: 1.6; }
+  @media (max-width: 640px){ .threats{ grid-template-columns: 1fr; } }
+
+  /* lore tip */
+  .tip{ background: var(--paper-3); border-left: 3px solid var(--riso-yellow); padding: 12px 16px; margin: 16px 0; font-size: 13px; color: var(--ink); line-height:1.65; }
+  .tip .tag{ display:block; font-size:10px; letter-spacing:0.14em; color:var(--riso-yellow); margin-bottom:6px; }
+
+  /* example transcript */
+  .transcript{ margin-top: 16px; display:flex; flex-direction:column; }
+  .tline{ padding: 10px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 110px 1fr; gap: 14px; }
+  .tline:first-child{ border-top:none; }
+  .tline .label{ font-size: 10.5px; letter-spacing: 0.1em; color: var(--riso-yellow); text-transform: uppercase; }
+  .tline .val{ font-size: 13px; color: var(--ink); line-height: 1.6; }
+  @media (max-width: 560px){ .tline{ grid-template-columns: 1fr; } }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+  .back .strapline{ margin-top: 26px; font-family:'Anton', sans-serif; font-size: 18px; color: var(--riso-yellow); }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } .letter{ grid-template-columns: 36px 1fr; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels"><span class="stamp">
+          <a href="index.html" aria-label="Home (top level)" style="color: var(--ink-dim)">BACK: index <span class="muted">~</span></a>
+      </span>
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="THE PORTABLE VERSION" role="banner">
+      <div class="stamp">CARRIED, NOT OWNED</div>
+      <h1 class="masthead">THE PORTABLE<br>VOICE-FIRST MISSION<br>PROTOCOL</h1>
+      <p class="tagline">No deck. No terminal. No RUSTCORE checkpoint. Just a character name, a want, a city, and a voice — which is exactly why this one got out of the Line's hands almost immediately.</p>
+      <div class="cover-foot">
+        <span>NOTHING TO INSTALL</span>
+        <span>C-A-P-S-L-O-C-K</span>
+        <span>ANY MOMENT, ANY BODY</span>
+      </div>
+    </header>
+
+    <!-- LORE INTRO -->
+    <section class="panel" aria-labelledby="lore-h" data-fold="PROVENANCE">
+      <div class="kicker">HOW THIS ONE SPREAD</div>
+      <h2 class="section" id="lore-h">The Document That Doesn't Need the Line</h2>
+      <p class="copy">Every other file that circulates on the Dead Reckoning Line assumes something — a deck, a terminal, a Rig, a body that can at least reach a keyboard. This one doesn't. Four things carried, all of them already in your head before you ever heard of RUSTCORE: a name, a want, a city, a voice. No hardware to source, no software to configure, nothing a sponsor has to vouch you into.</p>
+      <p class="copy">That's exactly why it didn't stay contained to Signal Runners for long. Copies turn up in places nothing else from the Line ever reaches — taped inside lockers, read aloud on long commutes, passed between people who've never touched a cyberdeck and never intend to. It isn't doctrine anymore, not really. It's closer to something the whole city quietly agreed to share.</p>
+    </section>
+
+    <main id="main-content">
+
+    <!-- INTRO -->
+    <section class="panel" aria-labelledby="intro-h" data-fold="THE PITCH">
+      <div class="kicker">THE DOCUMENT, IN FULL</div>
+      <h2 class="section" id="intro-h">CAPSLOCK <span aria-label="Capital P" role="img">
+  <span aria-hidden="true">&#x2820;&#x280F;</span>
+</span> — The Portable Voice-First Mission Protocol</h2>
+      <p class="copy">CAPSLOCK is a solo narrative game played through voice, movement, sensory awareness, and imagination. It is not a game you sit down to prepare. It is a protocol you carry into ordinary life. A commute, a chore, a walk, a programming task, or a moment before sleep can become a mission.</p>
+      <p class="copy">You carry only four things:</p>
+      <ul class="plain">
+        <li>A character name.</li>
+        <li>A character's want.</li>
+        <li>A city.</li>
+        <li>A voice.</li>
+      </ul>
+      <p class="copy">Everything else emerges during play. The real environment provides sensory anchors. The voice creates conflict. Your actions advance the story. The goal is not to invent a complicated game world. The goal is to make the next moment playable.</p>
+    </section>
+
+    <!-- SAVE FILE -->
+    <section class="panel" aria-labelledby="save-h" data-fold="SECTION 1">
+      <div class="kicker">SECTION 1</div>
+      <h2 class="section" id="save-h">The Mental Save-File</h2>
+      <p class="copy">At any moment, you should be able to express the current state in one sentence:</p>
+      <div class="quote">(Character) wants (checkable end state) in (city), while (voice) says (doubt).</div>
+      <p class="copy">Example:</p>
+      <div class="quote">Mara wants to reach the river before midnight in the flooded city, while the voice says she is already too late.</div>
+      <p class="copy">This is your portable save-file. You do not need inventory, statistics, character sheets, or written notes. If a detail matters, attach it to a sensory anchor, a physical landmark, or a recurring phrase.</p>
+      <p class="copy">Examples:</p>
+      <ul class="plain">
+        <li>Tense shoulders represent danger.</li>
+        <li>A red door represents a safehouse.</li>
+        <li>A familiar sound represents an approaching threat.</li>
+        <li>A recurring phrase represents the voice's influence.</li>
+      </ul>
+      <p class="copy">These associations are optional. Use only what you can comfortably remember. Forgetting is allowed. You can resume from the last remembered want, landmark, or unresolved question.</p>
+    </section>
+
+    <!-- THE PROTOCOL -->
+    <section class="panel" aria-labelledby="protocol-h" data-fold="SECTION 2">
+      <div class="kicker">SECTION 2</div>
+      <h2 class="section" id="protocol-h">The CAPSLOCK<span aria-label="Capital P" role="img">
+  <span aria-hidden="true">&#x2820;&#x280F;</span>
+</span> Protocol</h2>
+      <p class="copy">CAPSLOCK is an eight-part internal monologue. You do not need to answer every part during every scene. Use the parts that help you move.</p>
+
+      <div class="letters">
+        <div class="letter">
+          <div class="lg">C</div>
+          <div>
+            <h4>Check the End State</h4>
+            <p>What is the character trying to accomplish right now? State the goal as a concrete, checkable outcome.</p>
+            <ul><li>Reach the next intersection.</li><li>Find the hidden entrance.</li><li>Clear the kitchen counter.</li><li>Understand why a Rust function is called.</li><li>Complete the next paragraph.</li></ul>
+            <p>A mission needs a recognizable outcome, even if it is small.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">A</div>
+          <div>
+            <h4>Acknowledge the Obstacle</h4>
+            <p>What stands in the way? Name the obstacle without requiring an immediate solution.</p>
+            <ul><li>The character is hesitating.</li><li>The path is blocked.</li><li>The code's behavior is unclear.</li><li>The task feels too large.</li><li>The voice is creating doubt.</li></ul>
+            <p>Acknowledgment makes the obstacle available for action.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">P</div>
+          <div>
+            <h4>Pick an Adversary</h4>
+            <p>Choose one adversary type that matches the obstacle's current behavior. The three adversaries are Watcher, Enforcer, and Hunter.</p>
+            <ul>
+              <li><strong>Watcher</strong> — a passive barrier, avoidance pattern, awkward situation, or mental block. Creates hesitation rather than direct resistance. Tactic: <strong>Circumvent.</strong> Take a small direct action instead of over-preparing.</li>
+              <li><strong>Enforcer</strong> — requires sustained physical or mental effort, resisting until you apply enough of it. Tactic: <strong>Focus fire.</strong> Work a limited portion for a defined period; manageable effort, not maximum exertion.</li>
+              <li><strong>Hunter</strong> — too large, complex, or overwhelming to confront directly. Punishes an all-at-once approach. Tactic: <strong>Kite and chip.</strong> Reduce the problem to a manageable piece, secure progress, reassess.</li>
+            </ul>
+            <p>The adversary describes the obstacle's behavior in the current moment. The same task can become a different adversary later.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">S</div>
+          <div>
+            <h4>Set the Stakes</h4>
+            <p>What worsens if the character fails or delays? Choose a real or fictional consequence.</p>
+            <ul><li>The deadline approaches.</li><li>The character loses time.</li><li>A clue becomes harder to recover.</li><li>The dishes continue to accumulate.</li><li>The character must find another route.</li></ul>
+            <p>Keep the stakes proportional to the activity. A small mission can have small stakes. A scene can also have no immediate penalty if exploration is the point. The stakes create meaning, not pressure for its own sake.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">L</div>
+          <div>
+            <h4>Launch the First Move</h4>
+            <p>What is the smallest useful action the character can take now? Choose a concrete action that can begin immediately.</p>
+            <ul><li>Open the file.</li><li>Read the next function.</li><li>Pick up one dish.</li><li>Take the next safe step.</li><li>Ask the voice one question.</li><li>Search for one clue.</li></ul>
+            <p>You only need to know the first move. The rest of the mission can emerge through play.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">O</div>
+          <div>
+            <h4>Observe the Result</h4>
+            <p>What changed after the first move? Notice the outcome of the action. Possible results: progress, a new obstacle, a clue, a cost, a new choice, mission completion.</p>
+            <p>The result does not have to be dramatic. A small change is enough. Observation prevents the game from becoming a continuous stream of narration without meaningful consequences.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">C</div>
+          <div>
+            <h4>Claim the Consequence</h4>
+            <p>Give the result a place in the story. The consequence can be beneficial, neutral, or difficult.</p>
+            <ul><li>The character reaches a safer location.</li><li>A new route becomes available.</li><li>The voice reveals a contradiction.</li><li>The task becomes smaller.</li><li>The character loses time.</li><li>A useful fact is discovered.</li></ul>
+            <p>A consequence should follow the action and shape what happens next. In a real-life task, the consequence can be the actual result of your work.</p>
+          </div>
+        </div>
+        <div class="letter">
+          <div class="lg">K</div>
+          <div>
+            <h4>Keep Going or Close</h4>
+            <p>Decide whether the mission continues or ends.</p>
+            <p><strong>Continue when:</strong> the target has not been reached; a new choice has emerged; the character has encountered a new obstacle; you want to explore the next scene.</p>
+            <p><strong>Close when:</strong> the checkable end state has been achieved; the scene has reached a satisfying stopping point; you need to return attention to the real environment; you choose to stop playing.</p>
+            <p>A mission does not need to continue indefinitely. Completion is a valid outcome.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THE CITY -->
+    <section class="panel" aria-labelledby="city-h" data-fold="SECTION 3">
+      <div class="kicker">SECTION 3</div>
+      <h2 class="section" id="city-h">The City Is the Real Environment</h2>
+      <p class="copy">The city is generated from the surroundings you encounter. You do not need a prepared map. A real object, sound, surface, or landmark can receive fictional meaning.</p>
+      <ul class="plain">
+        <li>A bus becomes a ferry.</li>
+        <li>A laundromat becomes an alchemy lab.</li>
+        <li>A puddle becomes a moat.</li>
+        <li>A traffic light becomes an omen.</li>
+        <li>A familiar building becomes a safehouse.</li>
+        <li>A keyboard becomes a terminal interface.</li>
+        <li>A compiler error becomes a security alarm.</li>
+      </ul>
+      <p class="copy">The sensory detail remains real. The fictional interpretation adds narrative meaning. You can play with what you notice without needing to search for additional scenery.</p>
+
+      <h3 class="sub">Sensory Anchoring</h3>
+      <p class="copy">Begin a scene by noticing one real sensory detail.</p>
+      <ul class="plain">
+        <li>Rain against a window.</li>
+        <li>The vibration of a bus.</li>
+        <li>The texture of a countertop.</li>
+        <li>The sound of footsteps.</li>
+        <li>The pressure of your feet against the ground.</li>
+        <li>The sound of a keyboard.</li>
+        <li>The rhythm of your own breathing.</li>
+      </ul>
+      <p class="copy">Use a detail that is accessible and comfortable in your current environment. The anchor does not need to be visual. Sound, touch, movement, temperature, and bodily sensation can all establish a scene.</p>
+
+      <div class="tip">
+        <span class="tag">A NOTE FROM THE CORE RULEBOOK</span>
+        This is the same instinct behind the core game's Rule of Threes — one light, one sound, one smell per location. The Portable Protocol just runs it on a real street instead of an imagined one. The city was never optional scenery in CAPSLOCK. It was always the thing actually in front of you.
+      </div>
+    </section>
+
+    <!-- THREE-BEAT SCENE -->
+    <section class="panel" aria-labelledby="beat-h" data-fold="SECTION 4">
+      <div class="kicker">SECTION 4</div>
+      <h2 class="section" id="beat-h">The Three-Beat Scene</h2>
+      <p class="copy">For a quick scene, use three beats.</p>
+      <h3 class="sub">Beat 1: Anchor</h3>
+      <p class="copy">Notice one real sensory detail.</p>
+      <div class="quote">Rain strikes the windshield.</div>
+      <h3 class="sub">Beat 2: Argue</h3>
+      <p class="copy">Let the voice challenge the character's want. The voice introduces doubt, temptation, fear, memory, or contradiction.</p>
+      <div class="quote">Voice: "You should have stayed home."</div>
+      <h3 class="sub">Beat 3: Move</h3>
+      <p class="copy">The character takes a first move. End with a question, a consequence, or a new detail.</p>
+      <div class="quote">Mara turns onto the side street.<br>The side street is flooded.</div>
+      <p class="copy">The scene can end there or continue with a new choice. The three beats are a compact storytelling loop. You can repeat them as long as the activity and your attention allow.</p>
+    </section>
+
+    <!-- THE VOICE -->
+    <section class="panel" aria-labelledby="voice-h" data-fold="SECTION 5">
+      <div class="kicker">SECTION 5</div>
+      <h2 class="section" id="voice-h">The Voice</h2>
+      <p class="copy">The voice is the primary NPC. You do not need multiple characters to create dialogue or conflict.</p>
+      <p class="copy">The voice can represent: the Critic, the Tempter, the Memory, the Doubt, the Witness, the Future, the Unknown.</p>
+      <p class="copy">The voice can speak in second person.</p>
+      <div class="quote">
+        "You know this will fail."<br><br>
+        "You have been here before."<br><br>
+        "Keep walking. The city is listening."<br><br>
+        "You already know the answer."
+      </div>
+      <p class="copy">The voice does not have to be correct. It can contradict the character, reveal useful information, distort memory, or create a question. The player decides how the character responds. The voice creates tension. The character's actions determine what happens next.</p>
+
+      <div class="tip">
+        <span class="tag">FIELD NOTE</span>
+        Runners who've read both documents tend to notice the same thing: the Voice's roster — Critic, Tempter, Memory, Doubt, Witness, Future, Unknown — sounds a great deal like the six Inner Deceivers from a different part of the CAPSLOCK canon, just without their formal names attached. Whether that's the same thing wearing a lighter coat, or two people independently noticing the same handful of voices everyone actually has, is not a question this document tries to settle.
+      </div>
+    </section>
+
+    <!-- CONSEQUENCE LOOP -->
+    <section class="panel" aria-labelledby="loop-h" data-fold="SECTION 6">
+      <div class="kicker">SECTION 6</div>
+      <h2 class="section" id="loop-h">The Consequence Loop</h2>
+      <p class="copy">A playable scene needs more than a first move. It needs a result. After an action, ask: <em>What changed?</em> Then choose a response.</p>
+      <ul class="plain">
+        <li><strong>Progress</strong> — the character moves closer to the target. <em>"The next intersection is clear."</em></li>
+        <li><strong>New Obstacle</strong> — the first move reveals another problem. <em>"The side street is flooded."</em></li>
+        <li><strong>Cost</strong> — the character loses something meaningful. <em>"The Inspector is now closer."</em></li>
+        <li><strong>Clue</strong> — the character discovers information. <em>"A symbol appears on the wall."</em></li>
+        <li><strong>New Choice</strong> — the character must decide between different approaches. <em>"Cross the flooded street or search for another route."</em></li>
+        <li><strong>Mission Complete</strong> — the target has been reached. <em>"The character reaches the river."</em></li>
+      </ul>
+      <p class="copy">The result becomes the starting point for the next moment. This creates a repeating cycle:</p>
+      <div class="quote">Want. Obstacle. Choice. Action. Consequence. Next choice.</div>
+    </section>
+
+    <!-- MODES OF PLAY -->
+    <section class="panel" aria-labelledby="modes-h" data-fold="SECTION 7">
+      <div class="kicker">SECTION 7</div>
+      <h2 class="section" id="modes-h">Modes of Play</h2>
+      <p class="copy">CAPSLOCK adapts to the activity you are already doing.</p>
+
+      <div class="threats">
+        <div class="threat">
+          <div class="tag">COMMUTE</div>
+          <h4>Linear, time-limited</h4>
+          <p>Each stop, segment, or transition becomes a scene boundary. Use Watcher or Enforcer when appropriate. The real journey remains the priority. Example: <em>"The character must reach the next stop before the Inspector notices the signal."</em> A safe physical journey is sufficient — fictional progress does not require additional movement or risk.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">CHORE</div>
+          <h4>Repetitive actions as beats</h4>
+          <p>The complete chore is the main mission; individual actions can provide optional scene moments. Example: Target — clear the kitchen counter. First move — pick up one dish. Consequence — a hidden message is discovered beneath it. Reward — the counter becomes clearer. Allow the work to remain ordinary.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">NIGHT WALK</div>
+          <h4>Atmosphere and discovery</h4>
+          <p>Each block or transition can introduce a new detail. Hunter obstacles can be approached through workarounds. Real-world navigation and hazard awareness always take priority over the fiction. The story never requires an unsafe detour, crossing, investigation, or physical action.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">BEFORE SLEEP</div>
+          <h4>One quiet scene, minimal stakes</h4>
+          <p>The voice can introduce a question or unresolved image. Example: <em>"The door is opening. Who is on the other side?"</em> The scene can end without resolving the question — the purpose is a gentle stopping point, not an unfinished obligation.</p>
+        </div>
+        <div class="threat">
+          <div class="tag">PROGRAMMING</div>
+          <h4>The codebase as the city</h4>
+          <p>A function becomes a location. A dependency becomes an organization. A failing test becomes an alarm. Keep the technical goal concrete. Example: Target — understand why <code>process_request</code> calls <code>validate_input</code>. Obstacle — the call path is unclear. Adversary — Hunter. First move — search for references. Consequence — a caller in another module is discovered. Reward — the call path is clearer. The fictional interpretation should support investigation, not replace technical verification.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTINUITY -->
+    <section class="panel" aria-labelledby="cont-h" data-fold="SECTION 8">
+      <div class="kicker">SECTION 8</div>
+      <h2 class="section" id="cont-h">Continuity Without Paper</h2>
+      <p class="copy">CAPSLOCK is designed to work without written records. Use three optional continuity anchors:</p>
+      <ul class="plain">
+        <li>One character want.</li>
+        <li>One unresolved question.</li>
+        <li>One recurring voice or phrase.</li>
+      </ul>
+      <p class="copy">A landmark can also help you resume a scene. Example:</p>
+      <div class="quote">Mara wants to reach the river. The flooded side street remains unresolved. The voice keeps saying, "You are already too late."</div>
+      <p class="copy">When you return, resume from the last remembered point. If you forget details, you can: reconstruct the scene, simplify the save-file, treat the missing memory as a story gap, or start a new scene with the same character.</p>
+      <p class="copy">Forgetting does not invalidate the game. Continuity supports play. It does not control access to play.</p>
+    </section>
+
+    <!-- REWARDS -->
+    <section class="panel" aria-labelledby="reward-h" data-fold="SECTION 9">
+      <div class="kicker">SECTION 9</div>
+      <h2 class="section" id="reward-h">Immediate Rewards</h2>
+      <p class="copy">Close a completed beat with a small, immediate reward.</p>
+      <p class="copy"><strong>In fiction:</strong> a clue, a breath, a name, a safe location, a moment of clarity.</p>
+      <p class="copy"><strong>In real life:</strong> a sip of water, a stretch, a moment of rest, a physical acknowledgment of completion, a brief pause before the next activity.</p>
+      <p class="copy">The reward should match the scale of the accomplishment. A reward is an optional closure signal, not a requirement to force productivity.</p>
+    </section>
+
+    <!-- FULL EXAMPLE -->
+    <section class="panel" aria-labelledby="example-h" data-fold="SECTION 10">
+      <div class="kicker">SECTION 10</div>
+      <h2 class="section" id="example-h">Complete Portable Example</h2>
+      <p class="copy"><strong>Mission Save-File:</strong></p>
+      <div class="quote">Mara wants to reach the river before the Inspector in the flooded city, while the voice says she is already too late.</div>
+
+      <div class="transcript">
+        <div class="tline"><div class="label">Anchor</div><div class="val">Rain strikes the windshield.</div></div>
+        <div class="tline"><div class="label">Check</div><div class="val">Mara must get through the next intersection unseen.</div></div>
+        <div class="tline"><div class="label">Acknowledge</div><div class="val">The Inspector's car is behind her.</div></div>
+        <div class="tline"><div class="label">Pick</div><div class="val">Watcher. The obstacle is surveillance and avoidance.</div></div>
+        <div class="tline"><div class="label">Set Stakes</div><div class="val">If she is seen, the package may open.</div></div>
+        <div class="tline"><div class="label">Launch</div><div class="val">Mara turns onto the side street.</div></div>
+        <div class="tline"><div class="label">Observe</div><div class="val">The street is flooded.</div></div>
+        <div class="tline"><div class="label">Claim</div><div class="val">The route is blocked. She must choose another approach.</div></div>
+        <div class="tline"><div class="label">Keep / Close</div><div class="val">The mission continues.</div></div>
+        <div class="tline"><div class="label">Voice</div><div class="val">"You should have stayed home."</div></div>
+        <div class="tline"><div class="label">Next question</div><div class="val">Is there another way through?</div></div>
+      </div>
+      <p class="copy" style="margin-top:14px;">The scene can resume from the flooded street. The player does not need to plan the entire story in advance.</p>
+    </section>
+
+    <!-- FINAL RULE -->
+    <section class="panel" aria-labelledby="final-h" data-fold="SECTION 11">
+      <div class="kicker">SECTION 11</div>
+      <h2 class="section" id="final-h">The Final Rule</h2>
+      <p class="copy">Do not sit down to play. Start with the next first move.</p>
+      <p class="copy">Notice one sensory detail. Let the voice argue. Take an action. Observe what changes. Continue or close.</p>
+      <p class="copy">The city will fill in as you move through it.</p>
+      <div class="quote">CAPSLOCK is a portable mission protocol for turning ordinary moments into playable narrative.</div>
+    </section><span class="stamp">
+          <a href="index.html" aria-label="Home (top level)" style="color: var(--ink-dim)">BACK: index <span class="muted">~</span></a>
+      </span>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">C A P S L O C K &nbsp; · &nbsp; P O R T A B L E</div>
+      <p class="closer">No deck required, which was always the point. Anyone in the sprawl who's ever argued with the voice in their own head on a long walk home already knows most of this. The document just gave it a shape, and a name short enough to remember.</p>
+      <div class="strapline">START WITH THE NEXT FIRST MOVE.</div>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>

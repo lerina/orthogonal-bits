@@ -21,7 +21,7 @@ This is the part that makes the Protocol work equally well on a boss fight, a br
 **C — Checkable Target**
 State the concrete win condition in one sentence. Not "clean the kitchen," but "counter's clear and the sink is empty." If you can't check it, it isn't a target yet.
 
-**A — Analyze the Obstacle**
+**A — Acknowledge the Obstacle**
 Name exactly what's standing between you and the target. No obstacle named means it isn't a mission — it's just a fact sitting there.
 
 **P — Penalties (the Stakes)**
