@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 12: Conditional Breakpoints, Expressions, and Watchpoints – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch12-heading">
+            <h1 id="ch12-heading">Chapter 12: Conditional Breakpoints, Expressions, and Watchpoints</h1>
+
+            <p>Plain breakpoints stop the program every time execution reaches a given location. This is often exactly what you want. But some bugs appear only when a specific condition holds: a loop index reaches a particular value, a string field has a particular content, or a shared state has been corrupted by one specific caller among many. Stopping every time is wasteful, and in some cases it is impractical because the loop runs millions of times.</p>
+            <p>This chapter introduces three tools that refine where and when the debugger stops:</p>
+            <ul>
+                <li><strong>Conditional breakpoints</strong>: stop only when a condition is true.</li>
+                <li><strong>Expressions</strong>: evaluate simple conditions and small computations inside the debugger.</li>
+                <li><strong>Watchpoints</strong>: stop when a value changes.</li>
+            </ul>
+            <p>Each of these is a way of asking a more specific question. Instead of “stop here,” you ask “stop here, but only under these circumstances.” That precision is often the difference between a debugging session that converges quickly and one that produces a thousand useless stops.</p>
+
+            <section tabindex="0" aria-labelledby="conditional-breakpoints">
+                <h2 id="conditional-breakpoints">Conditional breakpoints</h2>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>for item in items {
+    process(item);
+}</code></pre>
+                <p>You only care when:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>item.id == 42</code></pre>
+                <p>A conditional breakpoint can reduce noise.</p>
+                <p>The general LLDB form is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint modify 1 --condition 'condition'</code></pre>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint modify 1 --condition 'item.id == 42'</code></pre>
+                <p>Whether a particular Rust expression can be evaluated depends on the debug information, expression parser, optimized state, and the current frame.</p>
+                <p>When expression evaluation fails, simplify the condition or inspect the value first.</p>
+
+                <section tabindex="0" aria-labelledby="how-to-set-a-conditional-breakpoint">
+                    <h3 id="how-to-set-a-conditional-breakpoint">How to set a conditional breakpoint</h3>
+                    <p>There are two ways to attach a condition to a breakpoint:</p>
+                    <ol>
+                        <li><strong>At creation time</strong>: some versions of LLDB support setting the condition directly when creating the breakpoint, using <code>--condition</code>:</li>
+                    </ol>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 15 --condition 'item.id == 42'</code></pre>
+                    <ol start="2">
+                        <li><strong>After creation</strong>: modify an existing breakpoint with <code>breakpoint modify</code>:</li>
+                    </ol>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 15
+(lldb) breakpoint modify 1 --condition 'item.id == 42'</code></pre>
+                    <p>The second form is useful when you set a breakpoint first, observe that it fires too often, and then decide to narrow it. The pattern of “break, observe, refine” is often smoother than trying to get the condition perfect on the first attempt.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="conditions-in-rust">
+                    <h3 id="conditions-in-rust">Conditions in Rust</h3>
+                    <p>A condition is an expression that LLDB evaluates in the current frame. It must produce a value that can be interpreted as a Boolean. For Rust code, typical conditions look like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>item.id == 42
+name.len() &gt; 10
+count != 0
+state.is_active</code></pre>
+                    <p>Some of these work reliably. Others do not, depending on how the debugger’s expression evaluator handles Rust syntax.</p>
+                    <p>Conditions that are reliable:</p>
+                    <ul>
+                        <li>Comparisons against primitive values: <code>x == 42</code>, <code>y &lt; 10</code>, <code>b != 0</code>.</li>
+                        <li>Field accesses on structs: <code>item.id == 42</code>.</li>
+                        <li>Boolean fields: <code>config.debug</code>, <code>user.active</code>.</li>
+                        <li>Simple arithmetic: <code>x + y == 10</code>.</li>
+                    </ul>
+                    <p>Conditions that are less reliable:</p>
+                    <ul>
+                        <li>Method calls that require trait resolution: <code>name.contains("admin")</code>.</li>
+                        <li>Iterator operations: <code>items.iter().any(|x| *x &gt; 10)</code>.</li>
+                        <li>Closures: <code>(|x| x * 2)(5) == 10</code>.</li>
+                        <li>Generic methods: <code>vec.first() == Some(&amp;1)</code>.</li>
+                        <li>Pattern matches: <code>matches!(state, State::Ready)</code>.</li>
+                    </ul>
+                    <p>When a condition uses an unreliable construct, LLDB may fail to evaluate it, or it may produce a result that does not match what the same expression would do in Rust source. In those cases, use a simpler condition, or set a breakpoint and inspect the value manually.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="conditions-and-optimized-code">
+                    <h3 id="conditions-and-optimized-code">Conditions and optimized code</h3>
+                    <p>In an optimized build, the values used in a condition may be <code>&lt;optimized out&gt;</code>. When that happens, the condition cannot be evaluated, and LLDB treats the condition as unsatisfied. The breakpoint will not fire.</p>
+                    <p>The remedy is either to switch to a debug build, or to restructure the code so the value is used at the point of the condition. In a debug build, conditions evaluate much more reliably.</p>
+                    <p>For a screen-reader workflow, it is worth remembering that conditions that fail to evaluate produce no output at all. If a breakpoint with a condition never fires, check whether the condition could be evaluated at the point where the breakpoint is set.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="removing-a-condition">
+                    <h3 id="removing-a-condition">Removing a condition</h3>
+                    <p>To remove a condition from a breakpoint:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint modify 1 --condition ''</code></pre>
+                    <p>The empty string clears the condition. The breakpoint then fires at every hit.</p>
+                    <p>To see whether a breakpoint has a condition:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint list 1</code></pre>
+                    <p>If a condition is set, it appears in the output. If not, no condition line is shown.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-example">
+                    <h3 id="a-worked-example">A worked example</h3>
+                    <p>Consider a loop that processes a thousand items, and a bug that appears only for the item with <code>id == 500</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process_all(items: &amp;[Item]) {
+    for item in items {
+        process(item);
+    }
+}
+
+fn process(item: &amp;Item) {
+    let result = compute(item);
+    println!("{}: {}", item.id, result);
+}</code></pre>
+                    <p>Set a breakpoint on the entry of <code>process</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name process</code></pre>
+                    <p>Add a condition:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint modify 1 --condition 'item.id == 500'</code></pre>
+                    <p>Run:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) run</code></pre>
+                    <p>Execution stops only when the item with ID 500 is processed. Now you can inspect the state of that specific call without stepping through the previous 499 iterations.</p>
+                    <p>If the condition fails to evaluate (for example, because <code>item</code> is a reference and LLDB does not automatically dereference it for the condition), try:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint modify 1 --condition '(*item).id == 500'</code></pre>
+                    <p>The explicit dereference gives LLDB a clearer path to the value. This is a common small adjustment in Rust debugging.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="do-not-confuse-source-syntax-with-debugger-expression-syntax">
+                <h2 id="do-not-confuse-source-syntax-with-debugger-expression-syntax">Do not confuse source syntax with debugger expression syntax</h2>
+                <p>This matters especially in Rust.</p>
+                <p>LLDB is not a Rust compiler.</p>
+                <p>The expression evaluator is not guaranteed to accept arbitrary Rust syntax.</p>
+                <p>For example, a Rust expression involving:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>iterators
+closures
+generic types
+trait methods
+async machinery
+macros</code></pre>
+                <p>may not evaluate the same way it would in Rust source.</p>
+                <p>Use debugger expressions for simple inspection.</p>
+                <p>For complicated logic:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>inspect the variable
+step through the source
+or temporarily add explicit debugging code</code></pre>
+
+                <section tabindex="0" aria-labelledby="why-the-evaluator-is-different">
+                    <h3 id="why-the-evaluator-is-different">Why the evaluator is different</h3>
+                    <p>The LLDB expression evaluator works differently from the Rust compiler in several ways:</p>
+                    <ul>
+                        <li><strong>It does not have the full Rust type system</strong>. It has enough to recognize primitive types and simple structs, but not enough to resolve complex trait bounds or generics.</li>
+                        <li><strong>It does not perform macro expansion</strong>. A macro invocation in a condition is not expanded the way the compiler would expand it; it is evaluated as if the macro were a function call.</li>
+                        <li><strong>It runs in the target process</strong>. Evaluating an expression may call functions in your program, allocate memory, or modify state. In some cases, this can change the behavior of the program you are debugging.</li>
+                        <li><strong>It is limited by the current frame</strong>. Only variables visible in the current frame are accessible. If the current frame is a library frame or a compiler-generated frame, your variables may not be in scope.</li>
+                        <li><strong>It interacts with optimization</strong>. In optimized builds, many values are not stored anywhere, so expression evaluation may fail or produce a wrong result.</li>
+                    </ul>
+                    <p>These limitations are not bugs. They reflect the fundamental difficulty of evaluating arbitrary code from one language inside a process that is compiled from another. The debugger gives you a useful subset of what the compiler can do, and the subset is usually enough for the kinds of questions debugging needs to answer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-to-use-expr">
+                    <h3 id="when-to-use-expr">When to use <code>expr</code></h3>
+                    <p>Use <code>expr</code> when you need to compute a value that is not already stored in a variable. For example:</p>
+                    <ul>
+                        <li>Computing a derived value: <code>expr x + y</code>.</li>
+                        <li>Checking a simple arithmetic condition: <code>expr x * 2 == 10</code>.</li>
+                        <li>Reading memory at an address: <code>expr *(int *)0x7fff...</code>.</li>
+                        <li>Calling a simple function: <code>expr strlen(name)</code>.</li>
+                    </ul>
+                    <p>Avoid <code>expr</code> when:</p>
+                    <ul>
+                        <li>The expression involves method calls on Rust types that require trait resolution.</li>
+                        <li>The expression involves iterators, closures, or pattern matching.</li>
+                        <li>The expression might have side effects you do not want.</li>
+                        <li>The program is in a state where calling into it could cause a deadlock or crash (for example, inside a signal handler).</li>
+                    </ul>
+                    <p>For most inspection, <code>frame variable</code> is enough. Use <code>expr</code> when you have a specific reason and know that the expression is likely to succeed.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-expression-command">
+                <h2 id="the-expression-command">The <code>expression</code> command</h2>
+                <p>LLDB provides:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>expression</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>expr</code></pre>
+                <p>for evaluating expressions.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>expr variable
+expr 1 + 2</code></pre>
+                <p>This can be useful, but Rust users should treat it as an advanced feature.</p>
+                <p>The debugger's expression evaluator is not a replacement for compiling Rust code.</p>
+                <p>A good progression is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable
+→ simple expr
+→ source modification</code></pre>
+
+                <section tabindex="0" aria-labelledby="expression-inspection-vs-intervention">
+                    <h3 id="expression-inspection-vs-intervention">Expression: inspection vs. intervention</h3>
+                    <p>Expressions in LLDB split into two kinds:</p>
+                    <ul>
+                        <li><strong>Inspection</strong>: reading a value that already exists. This is what <code>frame variable</code> does, and it is always safe.</li>
+                        <li><strong>Intervention</strong>: computing or changing a value. This is what <code>expr</code> can do, and it may have side effects.</li>
+                    </ul>
+                    <p>For debugging, most questions are inspection questions: “What is this value?” <code>frame variable</code> answers them without any risk. Use <code>expr</code> only when the value you need does not already exist as a variable, and only when you are confident that evaluating the expression will not disturb the program.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="inspect-without-calling-code">
+                    <h3 id="inspect-without-calling-code">Inspect without calling code</h3>
+                    <p>Prefer:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                    <p>when you simply need to inspect an existing value.</p>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>expr</code></pre>
+                    <p>when you genuinely need expression evaluation.</p>
+                    <p>This matters because evaluating an expression can execute code.</p>
+                    <p>When debugging a problematic program, observation should be separated from intervention whenever practical.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="safe-uses-of-expr">
+                    <h3 id="safe-uses-of-expr">Safe uses of <code>expr</code></h3>
+                    <p>Some uses of <code>expr</code> are essentially safe because they do not call code or modify state:</p>
+                    <ul>
+                        <li><strong>Arithmetic on existing values</strong>: <code>expr x + y</code>, where <code>x</code> and <code>y</code> are primitive locals.</li>
+                        <li><strong>Boolean checks</strong>: <code>expr x == 42</code>, <code>expr count &gt; 0</code>.</li>
+                        <li><strong>Pointer arithmetic</strong>: <code>expr ptr + 1</code>, useful for understanding buffer positions.</li>
+                        <li><strong>Field access on existing structs</strong>: <code>expr config.debug</code>, when <code>config</code> is a local.</li>
+                        <li><strong>Casting</strong>: <code>expr (int)value</code>, useful when you want a value in a specific numeric type.</li>
+                    </ul>
+                    <p>These expressions do not call into the target program and therefore cannot change its state. They are as safe as <code>frame variable</code>, with the additional ability to compute derived values.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="expressions-that-change-state">
+                    <h3 id="expressions-that-change-state">Expressions that change state</h3>
+                    <p>Some uses of <code>expr</code> change program state:</p>
+                    <ul>
+                        <li><strong>Assignment</strong>: <code>expr x = 42</code> modifies the local <code>x</code>. This is occasionally useful, but it changes the program.</li>
+                        <li><strong>Function calls</strong>: <code>expr increment_counter()</code> calls a function. The function may have side effects.</li>
+                        <li><strong>Mutating method calls</strong>: <code>expr items.push(5)</code> modifies a data structure.</li>
+                    </ul>
+                    <p>These are interventions, not inspections. They can be useful for experimenting with alternate state, but they should be used with care. In particular, avoid them when the program is stopped inside a critical section or a signal handler, where a function call might deadlock or crash.</p>
+                    <p>A practical pattern: use <code>frame variable</code> to inspect, and use <code>expr</code> to change a value only when you want to test a hypothesis by injecting a different value. For example, if you suspect that a bug depends on a specific field value, you can set the field with <code>expr</code> and observe whether the behavior changes. This is a legitimate debugging technique, but it is a different activity from pure observation.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="watchpoints">
+                <h2 id="watchpoints">Watchpoints</h2>
+                <p>A breakpoint stops when execution reaches a location.</p>
+                <p>A watchpoint stops when memory changes.</p>
+                <p>Conceptually:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Breakpoint:
+"Stop here."
+
+Watchpoint:
+"Stop when this value changes."</code></pre>
+                <p>LLDB supports watchpoints through the <code>watchpoint</code> command family.</p>
+                <p>A typical form is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>watchpoint set variable variable_name</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>watchpoint set expression expression</code></pre>
+                <p>Watchpoints are especially useful when you know:</p>
+                <blockquote>
+                    <p>This value is correct here, but later it becomes wrong.</p>
+                </blockquote>
+                <p>Then ask LLDB:</p>
+                <blockquote>
+                    <p>Stop when it changes.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="watchpoints-in-practice">
+                    <h3 id="watchpoints-in-practice">Watchpoints in practice</h3>
+                    <p>A watchpoint stops when a value changes.</p>
+                    <p>Suppose:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let mut counter = 0;
+
+for _ in 0..10 {
+    counter += 1;
+}</code></pre>
+                    <p>You can set a watchpoint after <code>counter</code> is created:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 3
+(lldb) run
+(lldb) watchpoint set variable counter
+(lldb) continue</code></pre>
+                    <p>LLDB will stop when <code>counter</code> changes.</p>
+                    <p>Then:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt
+(lldb) frame variable counter</code></pre>
+                    <p>This tells you:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>which code changed the value
+what the value was before
+what the value became</code></pre>
+                    <p>Watchpoints are most useful when:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>the value has a stable address
+the value is not optimized away
+the value is not moved frequently</code></pre>
+                    <p>They are less useful for:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>temporaries
+moved values
+optimized variables
+values inside complex async state</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="types-of-watchpoints">
+                    <h3 id="types-of-watchpoints">Types of watchpoints</h3>
+                    <p>LLDB supports several types of watchpoints:</p>
+                    <ul>
+                        <li><strong>Write watchpoints</strong>: stop when the value is written. This is the default and by far the most common.</li>
+                        <li><strong>Read watchpoints</strong>: stop when the value is read. Useful for detecting unexpected reads.</li>
+                        <li><strong>Read-write watchpoints</strong>: stop on either read or write. Useful for comprehensive observation of an address, though the output can be very noisy.</li>
+                    </ul>
+                    <p>The default form:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>watchpoint set variable counter</code></pre>
+                    <p>sets a write watchpoint. To set a read watchpoint, use the <code>--watch</code> option with <code>read</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>watchpoint set variable counter --watch read
+watchpoint set variable counter --watch read_write</code></pre>
+                    <p>Read watchpoints are useful in specific situations: for example, when you want to know where a value is being consumed, not just where it is being modified. In most debugging, the default write watchpoint is the right choice.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="listing-watchpoints">
+                    <h3 id="listing-watchpoints">Listing watchpoints</h3>
+                    <p>Watchpoints are listed separately from breakpoints:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) watchpoint list</code></pre>
+                    <p>The output shows each watchpoint’s ID, the expression or address it watches, its current value, and its hit count.</p>
+                    <p>To delete a watchpoint:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) watchpoint delete 1</code></pre>
+                    <p>To delete all watchpoints:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) watchpoint delete</code></pre>
+                    <p>As with breakpoints, it is safer to list first, then delete by ID.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="watchpoints-and-rust-ownership">
+                    <h3 id="watchpoints-and-rust-ownership">Watchpoints and Rust ownership</h3>
+                    <p>Rust makes mutation explicit in source, but a debugger still sees machine-level memory and debug information.</p>
+                    <p>A useful investigation is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>value correct
+→ continue
+→ value changes
+→ debugger stops
+→ inspect backtrace
+→ identify the code responsible</code></pre>
+                    <p>This is particularly useful for:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>unexpected mutation
+state changes
+caches
+buffers
+counters
+shared state</code></pre>
+                    <p>For values that move, are optimized away, or live inside complex structures, a watchpoint may be impractical.</p>
+                    <p>Use it when the value has a stable address and LLDB can observe it.</p>
+
+                    <section tabindex="0" aria-labelledby="why-rust-values-are-hard-to-watch">
+                        <h4 id="why-rust-values-are-hard-to-watch">Why Rust values are sometimes hard to watch</h4>
+                        <p>Rust’s ownership model means that values can move. When a value moves, its address changes. A watchpoint set on the old address will not fire when the new address is modified. For values that move frequently, watchpoints are unreliable.</p>
+                        <p>A more robust approach is to watch a value that stays in one place for the duration of interest:</p>
+                        <ul>
+                            <li>A local variable that is not moved.</li>
+                            <li>A field inside a struct that is already allocated and stays put.</li>
+                            <li>A heap-allocated value behind a stable pointer.</li>
+                        </ul>
+                        <p>For example, a <code>Vec</code> may reallocate when it grows, but the <code>Vec</code> struct itself stays in place. Its internal pointer changes, so watching the pointer’s target is difficult. Watching the vector’s length field is easy, because the length field is part of the struct.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="watchpoints-on-heap-values">
+                        <h4 id="watchpoints-on-heap-values">Watchpoints on heap values</h4>
+                        <p>If a value lives on the heap and you know its address, you can watch it directly:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>watchpoint set expression -- *(int *)0x7fff...
+</code></pre>
+                        <p>This tells LLDB to watch the memory at that address. You would obtain the address from a pointer variable in the current frame, either by inspecting it with <code>frame variable</code> or by evaluating it with <code>expr</code>.</p>
+                        <p>This is a more advanced technique. It is useful when the value is genuinely on the heap and its pointer is stable, but the struct that owns it does not appear as a variable in the current frame.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="watchpoints-versus-conditional-breakpoints">
+                    <h3 id="watchpoints-versus-conditional-breakpoints">Watchpoints versus conditional breakpoints</h3>
+                    <p>Both conditional breakpoints and watchpoints narrow the scope of a stop, but they narrow different things.</p>
+                    <ul>
+                        <li><strong>Conditional breakpoint</strong>: “Stop at this location only when this condition holds.” The narrow scope is the <em>condition</em>.</li>
+                        <li><strong>Watchpoint</strong>: “Stop whenever this value changes.” The narrow scope is the <em>value</em>.</li>
+                    </ul>
+                    <p>Choose a conditional breakpoint when you know the location but not the condition under which it matters. Choose a watchpoint when you know the value but not the location where it changes.</p>
+                    <p>Both can be combined. For example, you could set a conditional breakpoint that stops only for a specific value, then add a watchpoint on a related field to see when it changes. But combining them should be done carefully, because each additional mechanism adds output. Start with one, and add the other only if needed.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-watchpoint-example">
+                    <h3 id="a-worked-watchpoint-example">A worked watchpoint example</h3>
+                    <p>Consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>struct State {
+    connections: Vec&lt;String&gt;,
+    active: bool,
+}
+
+fn main() {
+    let mut state = State {
+        connections: Vec::new(),
+        active: true,
+    };
+
+    state.connections.push("first".to_string());
+    state.connections.push("second".to_string());
+    state.active = false;
+
+    println!("{} connections", state.connections.len());
+}</code></pre>
+                    <p>Suppose the bug is that <code>active</code> becomes <code>false</code> earlier than expected. Set a breakpoint after the state is created, then add a watchpoint on the <code>active</code> field:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 10
+(lldb) run
+(lldb) watchpoint set variable state.active
+(lldb) continue</code></pre>
+                    <p>Execution stops at the line where <code>state.active</code> is changed:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: main at src/main.rs:15
+    state.active = false;
+</code></pre>
+                    <p>Inspect the old and new values:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable state.active
+(bool) state.active = false</code></pre>
+                    <p>The watchpoint has told you exactly which line changed the value. If this line was reached earlier than expected (because of an earlier call to a helper function that the code did not visibly call), the watchpoint would have fired at that earlier line instead.</p>
+                    <p>This is the essential value of watchpoints: they reveal the moment of change without requiring you to anticipate where that change occurs.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-watchpoints-are-not-the-right-tool">
+                    <h3 id="when-watchpoints-are-not-the-right-tool">When watchpoints are not the right tool</h3>
+                    <p>Watchpoints are powerful, but they are not always the right approach. Avoid watchpoints when:</p>
+                    <ul>
+                        <li><strong>The value changes very frequently</strong>. A counter that increments on every iteration of a tight loop will fire constantly. Use a conditional breakpoint instead, or add a condition to the watchpoint.</li>
+                        <li><strong>The value is optimized out</strong>. In optimized builds, the compiler may not keep the value in any addressable location. Watchpoints require an address.</li>
+                        <li><strong>The value is a temporary</strong>. Temporaries may live in registers, and watchpoints only work on memory. Watchpoints on registers are not supported on all platforms.</li>
+                        <li><strong>The value has been moved</strong>. After a move, the original location may no longer contain the value, and the new location may not be known.</li>
+                        <li><strong>The value is inside a complex async state</strong>. Async state machines move values between states at each suspension point. Watching a specific field across <code>.await</code> boundaries is difficult.</li>
+                    </ul>
+                    <p>When a watchpoint is impractical, fall back to a breakpoint at a specific line, a conditional breakpoint, or a temporary <code>println!</code> in the source. Each has its own trade-offs, and the right choice depends on the shape of the problem.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="combining-conditions-and-watchpoints">
+                <h2 id="combining-conditions-and-watchpoints">Combining conditions and watchpoints</h2>
+                <p>Because conditions and watchpoints are separate mechanisms, they can be combined when a problem requires it.</p>
+
+                <section tabindex="0" aria-labelledby="conditional-watchpoints">
+                    <h3 id="conditional-watchpoints">Conditional watchpoints</h3>
+                    <p>A watchpoint fires whenever the watched value changes. In some cases, you may only care about changes that satisfy a further condition. For example, you may want to stop when <code>counter</code> changes, but only when it exceeds 100:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) watchpoint set variable counter
+(lldb) watchpoint modify 1 --condition 'counter &gt; 100'</code></pre>
+                    <p>The watchpoint fires only when <code>counter</code> changes and the new value is greater than 100. This is useful when you know the interesting change occurs late in an otherwise frequent pattern.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="combined-breakpoint-and-watchpoint-investigations">
+                    <h3 id="combined-breakpoint-and-watchpoint-investigations">Combined breakpoint and watchpoint investigations</h3>
+                    <p>A common investigation involves both a conditional breakpoint and a watchpoint. For example:</p>
+                    <ol>
+                        <li>Set a conditional breakpoint at the entry of a function to stop only for a specific input.</li>
+                        <li>Set a watchpoint on a field of the input to catch where the field is modified.</li>
+                        <li>Use the two together to trace the modification back to the responsible code.</li>
+                    </ol>
+                    <p>The conditional breakpoint ensures you are observing the right invocation. The watchpoint then reveals where that specific invocation’s data changed.</p>
+                    <p>This kind of combined investigation is often how bugs that depend on subtle state changes are found. Neither the condition nor the watchpoint alone would be enough; together, they narrow the observation to exactly the interesting case.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-conditions-and-watchpoints">
+                <h2 id="rust-2024-notes-on-conditions-and-watchpoints">Rust 2024 notes on conditions and watchpoints</h2>
+                <p>A few Rust 2024 specifics affect conditions and watchpoints.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-blocks-and-watchpoints">
+                    <h3 id="unsafe-blocks-and-watchpoints"><code>unsafe</code> blocks and watchpoints</h3>
+                    <p>When a watchpoint fires inside an <code>unsafe</code> block, the backtrace shows the frame where the mutation occurred, and the source location is inside the explicit <code>unsafe</code> block. Because Rust 2024 requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies, the source location of a mutation in unsafe code is now more precise than in earlier editions. This makes it easier to attribute a change to a specific unsafe operation, rather than to a general area of code.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="interior-mutability-and-watchpoints">
+                    <h3 id="interior-mutability-and-watchpoints">Interior mutability and watchpoints</h3>
+                    <p>Rust 2024 discourages <code>&amp;static mut</code> in favor of interior-mutability primitives such as <code>Mutex</code>, <code>AtomicUsize</code>, and <code>UnsafeCell</code>. From a watchpoint perspective, this changes the observable pattern: instead of a simple assignment to a global reference, you will see method calls that perform atomic operations, lock a mutex, or dereference an <code>UnsafeCell</code>. The watchpoint still fires when the underlying memory changes, but the backtrace shows the interior-mutability wrapper, not the direct assignment. Reading the backtrace carefully will tell you which operation triggered the change.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="const-generics-and-conditions">
+                    <h3 id="const-generics-and-conditions">Const generics and conditions</h3>
+                    <p>Rust 2024 continues to support const generics, and the compiler generates specialized code for each const value used. If you set a conditional breakpoint on a function that is generic over a const parameter, the condition may apply to a specific instantiation or to all of them, depending on how LLDB resolves the symbol. When in doubt, use a source-line breakpoint, which avoids the ambiguity entirely.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch12">
+                <h2 id="summary-ch12">Summary</h2>
+                <p>In this chapter, we covered three refinements to the debugging loop:</p>
+                <ul>
+                    <li><strong>Conditional breakpoints</strong>: stop at a location only when a condition is true. Use them to focus a breakpoint on a specific invocation in a repeated loop. Conditions work well with primitive comparisons and simple field accesses. They are less reliable with method calls, iterators, closures, and pattern matching, because the debugger’s expression evaluator does not perform full trait resolution or macro expansion.</li>
+                    <li><strong>Expressions</strong>: useful for computing derived values and, occasionally, for intervening in the program’s state. Prefer <code>frame variable</code> for inspection; use <code>expr</code> only when you have a specific reason and can accept the limitations of the evaluator.</li>
+                    <li><strong>Watchpoints</strong>: stop when a value changes. Use them when you know the value that goes wrong but not the location where it changes. Watchpoints depend on the value having a stable address, and they are less useful for temporaries, moved values, and optimized-out state.</li>
+                </ul>
+                <p>We also looked at how conditions and watchpoints can be combined to narrow observations even further, and how Rust 2024 changes the shape of some of these observations, particularly around <code>unsafe</code> blocks, interior mutability, and const generics.</p>
+                <p>The next chapter moves to a larger scale: threads and async Rust. The tools from this chapter, especially watchpoints and conditional breakpoints, reappear there, but with new complications: the program has multiple stacks, and the runtime scheduler adds its own layer between your code and the machine.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-11.html">← Chapter 11</a>
+            <a class="nav-next" href="./chapter-13.html">Chapter 13 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

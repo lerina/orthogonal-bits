@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 16: Unsafe Rust, Memory, and FFI – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch16-heading">
+            <h1 id="ch16-heading">Chapter 16: Unsafe Rust, Memory, and FFI</h1>
+
+            <p>Unsafe Rust, raw memory, and foreign function interfaces are the areas of the language where the debugger’s view is often more valuable than the source’s. This is a reversal of the usual situation: in most Rust code, the source is clear and the runtime is where bugs hide. In unsafe code, the source is terse and the invariants it depends on are not written down. The debugger is often the only way to observe whether those invariants actually hold.</p>
+            <p>This chapter is about debugging at the lowest level of Rust: raw pointers, uninitialized memory, buffer lengths, alignment, and the boundary between Rust and C. These are areas where a mistake can lead to memory corruption, undefined behavior, or a segmentation fault that occurs far from the code that caused it. In such cases, careful observation is what separates a productive debugging session from a long search for a phantom bug.</p>
+            <p>We will not teach unsafe Rust from scratch. We assume you understand what <code>unsafe</code> means and have written some unsafe code. The focus of this chapter is how to debug it.</p>
+
+            <section tabindex="0" aria-labelledby="debugging-unsafe-rust">
+                <h2 id="debugging-unsafe-rust">Debugging unsafe Rust</h2>
+                <p>For:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>unsafe {
+    ...
+}</code></pre>
+                <p>be especially precise.</p>
+                <p>Set a breakpoint before the unsafe operation.</p>
+                <p>Inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>pointers
+lengths
+indices
+references
+ownership assumptions</code></pre>
+                <p>Then step through the operation.</p>
+                <p>The important questions are:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>What invariant is assumed?
+
+Where was the value created?
+
+What guarantees its validity?
+
+What changes the memory?
+
+Where does the invalid state first appear?</code></pre>
+                <p>LLDB can observe the runtime state.</p>
+                <p>It cannot prove that an unsafe invariant is correct.</p>
+                <p>That remains a source-level reasoning problem.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-rust-expanded-context">
+                    <h3 id="unsafe-rust-expanded-context">Unsafe Rust: expanded context</h3>
+                    <p>Unsafe Rust does not mean “no rules.” It means the compiler is not enforcing all the rules for you.</p>
+                    <p>When debugging unsafe code, ask:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>What invariant is assumed here?
+Where was this pointer created?
+What guarantees its validity?
+What is the length?
+What is the capacity?
+What is the alignment?
+Who owns this memory?
+Who may mutate it?
+When does it become invalid?</code></pre>
+                    <p>LLDB can show you the runtime state:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable ptr
+memory read ptr
+memory region ptr</code></pre>
+                    <p>But LLDB cannot prove the invariant. That is source-level reasoning.</p>
+                    <p>For unsafe code, combine:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>LLDB
+Miri
+sanitizers
+code review
+tests</code></pre>
+                    <p>Miri is especially useful for detecting undefined behavior in Rust before it becomes a mysterious runtime bug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-five-unsafe-superpowers-and-their-debug-signatures">
+                    <h3 id="the-five-unsafe-superpowers-and-their-debug-signatures">The five unsafe superpowers and their debug signatures</h3>
+                    <p>Rust’s <code>unsafe</code> keyword grants five specific abilities that safe Rust does not have. Each of them has a characteristic debugger signature, and knowing them helps you recognize what is happening at a breakpoint.</p>
+                    <ol>
+                        <li><strong>Dereferencing a raw pointer</strong>: <code>*const T</code> and <code>*mut T</code>. In the debugger, raw pointers appear as plain addresses, not as dereferenced values. To see the value, you must dereference explicitly.</li>
+                        <li><strong>Calling an unsafe function</strong>: Functions declared <code>unsafe fn</code> can only be called from within <code>unsafe</code> blocks. In the backtrace, the frame for an unsafe function looks the same as for any other function, but its source may have different invariants.</li>
+                        <li><strong>Accessing or modifying a mutable static variable</strong>: In Rust 2024, references to <code>static mut</code> are disallowed. Access is through raw pointers or interior-mutability primitives. In the debugger, you see the pointer or the wrapper type, not a bare reference.</li>
+                        <li><strong>Implementing an unsafe trait</strong>: Traits such as <code>Send</code> and <code>Sync</code> are unsafe to implement because a wrong implementation breaks the language’s guarantees. In the debugger, there is no runtime signature of an unsafe trait implementation; the consequences appear as data races, incorrect sharing, or memory corruption.</li>
+                        <li><strong>Accessing fields of a <code>union</code></strong>: Unions allow multiple fields to share storage. Reading a field that was not the last one written is undefined behavior. In the debugger, a union shows all its fields as overlaying the same memory, and it is not always obvious which one is valid.</li>
+                    </ol>
+                    <p>Each of these has a distinct debugging pattern. The rest of this chapter treats them in order of how often they appear in real Rust programs.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="observing-unsafe-invariants">
+                    <h3 id="observing-unsafe-invariants">Observing unsafe invariants</h3>
+                    <p>Every unsafe block is built on at least one invariant: a promise about memory that the compiler cannot verify. Common invariants include:</p>
+                    <ul>
+                        <li>A pointer is non-null.</li>
+                        <li>A pointer points to initialized memory.</li>
+                        <li>A pointer is aligned for its type.</li>
+                        <li>A slice’s length does not exceed the allocation’s capacity.</li>
+                        <li>Two pointers do not alias when they should not.</li>
+                        <li>A value is not aliased mutably while also being read.</li>
+                        <li>A <code>Vec</code>’s length and capacity are consistent.</li>
+                        <li>A reference does not outlive its data.</li>
+                    </ul>
+                    <p>When debugging an unsafe block, the first task is to identify which invariant is expected and then to check whether it holds at the point of the unsafe operation. A breakpoint just before the operation is usually the right place to check.</p>
+                    <p>For each invariant, there is a specific inspection:</p>
+                    <ul>
+                        <li><strong>Non-null</strong>: <code>frame variable ptr</code> shows the address. Check that it is not zero.</li>
+                        <li><strong>Initialized</strong>: This is hard to check from the debugger. You may need to trace back to where the memory was allocated and confirm that the initialization path ran.</li>
+                        <li><strong>Aligned</strong>: Inspect the address. Rust types have alignment requirements; for a type <code>T</code>, the address must be a multiple of <code>align_of::&lt;T&gt;()</code>.</li>
+                        <li><strong>Length and capacity</strong>: Inspect the <code>len</code> and <code>cap</code> fields of the <code>Vec</code> or slice.</li>
+                        <li><strong>Aliasing</strong>: Check the backtrace and source for other references to the same data that may be active.</li>
+                    </ul>
+                    <p>The debugger does not check invariants for you. It gives you the values; you interpret them.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="memory-debugging">
+                <h2 id="memory-debugging">Memory debugging</h2>
+                <p>LLDB can inspect memory directly.</p>
+                <p>Useful commands include:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>memory read
+memory region</code></pre>
+                <p>Use these when ordinary Rust variable inspection is insufficient.</p>
+                <p>For normal Rust application debugging, prefer:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                <p>first.</p>
+                <p>Move to raw memory inspection when investigating:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>FFI
+unsafe code
+pointer corruption
+buffer corruption
+ABI problems
+allocator problems</code></pre>
+
+                <section tabindex="0" aria-labelledby="reading-memory">
+                    <h3 id="reading-memory">Reading memory</h3>
+                    <p>The <code>memory read</code> command reads a specified number of bytes at a given address and formats them according to a chosen type.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) memory read --format hex --size 4 --count 16 0x5555559e0a10</code></pre>
+                    <p>This reads sixteen 4-byte values starting at the given address and displays them in hexadecimal. The output is a dense representation, useful for spotting patterns such as repeated values or unexpected zeroes.</p>
+                    <p>Common options:</p>
+                    <ul>
+                        <li><code>--format</code>: <code>hex</code>, <code>decimal</code>, <code>binary</code>, <code>character</code>, <code>string</code>. Use <code>string</code> for C-style null-terminated strings, <code>decimal</code> for integers, <code>hex</code> when you need to see raw bytes.</li>
+                        <li><code>--size</code>: The size of each element. <code>1</code> for bytes, <code>4</code> for <code>u32</code>, <code>8</code> for <code>u64</code>.</li>
+                        <li><code>--count</code>: How many elements to display.</li>
+                    </ul>
+                    <p>A useful combined form: <code>memory read --format string</code> (or <code>-f s</code>) followed by an address, to inspect a C string. This is the primary way to verify what a <code>*const c_char</code> pointer is actually pointing to when debugging FFI.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="memory-regions">
+                    <h3 id="memory-regions">Memory regions</h3>
+                    <p>The <code>memory region</code> command tells you what kind of memory an address belongs to.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) memory region 0x5555559e0a10
+[0x00005555559e0000-0x0000555555a00000) rw- /path/to/binary
+</code></pre>
+                    <p>The output includes the address range, the permissions (<code>r</code> for read, <code>w</code> for write, <code>x</code> for execute), and the backing file if any. This is useful for identifying:</p>
+                    <ul>
+                        <li>Whether an address is in a valid memory region at all.</li>
+                        <li>Whether it is writable (if you are investigating a write to read-only memory).</li>
+                        <li>Which binary or shared library the memory belongs to.</li>
+                    </ul>
+                    <p>If a pointer points to an address that is not in any region reported by <code>memory region</code>, the pointer is invalid and dereferencing it will crash. This check is a fast way to confirm a suspected dangling pointer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="examining-a-rust-vec-in-memory">
+                    <h3 id="examining-a-rust-vec-in-memory">Examining a Rust <code>Vec</code> in memory</h3>
+                    <p>A Rust <code>Vec&lt;T&gt;</code> is a struct with three fields: <code>ptr</code>, <code>len</code>, and <code>cap</code>. Under normal inspection, <code>frame variable</code> shows the elements. But when debugging unsafe code that manipulates a <code>Vec</code> directly, you may need to inspect its raw fields.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable items.ptr
+(lldb) frame variable items.len
+(lldb) frame variable items.cap
+</code></pre>
+                    <p>With the pointer, length, and capacity in hand, you can do the following:</p>
+                    <ol>
+                        <li>Confirm that <code>len &lt;= cap</code> (a fundamental invariant).</li>
+                        <li>Confirm that the pointer is non-null when the capacity is greater than zero.</li>
+                        <li>Read the raw element bytes at the pointer to see what is actually stored.</li>
+                        <li>Check that the pointer is aligned for the element type.</li>
+                    </ol>
+                    <p>When unsafe code violates the <code>len &lt;= cap</code> invariant, downstream operations can read past the allocation, write into unallocated memory, or crash. This is one of the most common causes of memory corruption in unsafe Rust, and it is very hard to find without the debugger.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="examining-a-string-in-memory">
+                    <h3 id="examining-a-string-in-memory">Examining a <code>String</code> in memory</h3>
+                    <p>A <code>String</code> is a wrapper around a <code>Vec&lt;u8&gt;</code>, so the same invariants apply. The interesting extra detail is that a <code>String</code> must be valid UTF-8. If unsafe code produces a <code>String</code> whose bytes are not valid UTF-8, reading the string later can cause undefined behavior.</p>
+                    <p>To inspect the raw bytes of a <code>String</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable s.vec.ptr
+(lldb) memory read --format hex --size 1 --count 16 &lt;ptr&gt;
+</code></pre>
+                    <p>The bytes shown are the raw UTF-8 encoding of the string. If you see a byte sequence that is not valid UTF-8 (for example, a leading byte without the expected continuation bytes), the <code>String</code> was constructed incorrectly, and any later use of it is undefined behavior.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="checking-for-buffer-overflow">
+                    <h3 id="checking-for-buffer-overflow">Checking for buffer overflow</h3>
+                    <p>Buffer overflow is one of the classic vulnerabilities in unsafe code. In Rust, it usually appears as a mismatch between an index or length used in unsafe code and the actual allocation.</p>
+                    <p>Suppose you have:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>unsafe {
+    let slice = std::slice::from_raw_parts(ptr, len);
+    let first = slice[0];
+}
+</code></pre>
+                    <p>If <code>len</code> is larger than the allocation that <code>ptr</code> points to, <code>from_raw_parts</code> creates a slice that reaches past the end of valid memory. Reading <code>slice[0]</code> is fine, but reading <code>slice[len - 1]</code> is undefined behavior.</p>
+                    <p>A practical check:</p>
+                    <ol>
+                        <li>At the breakpoint, inspect <code>ptr</code> and <code>len</code>.</li>
+                        <li>Use <code>memory region</code> on <code>ptr</code> to find the end of the region.</li>
+                        <li>Compare <code>ptr + len</code> to the region end. If <code>ptr + len</code> exceeds the region, the slice is out of bounds.</li>
+                    </ol>
+                    <p>This is a low-level but effective way to confirm a buffer overflow before it manifests as a crash.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-miri-instead-of-or-in-addition-to-lldb">
+                    <h3 id="using-miri-instead-of-or-in-addition-to-lldb">Using Miri instead of, or in addition to, LLDB</h3>
+                    <p>For many unsafe bugs, the right first tool is not LLDB but Miri. Miri is an interpreter that runs Rust code at the intermediate representation level and detects undefined behavior that would not be detectable by running the compiled binary.</p>
+                    <p>Install and run Miri:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rustup +nightly component add miri
+cargo +nightly miri test
+</code></pre>
+                    <p>Miri can detect:</p>
+                    <ul>
+                        <li>Out-of-bounds accesses, even when they do not crash.</li>
+                        <li>Use of uninitialized memory.</li>
+                        <li>Data races in unsafe code.</li>
+                        <li>Invalid pointer arithmetic.</li>
+                        <li>Violations of aliasing rules.</li>
+                        <li>Reading from a pointer with the wrong provenance.</li>
+                    </ul>
+                    <p>Miri is slower than running the compiled binary, so it is best used on a small, targeted test case. When Miri finds an issue, it prints a detailed diagnostic that is often more informative than anything the debugger can produce, because Miri has access to the full semantics of the program.</p>
+                    <p>A practical workflow:</p>
+                    <ol>
+                        <li>Reproduce the bug in a small unit test.</li>
+                        <li>Run the test under Miri. If Miri reports undefined behavior, fix the bug there.</li>
+                        <li>If Miri does not reproduce the bug, run the same test under LLDB to inspect runtime state.</li>
+                    </ol>
+                    <p>LLDB and Miri are complementary. Miri detects violations of the abstract semantics; LLDB shows you the concrete machine state at a particular moment.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="address-sanitizer-and-asan">
+                    <h3 id="address-sanitizer-and-asan">Address Sanitizer and ASan</h3>
+                    <p>Rust supports the AddressSanitizer (ASan), a runtime instrumentation that detects memory errors such as use-after-free and buffer overflow. To use ASan, build with the appropriate flag:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>RUSTFLAGS="-Zsanitizer=address" cargo +nightly build -Zbuild-std --target x86_64-unknown-linux-gnu
+</code></pre>
+                    <p>The exact invocation depends on your toolchain and target. ASan produces a report when a memory error is detected, including the allocation stack, the use stack, and the type of error.</p>
+                    <p>ASan is useful for:</p>
+                    <ul>
+                        <li>Finding memory errors in unsafe code that does not crash immediately.</li>
+                        <li>Detecting errors in FFI interactions, where the C side may have its own memory bugs.</li>
+                        <li>Confirming a suspected buffer overflow at runtime.</li>
+                    </ul>
+                    <p>ASan is more expensive than normal execution, often two to three times slower, so it is used on test builds, not production. But for debugging memory corruption, it is one of the most valuable tools available.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="ffi-debugging">
+                <h2 id="ffi-debugging">FFI debugging</h2>
+                <p>Rust interacting with C introduces another debugging boundary.</p>
+                <p>You may see:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Rust
+→ extern "C"
+→ C function
+→ Rust callback</code></pre>
+                <p>Use breakpoints at the boundary.</p>
+                <p>Inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Rust arguments
+C arguments
+return values
+pointers
+lengths
+ownership assumptions</code></pre>
+                <p>If the problem crosses the language boundary, LLDB becomes particularly useful because it can follow the native execution rather than treating Rust as an isolated world.</p>
+
+                <section tabindex="0" aria-labelledby="identifying-the-ffi-boundary-in-the-backtrace">
+                    <h3 id="identifying-the-ffi-boundary-in-the-backtrace">Identifying the FFI boundary in the backtrace</h3>
+                    <p>A backtrace that crosses the Rust-C boundary looks like this:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: c_library::process_buffer at c_library.c:42
+frame #1: my_app::call_c_function at src/ffi.rs:15
+frame #2: my_app::main at src/main.rs:10
+frame #3: std::rt::lang_start_internal at ...
+</code></pre>
+                    <p>Frames #1 and #2 belong to Rust. Frame #0 belongs to C. The boundary is between frame #1 and frame #0. If the bug is a mismatch between what Rust passed and what C expected, the interesting inspection points are:</p>
+                    <ul>
+                        <li>Frame #1: Inspect the Rust arguments and the pointer, length, and other values being passed.</li>
+                        <li>Frame #0: Inspect the C arguments and the pointer, length, and values that C actually received.</li>
+                    </ul>
+                    <p>Comparing the two inspections reveals whether the mismatch happened on the Rust side (the argument was already wrong when Rust called C) or on the C side (the argument arrived correctly but C used it incorrectly).</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="inspecting-c-strings-across-the-boundary">
+                    <h3 id="inspecting-c-strings-across-the-boundary">Inspecting C strings across the boundary</h3>
+                    <p>A <code>*const c_char</code> pointer is displayed by LLDB as a plain address. To see the string contents, use <code>memory read</code> with the string format:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) memory read --format string 0x7fffffffe100
+</code></pre>
+                    <p>Or, use the <code>frame variable</code> display which often renders <code>const char *</code> as a string with quotes:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable name
+(const char *) name = 0x... "Alice"
+</code></pre>
+                    <p>For <code>*const c_char</code> that comes from Rust’s <code>CString</code>, the pointer is null-terminated and the string is valid as long as the <code>CString</code> is alive. For <code>*const c_char</code> received from C, the string is valid according to the C library’s contract; you may need to consult the C documentation to know how long it remains valid.</p>
+                    <p>The most common FFI bug involving strings is a lifetime mismatch: Rust passes a pointer to a <code>CString</code> that is dropped before C finishes using it. The debugger may show a valid-looking string if the memory has not yet been overwritten, but later the same address may contain garbage. If a suspicious string reading appears, check whether the <code>CString</code> that owned the memory is still alive at the point of use.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="verifying-pointer-arguments-to-c-functions">
+                    <h3 id="verifying-pointer-arguments-to-c-functions">Verifying pointer arguments to C functions</h3>
+                    <p>Before stepping into a C function, verify that the pointer you are passing is valid and points to the expected data.</p>
+                    <p>Steps:</p>
+                    <ol>
+                        <li>At the breakpoint just before the FFI call, inspect the pointer: <code>frame variable ptr</code>.</li>
+                        <li>Check that it is not null.</li>
+                        <li>Check that it is aligned appropriately for the target type.</li>
+                        <li>Use <code>memory region</code> to confirm the pointer is in a valid region.</li>
+                        <li>Use <code>memory read</code> to inspect the data at the pointer.</li>
+                    </ol>
+                    <p>If any of these checks fail, the FFI call is likely to crash or produce garbage. The cause is usually upstream in Rust: a slice was created with the wrong length, a <code>Vec</code> was reallocated after the pointer was taken, or a value was moved while C was still holding a pointer to it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="observing-the-return-value-from-a-c-function">
+                    <h3 id="observing-the-return-value-from-a-c-function">Observing the return value from a C function</h3>
+                    <p>When the C function returns, step out of it and inspect the return value in the Rust caller:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) finish
+(lldb) frame variable result
+</code></pre>
+                    <p>The returned value is what C produced. If it does not match the expected value, the mismatch is on the C side (unless the C function is correct and the expected value was wrong).</p>
+                    <p>For functions that return a status code (<code>int</code>), the debugger shows the raw integer. You may need to consult the C library’s documentation to interpret it: is <code>0</code> success? Is <code>-1</code> a generic error? What do specific error codes mean?</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="rust-callbacks-called-from-c">
+                    <h3 id="rust-callbacks-called-from-c">Rust callbacks called from C</h3>
+                    <p>When C calls back into Rust, the call direction reverses. The backtrace looks like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: my_app::rust_callback at src/ffi.rs:42
+frame #1: c_library::invoke_callback at c_library.c:88
+frame #2: my_app::call_c_function at src/ffi.rs:15
+frame #3: my_app::main at src/main.rs:10
+</code></pre>
+                    <p>Frame #0 is the Rust callback. Its arguments are what C passed. Frame #1 is the C library invoking the callback. Frame #2 is the original Rust call into C.</p>
+                    <p>Set a breakpoint on the Rust callback function. When it fires, inspect the arguments. These are values that came from C, and they may not match the Rust types you expect. A common bug is passing a Rust struct by pointer to C, then C mutating it before invoking the callback, causing the callback to see inconsistent state.</p>
+                    <p>If the callback is invoked from a C-created thread, the thread has no Rust thread name. <code>thread list</code> shows it as an unnamed thread. This is expected; the Rust runtime does not know about threads created by C code.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="ffi-and-panics">
+                    <h3 id="ffi-and-panics">FFI and panics</h3>
+                    <p>A Rust panic that crosses an FFI boundary is undefined behavior. Historically, Rust had no way to enforce this at compile time, so it was the programmer’s responsibility to ensure that any panics in FFI functions were caught before returning to C.</p>
+                    <p>Rust 2024 changes this. All <code>extern</code> blocks are now <code>unsafe extern</code>, and this is a signal to the programmer that the functions declared there have unsafe contracts. If a Rust function exposed with <code>#[unsafe(no_mangle)]</code> and <code>pub extern "C"</code> panics, the panic will attempt to unwind across the FFI boundary, which is undefined behavior.</p>
+                    <p>When debugging such a case, the runtime may exhibit:</p>
+                    <ul>
+                        <li>A crash inside the C library, not in Rust, because the C library cannot handle the Rust unwinding.</li>
+                        <li>A message about “Rust cannot catch foreign exceptions” or similar runtime diagnostics.</li>
+                        <li>A stack that appears truncated or inconsistent because unwinding across the boundary is not supported.</li>
+                    </ul>
+                    <p>To debug this, set a breakpoint on the panic machinery before it unwinds. The panic is the root cause; the C-side crash is a symptom.</p>
+                    <p>The fix is to catch panics at the FFI boundary:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::panic;
+
+#[unsafe(no_mangle)]
+pub extern "C" fn safe_ffi_entry(input: *const u8, len: usize) -&gt; i32 {
+    let result = panic::catch_unwind(|| {
+        // Actual logic here
+        0
+    });
+
+    match result {
+        Ok(code) =&gt; code,
+        Err(_) =&gt; -1, // Panic was caught; return an error code to C
+    }
+}
+</code></pre>
+                    <p>With this pattern, no panic ever crosses the FFI boundary. The debugger will still show the panic site if you break on the panic machinery, but the program will not exhibit undefined behavior.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="inspecting-rust-2024-unsafe-extern-blocks">
+                    <h3 id="inspecting-rust-2024-unsafe-extern-blocks">Inspecting Rust 2024 <code>unsafe extern</code> blocks</h3>
+                    <p>In Rust 2024, an <code>extern</code> block is written as <code>unsafe extern</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>unsafe extern "C" {
+    fn c_function(input: *const u8, len: usize) -&gt; i32;
+}
+</code></pre>
+                    <p>From a debugging perspective, nothing changes in the machine code. The symbol <code>c_function</code> is a foreign function, and LLDB resolves breakpoints on it as it would for any external symbol.</p>
+                    <p>What changes is the source-level contract. The <code>unsafe extern</code> block signals that:</p>
+                    <ul>
+                        <li>The functions declared inside have unsafe preconditions.</li>
+                        <li>The programmer is responsible for verifying those preconditions.</li>
+                        <li>Individual items inside the block can be marked <code>safe</code> or <code>unsafe</code> to indicate their specific contract.</li>
+                    </ul>
+                    <p>When you see an <code>unsafe extern</code> block in the source, treat it as a signal to check every argument carefully at the FFI boundary. The debugger is the natural place to do this.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-practical-ffi-example">
+                    <h3 id="a-practical-ffi-example">A practical FFI example</h3>
+                    <p>Consider a Rust program that calls a C library to compute a checksum:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Rust side
+unsafe extern "C" {
+    fn compute_checksum(data: *const u8, len: usize) -&gt; u32;
+}
+
+fn call_checksum(input: &amp;[u8]) -&gt; u32 {
+    unsafe { compute_checksum(input.as_ptr(), input.len()) }
+}
+</code></pre>
+                    <p>Suppose the program crashes inside <code>compute_checksum</code>.</p>
+                    <p>Set a breakpoint at the call site:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 8
+(lldb) run
+</code></pre>
+                    <p>At the breakpoint, inspect the arguments:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable input
+(...) input = size=N { ... }
+
+(lldb) frame variable input.as_ptr()
+(const unsigned char *) = 0x7fff...
+</code></pre>
+                    <p>Verify:</p>
+                    <ul>
+                        <li>The pointer is not null.</li>
+                        <li>The pointer is aligned for <code>u8</code> (always true for byte data).</li>
+                        <li>The length is not zero.</li>
+                        <li>The pointer is in a valid memory region.</li>
+                    </ul>
+                    <p>Then step into <code>compute_checksum</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) step
+</code></pre>
+                    <p>Inside the C function, inspect the arguments again. If they match what Rust passed, the bug is on the C side. If they do not match, the bug is at the boundary.</p>
+                    <p>If the C function is not compiled with debug information, LLDB may not have source-level information for it. You can still step through its machine code, but the display will be assembly. In that case, use <code>memory read</code> to inspect the buffer at the pointer, and compare it with what Rust expected to pass.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-ffi-libraries-without-debug-info">
+                    <h3 id="debugging-ffi-libraries-without-debug-info">Debugging FFI libraries without debug info</h3>
+                    <p>Many C libraries are compiled without debug information or with limited debug information. When debugging such a library, you will see:</p>
+                    <ul>
+                        <li>Mangled or unclear function names in the backtrace.</li>
+                        <li>Missing source lines for C frames.</li>
+                        <li>Arguments displayed as raw registers or memory.</li>
+                    </ul>
+                    <p>You can still debug effectively by using the following techniques:</p>
+                    <ul>
+                        <li><strong>Set breakpoints on symbol names</strong>: Use <code>image lookup --name</code> to find the exact symbol name in the C library.</li>
+                        <li><strong>Inspect arguments manually</strong>: At the entry of a C function, the argument registers (on x86_64, <code>rdi</code>, <code>rsi</code>, <code>rdx</code>, and so on) hold the arguments. Use <code>register read</code> to inspect them.</li>
+                        <li><strong>Read memory at the pointers</strong>: Use <code>memory read</code> to see what the C function is working with.</li>
+                        <li><strong>Step through assembly</strong>: Use <code>stepi</code> (step instruction) to step one machine instruction at a time. Combined with the register inspection, this lets you follow the C function’s logic even without source.</li>
+                        <li><strong>Look up the C library’s documentation</strong>: A function’s documented behavior tells you what to expect. If the debugger shows something that contradicts the documentation, you have found a suspect.</li>
+                    </ul>
+                    <p>Debugging assembly is harder than debugging source, but it is sometimes unavoidable. The skills transfer: you still set breakpoints, inspect values, and trace execution. Only the display format changes.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-rust-2024-static-mut-alternatives">
+                <h2 id="inspecting-rust-2024-static-mut-alternatives">Inspecting Rust 2024 <code>static mut</code> alternatives</h2>
+                <p>Rust 2024 disallows references to <code>static mut</code>. If you are debugging code that previously used <code>&amp;static mut</code>, you will now see one of the alternatives in the source and in the debugger:</p>
+                <ul>
+                    <li><strong>Raw pointers</strong>: The address is a <code>*mut T</code> that must be dereferenced inside an unsafe block. In the debugger, the pointer appears as an address. Dereference explicitly to inspect the value.</li>
+                    <li><strong>Interior-mutability primitives</strong>: <code>Mutex&lt;T&gt;</code>, <code>RwLock&lt;T&gt;</code>, <code>AtomicUsize</code>, and <code>UnsafeCell&lt;T&gt;</code>. In the debugger, the wrapper is shown, and the wrapped value is shown as its field. For a <code>Mutex&lt;T&gt;</code>, you can inspect the inner value without needing to lock it in the debugger, but the value is only meaningful if the lock is currently held or the mutex is not contended.</li>
+                    <li><strong>Atomic types</strong>: For example, <code>AtomicUsize</code>. The debugger shows the atomic’s internal value. This is the current value of the atomic, which is exactly what you want to see, but remember that the value could change at any moment if other threads are running.</li>
+                </ul>
+                <p>The practical difference for debugging is that you now have a wrapper type to inspect, rather than a bare reference. This is a small inconvenience in exchange for the safety and clarity that Rust 2024 provides.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-unsafe-and-ffi">
+                <h2 id="rust-2024-notes-on-unsafe-and-ffi">Rust 2024 notes on unsafe and FFI</h2>
+                <p>A few Rust 2024 specifics affect debugging unsafe code and FFI.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks">
+                    <h3 id="unsafe-extern-blocks"><code>unsafe extern</code> blocks</h3>
+                    <p>In Rust 2024, all <code>extern</code> blocks are <code>unsafe extern</code>. This is a source-level change that makes the FFI boundary more explicit. From a debugging perspective, the machine code is unchanged. The breakpoints, backtraces, and memory inspections work the same way as in earlier editions.</p>
+                    <p>However, the item-level safety annotations (items inside an <code>unsafe extern</code> block can be marked <code>safe</code> or <code>unsafe</code>) give you a hint about the FFI contract. When you see an item marked <code>safe</code>, it means the compiler considers its preconditions to be checked at the call site. When it is marked <code>unsafe</code>, the caller must uphold the preconditions manually. This affects where you should set breakpoints and what you should inspect.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-attributes">
+                    <h3 id="unsafe-attributes">Unsafe attributes</h3>
+                    <p><code>#[no_mangle]</code>, <code>#[export_name]</code>, and <code>#[link_section]</code> are now written <code>#[unsafe(no_mangle)]</code>, <code>#[unsafe(export_name = "...")]</code>, and <code>#[unsafe(link_section = "...")]</code>. This change matters for debugging because:</p>
+                    <ul>
+                        <li>A <code>#[unsafe(no_mangle)]</code> function appears under its exact source name in the symbol table. Breakpoints on the unmangled name resolve reliably.</li>
+                        <li>A <code>#[unsafe(export_name = "custom_name")]</code> function appears under <code>custom_name</code> in the symbol table, not under the Rust source name. To set a breakpoint, use the custom name.</li>
+                        <li>A <code>#[unsafe(link_section = "...")]</code> function or data may be placed in a non-standard section. The debugger’s <code>memory region</code> command can help identify the section if needed.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-op-in-unsafe-fn">
+                    <h3 id="unsafe-op-in-unsafe-fn"><code>unsafe_op_in_unsafe_fn</code></h3>
+                    <p>Rust 2024 warns when unsafe operations appear inside an <code>unsafe fn</code> without an explicit <code>unsafe { ... }</code> block. This is a source-level change, but it affects debugging because the explicit <code>unsafe</code> blocks give natural breakpoint locations. You can place a breakpoint at the opening of an <code>unsafe</code> block to stop just before the unsafe operation begins.</p>
+                    <p>This is a small but useful improvement for debugging unsafe code: the source now marks its unsafe regions explicitly, and you can navigate them accordingly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="reference-to-static-mut">
+                    <h3 id="reference-to-static-mut">Reference to <code>static mut</code></h3>
+                    <p>Rust 2024 disallows references to <code>static mut</code>. This is a fundamental source-level change that affects both how you write and how you debug global mutable state. The debugger will show:</p>
+                    <ul>
+                        <li>Raw pointers, when global state is accessed via <code>*mut</code>.</li>
+                        <li>Interior-mutability types, when global state is wrapped in <code>Mutex</code>, <code>RwLock</code>, <code>AtomicUsize</code>, or <code>UnsafeCell</code>.</li>
+                        <li>No simple references to global mutable memory.</li>
+                    </ul>
+                    <p>When debugging such code, the source-level rules still apply: references to <code>static mut</code> are not allowed. If you see a reference in the debugger, it may be a stale memory read from before the restriction was applied, or a raw pointer disguised as a reference in the debugger’s display. In either case, treat it with the appropriate caution.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-miri">
+                    <h3 id="edition-2024-and-miri">Edition 2024 and Miri</h3>
+                    <p>Miri supports the Rust 2024 edition. In fact, Miri is often ahead of the stable compiler in enforcing new semantics. If you are using Rust 2024 features (such as the new <code>unsafe extern</code> rules), Miri is an excellent way to confirm that your unsafe code does not violate the new semantics.</p>
+                    <p>Run Miri with the 2024 edition set in your project:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rustup +nightly component add miri
+cargo +nightly miri test
+</code></pre>
+                    <p>Miri will check your unsafe code against the 2024 semantics, including the new <code>unsafe extern</code> rules and the stricter handling of raw pointers.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch16">
+                <h2 id="summary-ch16">Summary</h2>
+                <p>In this chapter, we covered debugging at the lowest level of Rust:</p>
+                <ul>
+                    <li><strong>Unsafe Rust</strong>: every unsafe block depends on an invariant. The debugger’s job is to show you the state, not to verify the invariant. Combined with Miri and sanitizers, the debugger is one of several tools for finding unsafe bugs.</li>
+                    <li><strong>The five unsafe superpowers</strong>: raw pointers, unsafe functions, static mut (now restricted in Rust 2024), unsafe traits, and unions. Each has a distinct debug signature.</li>
+                    <li><strong>Memory debugging</strong>: <code>memory read</code> and <code>memory region</code> are the tools for inspecting raw memory when source-level inspection is not enough. Use them to verify pointers, check alignment, and confirm buffer bounds.</li>
+                    <li><strong>Vec and String in memory</strong>: both are structs with <code>ptr</code>, <code>len</code>, and <code>cap</code> fields. Checking the <code>len &lt;= cap</code> invariant is a fast way to catch memory corruption.</li>
+                    <li><strong>Buffer overflow</strong>: compare <code>ptr + len</code> to the end of the memory region reported by <code>memory region</code>. If the pointer + length exceeds the region, the slice is out of bounds.</li>
+                    <li><strong>Miri</strong>: a Rust interpreter that detects undefined behavior, including use-after-free, out-of-bounds access, uninitialized reads, and data races. Prefer Miri for detecting undefined behavior; use LLDB for inspecting concrete runtime state.</li>
+                    <li><strong>Address Sanitizer</strong>: a runtime instrumentation that detects memory errors. Slower than normal execution but extremely effective at catching bugs that would otherwise be silent.</li>
+                    <li><strong>FFI debugging</strong>: the boundary is between the Rust and C frames in the backtrace. Inspect arguments on both sides, verify pointers, and check pointer + length against the memory region. In Rust 2024, all <code>extern</code> blocks are <code>unsafe extern</code>, and item-level safety annotations provide more explicit contracts.</li>
+                    <li><strong>FFI and panics</strong>: a panic across the FFI boundary is undefined behavior. Catch panics at the boundary with <code>panic::catch_unwind</code>. Under LLDB, break on the panic machinery before unwinding begins.</li>
+                    <li><strong>Debugging without debug info</strong>: even without source lines for a C library, you can inspect argument registers, read memory at pointers, and step through assembly.</li>
+                    <li><strong>Rust 2024 specifics</strong>: <code>unsafe extern</code> blocks, unsafe attributes, and the <code>static mut</code> restriction change the source and the debugger’s view, but not the fundamental mechanics of debugging.</li>
+                </ul>
+                <p>The unifying principle for unsafe and FFI debugging: identify the invariant, observe the runtime state, and compare. The debugger cannot prove that unsafe code is correct, but it can show you the state that determines whether it is.</p>
+                <p>In the next chapter, we step back from the mechanics and look at the strategic principles of debugging: where to place breakpoints, how to find the first wrong state, and how to turn a vague bug report into a systematic investigation.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-15.html">← Chapter 15</a>
+            <a class="nav-next" href="./chapter-17.html">Chapter 17 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

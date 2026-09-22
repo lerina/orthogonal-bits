@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 3: Why Rust Debugging Is Different – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch3-heading">
+            <h1 id="ch3-heading">Chapter 3: Why Rust Debugging Is Different</h1>
+
+            <p>Rust adds several complications that do not appear in a simple C or C++ debugging session.</p>
+            <p>Understanding these complications up front saves a great deal of confusion later. When LLDB behaves in a way that seems strange, it is almost always because one of the factors in this chapter is at play.</p>
+            <p>The purpose of this chapter is not to teach you how to solve all of these problems yet. It is to give you the vocabulary to recognize them when they appear, so that you can respond calmly rather than assuming that the debugger is broken or that you have made a mistake.</p>
+
+            <section tabindex="0" aria-labelledby="name-mangling">
+                <h2 id="name-mangling">Name mangling</h2>
+                <p>Rust functions are often compiled into symbols with mangled names. A source-level name like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>parse_config</code></pre>
+                <p>may become something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>_ZN7my_crate12parse_config17h...</code></pre>
+                <p>The mangled form encodes the crate name, the module path, the function name, the generic parameters, and a hash to disambiguate between overloads and instantiations. This is not unique to Rust. C++ has its own mangling scheme, and languages that support generics and modules generally need some way to encode the extra information in the linker symbol.</p>
+                <p>LLDB can often match the human name, but not always. This is why source-line breakpoints are sometimes more predictable than function-name breakpoints.</p>
+                <p>When a name-based breakpoint fails to resolve, the practical alternatives are:</p>
+                <ul>
+                    <li>Use <code>breakpoint set --file src/main.rs --line 42</code> to break by source location instead of by name.</li>
+                    <li>Use <code>image lookup --name parse_config</code> to ask LLDB what symbols actually exist that might match.</li>
+                    <li>Use <code>nm</code> or <code>rustfilt</code> on the binary to inspect the symbol table directly.</li>
+                </ul>
+                <p>A related complication: generic functions and trait methods can produce multiple concrete instantiations, each with its own mangled name. A single source-level name like <code>process&lt;T&gt;</code> may correspond to many distinct symbols in the binary. When you break on <code>process</code>, LLDB may resolve the breakpoint to every instantiation at once, or it may pick one arbitrarily.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="optimization">
+                <h2 id="optimization">Optimization</h2>
+                <p>Rust’s optimizer can:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>inline functions
+reorder instructions
+remove variables
+merge values
+specialize generics
+eliminate branches</code></pre>
+                <p>When optimization is aggressive, a variable may be unavailable, a step may jump unexpectedly, or a backtrace may omit frames.</p>
+                <p>This is not LLDB failing. It is LLDB observing optimized machine code.</p>
+                <p>Some specific examples of what optimization does to source-level debugging:</p>
+                <ul>
+                    <li><strong>Inlining</strong>: A small function may be compiled directly into its caller, with no separate stack frame. A backtrace that “should” show three frames may show only one, because the two inner frames were inlined into the outer one.</li>
+                    <li><strong>Variable elimination</strong>: A variable whose value can be computed from other variables may be eliminated entirely. When you try to inspect it, LLDB will say the variable is not available. The compiler was not required to keep it around, and it did not.</li>
+                    <li><strong>Code reordering</strong>: Machine instructions may be reordered so that a source line that appears earlier runs later, or vice versa. Stepping line by line may produce a sequence that does not match the visual order in the source file.</li>
+                    <li><strong>Value propagation</strong>: A constant that was computed at runtime in your source may be computed at compile time in the optimized binary. You will see the value appear as a literal in the machine code, without any corresponding runtime computation.</li>
+                </ul>
+                <p>The practical consequence: when you are debugging, prefer the <code>dev</code> profile unless you have a specific reason to debug an optimized binary. We will return to this in the chapter on optimized builds.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-expression-evaluator-is-not-rust">
+                <h2 id="the-expression-evaluator-is-not-rust">The expression evaluator is not Rust</h2>
+                <p>LLDB’s <code>expression</code> command does not use <code>rustc</code>. It has some Rust support, but it is not a Rust compiler.</p>
+                <p>Expressions involving:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>iterators
+closures
+trait methods
+generic bounds
+async machinery
+macros</code></pre>
+                <p>may fail or behave differently from Rust source.</p>
+                <p>Use <code>frame variable</code> for inspection. Use <code>expr</code> only when you need it.</p>
+                <p>What makes the expression evaluator different from the compiler?</p>
+                <ul>
+                    <li>It runs inside the debugger, not inside <code>rustc</code>. It does not have access to the full Rust language semantics, trait resolution, or macro expansion.</li>
+                    <li>It evaluates in a limited context: the current frame, with limited access to locals, no ability to create new local variables of arbitrary types, and no way to resolve complex lifetime or borrow constraints.</li>
+                    <li>It may need to call functions in the target process. Those calls can have side effects, can block, can panic, or can corrupt state.</li>
+                    <li>It may not understand the exact same syntax as Rust source. For example, method call syntax that relies on trait resolution may not work, because the evaluator does not perform full trait resolution.</li>
+                </ul>
+                <p>For simple inspection of a value, use <code>frame variable</code>. It does not evaluate anything. It reads existing storage and formats the value using debug information. That is what you want most of the time.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="async-rust">
+                <h2 id="async-rust">Async Rust</h2>
+                <p>An <code>async fn</code> does not execute as a simple synchronous call. It creates a future. An executor polls that future. Execution can suspend at <code>.await</code> and resume later.</p>
+                <p>So an async source call chain is not the same as a synchronous stack trace. LLDB may show runtime frames between your application frames.</p>
+                <p>Consider a simple asynchronous function:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>async fn load_config() -> Config {
+    let raw = fetch_raw().await;
+    let parsed = parse(raw).await;
+    parsed
+}</code></pre>
+                <p>In source, this looks like a sequence of steps. At runtime, however, the compiled form is a state machine with explicit states for each suspension point. When LLDB shows you a backtrace while this function is suspended at an <code>.await</code>, you may see:</p>
+                <ul>
+                    <li>A frame for the runtime scheduler that polled this future.</li>
+                    <li>A frame for the future’s <code>poll</code> method, whose name may be compiler-generated and hard to read.</li>
+                    <li>Your own application frames interspersed among these runtime frames.</li>
+                </ul>
+                <p>This is why async debugging requires a slightly different discipline. Rather than single-stepping through every frame, you place breakpoints at application-level boundaries and let execution flow through the runtime between them.</p>
+                <p>We will cover async debugging in detail in a dedicated chapter.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="generics-and-traits">
+                <h2 id="generics-and-traits">Generics and traits</h2>
+                <p>Generic code can be compiled into multiple specializations. A breakpoint on a generic function may resolve to one or more concrete instantiations.</p>
+                <p>For example, this function:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process&lt;T: Display&gt;(value: T) {
+    println!("{}", value);
+}</code></pre>
+                <p>When instantiated with <code>i32</code> and <code>String</code>, produces two concrete functions in the binary. A name-based breakpoint on <code>process</code> may match both, or may match neither, depending on how LLDB handles the mangled symbols.</p>
+                <p>Trait method calls may dispatch dynamically. The source line may show:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>handler.handle(request)</code></pre>
+                <p>but the runtime may enter a completely different concrete implementation. When <code>handler</code> is a <code>Box&lt;dyn Handler&gt;</code>, the concrete type is not visible in the source line at all. LLDB has to be told, either by inspecting the value’s vtable pointer or by setting breakpoints on each candidate implementation.</p>
+                <p>The practical takeaway: when a breakpoint on a generic or trait method does not work as expected, do not assume the debugger is broken. It may simply be that the source-level name corresponds to more than one thing in the compiled binary.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="macros">
+                <h2 id="macros">Macros</h2>
+                <p>Macros expand before compilation. A breakpoint on a macro invocation may not correspond to a clean source line. Often it is better to break on the expanded function or the code the macro generates.</p>
+                <p>Consider:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = my_macro!(x, y);</code></pre>
+                <p>By the time the binary exists, the macro has expanded into some sequence of statements, which may include local variables with compiler-generated names, temporary values, and control flow that does not appear in the source.</p>
+                <p>When you set a breakpoint on the line containing the macro invocation, LLDB may stop at the first statement the macro expands into, or it may not stop at all, depending on how the debug information maps the macro expansion back to source.</p>
+                <p>For most debugging, this is fine: you do not need to see the internal expansion. But when the bug is inside the macro itself, or when the macro’s expansion is producing surprising behavior, you may need to inspect the expansion directly. The <code>cargo expand</code> tool is useful for seeing what a macro expands into.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="ownership-is-static-runtime-state-is-dynamic">
+                <h2 id="ownership-is-static-runtime-state-is-dynamic">Ownership is static; runtime state is dynamic</h2>
+                <p>Ownership, borrowing, and lifetimes are checked at compile time. LLDB observes runtime memory and values. It cannot explain why the borrow checker rejected your code.</p>
+                <p>Use the compiler for static rules. Use LLDB for runtime behavior.</p>
+                <p>This distinction is worth dwelling on, because it is one of the most common sources of confusion for programmers who are new to Rust.</p>
+                <p>When you write:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let s1 = String::from("hello");
+let s2 = s1;
+println!("{}", s1);</code></pre>
+                <p>the compiler will reject this program with an error. LLDB has nothing to say about it, because there is no program to run. The error is not about runtime state. It is about the static analysis the compiler performs before generating any code.</p>
+                <p>Conversely, when you write a program that compiles, and it produces the wrong output because a <code>Vec</code> is empty when you expected it to be populated, LLDB is exactly the right tool. The compiler has no opinion about the runtime contents of the vector. Only the running program can tell you what went wrong.</p>
+                <p>The two questions are complementary:</p>
+                <ul>
+                    <li>“Does this program satisfy Rust’s static rules?” is answered by the compiler.</li>
+                    <li>“What does this program do when it runs?” is answered by LLDB.</li>
+                </ul>
+                <p>When you encounter a problem, the first step is always to ask which question you are asking. Many debugging struggles arise from applying the wrong tool to the wrong question.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="moves-and-runtime-state">
+                <h2 id="moves-and-runtime-state">Moves and runtime state</h2>
+                <p>A related complication: in Rust, a value that has been moved may still be physically present in memory for some time. The compiler knows that the value is no longer valid at the source level, but the bytes may not have been overwritten. When you inspect the original variable in the debugger, you may see its last value, even though using it in source would be a compile error.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let s1 = String::from("hello");
+let s2 = s1;
+// s1 is moved here; the compiler will not let you use it.
+// But the bytes of the String metadata may still be on the stack,
+// and LLDB may show them if you ask.</code></pre>
+                <p>If you see a moved value in the debugger and wonder why the compiler rejected your use of it, remember: the compiler is not looking at memory. It is looking at the ownership graph. The debugger is looking at memory. They see different things.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="panic-handling-and-unwinding">
+                <h2 id="panic-handling-and-unwinding">Panic handling and unwinding</h2>
+                <p>Rust panics have a specific runtime behavior that affects debugging. By default, a panic unwinds the stack: it runs destructors on the way up, freeing resources and running cleanup code. The panic ultimately terminates the thread, or the program if the panic occurs on the main thread.</p>
+                <p>Under LLDB, a panic may stop the debugger at the underlying signal (<code>SIGABRT</code> or similar), not at the Rust source line where <code>panic!</code> was invoked. This is because Rust panics eventually reach the C++ exception machinery, which raises a signal.</p>
+                <p>When you stop on a panic, the backtrace may show the unwinding frames, not the original panic site. This is why, in panic debugging, it is often useful to set a breakpoint on the <code>panic</code> symbol itself, or on the specific function where you suspect the panic originates, rather than relying on the default stop.</p>
+                <p>We will explore panic debugging in detail in a later chapter.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-rust-2024-edition-and-unsafe">
+                <h2 id="the-rust-2024-edition-and-unsafe">The Rust 2024 edition and unsafe</h2>
+                <p>Because this manual targets Rust 2024, a few edition-specific details affect what you see when debugging unsafe code or FFI:</p>
+                <ul>
+                    <li><strong><code>unsafe extern</code> blocks</strong>: All <code>extern</code> blocks are now <code>unsafe extern</code>. When you see one in a Rust 2024 codebase, remember that the <em>block</em> being unsafe does not mean every item inside is unsafe. Individual items may be marked <code>safe</code> or <code>unsafe</code>. In the debugger, this matters because the safety contract for each symbol is defined at the item level.</li>
+                    <li><strong>Unsafe attributes</strong>: <code>#[no_mangle]</code>, <code>#[export_name = "..."]</code>, and <code>#[link_section = "..."]</code> are now written <code>#[unsafe(no_mangle)]</code>, <code>#[unsafe(export_name = "...")]</code>, and <code>#[unsafe(link_section = "...")]</code>. This matters when you inspect symbol names in the debugger, because a symbol that is exposed to C via <code>#[unsafe(no_mangle)]</code> will appear under its unmangled name, while ordinary Rust functions appear under their mangled names.</li>
+                    <li><strong><code>unsafe_op_in_unsafe_fn</code></strong>: An <code>unsafe fn</code> no longer implicitly allows unsafe operations in its body. Each unsafe operation must be inside an explicit <code>unsafe { ... }</code> block. This makes the source more explicit about where the unsafe boundary is, which is exactly the information you want when debugging unsafe code.</li>
+                    <li><strong>No references to <code>static mut</code></strong>: Rust 2024 disallows references to <code>static mut</code> items. If you debug code that needs shared mutable global state, you will see raw pointers or interior-mutability primitives (<code>Mutex</code>, <code>AtomicUsize</code>, and so on) rather than <code>&amp;static mut</code>. This affects what you see in the debugger when inspecting global state.</li>
+                </ul>
+                <p>None of these changes alter the fundamental mechanics of debugging. They alter what the source looks like, which in turn alters what the debugger’s output will look like when it maps machine code back to source.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch3">
+                <h2 id="summary-ch3">Summary</h2>
+                <p>Rust debugging is different from debugging in a simpler language, for several concrete reasons:</p>
+                <ul>
+                    <li><strong>Name mangling</strong> means function names in the debugger may not match source names.</li>
+                    <li><strong>Optimization</strong> can inline, reorder, and remove code, making the machine code diverge from the source.</li>
+                    <li><strong>The expression evaluator is not Rust</strong>. It has partial support for Rust syntax but is not a compiler.</li>
+                    <li><strong>Async Rust</strong> is a state machine, not a synchronous call chain. Backtraces show runtime frames, not just application frames.</li>
+                    <li><strong>Generics and traits</strong> can produce multiple instantiations and dynamic dispatch, so a source-level name may correspond to more than one runtime symbol.</li>
+                    <li><strong>Macros</strong> expand before compilation, so the source line and the compiled code do not map one-to-one.</li>
+                    <li><strong>Ownership is static</strong>; the debugger sees dynamic runtime state, not the compiler’s ownership graph.</li>
+                    <li><strong>Moves</strong> may leave stale bytes in memory, which the debugger can see but the compiler considers invalid.</li>
+                    <li><strong>Panics</strong> use the C++ exception machinery, which can affect where the debugger stops and what the backtrace shows.</li>
+                    <li><strong>Rust 2024 edition</strong> changes some syntactic details around unsafe and FFI, which in turn change what appears in the debugger.</li>
+                </ul>
+                <p>None of these differences are obstacles. They are simply facts about the environment, and knowing them lets you interpret what you see. In the next chapter, we will look at the tools that make up the Rust debugging stack and how they fit together.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-02.html">← Chapter 2</a>
+            <a class="nav-next" href="./chapter-04.html">Chapter 4 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

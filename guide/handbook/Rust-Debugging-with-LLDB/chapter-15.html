@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 15: Traits, Generics, Closures, Iterators, and Macros – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch15-heading">
+            <h1 id="ch15-heading">Chapter 15: Traits, Generics, Closures, Iterators, and Macros</h1>
+
+            <p>Rust’s expressive features—traits, generics, closures, iterators, and macros—are what make the language pleasant to write and hard to debug at the same time. They are pleasant because they let us express intent compactly. They are hard to debug because the compiled code no longer looks like the source. Each of these features generates compiler-level artifacts that the debugger has to interpret: monomorphized generic functions, trait dispatch, closure structs, iterator adapter chains, and macro-expanded code.</p>
+            <p>This chapter is about debugging all of these. We will look at what each feature compiles into, what the debugger shows for it, and how to inspect it effectively. The goal is not to understand the compiler’s internals, but to know what to expect when a breakpoint lands inside code that was written in a way that does not match what you see.</p>
+
+            <section tabindex="0" aria-labelledby="debugging-traits">
+                <h2 id="debugging-traits">Debugging traits</h2>
+                <p>A trait call such as:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>handler.handle(request)</code></pre>
+                <p>can hide the concrete implementation.</p>
+                <p>Text search can show possible implementations.</p>
+                <p>LLDB shows what actually executes at runtime.</p>
+                <p>Set a breakpoint on candidate implementations.</p>
+                <p>Then run.</p>
+                <p>The implementation whose breakpoint fires is evidence of the runtime path.</p>
+                <p>This is particularly useful with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>trait objects
+dynamic dispatch
+generic abstractions
+plugin systems
+dependency injection</code></pre>
+
+                <section tabindex="0" aria-labelledby="static-dispatch-versus-dynamic-dispatch">
+                    <h3 id="static-dispatch-versus-dynamic-dispatch">Static dispatch versus dynamic dispatch</h3>
+                    <p>Rust dispatches trait method calls in two ways, and they behave very differently in the debugger.</p>
+                    <p><strong>Static dispatch</strong> occurs when the concrete type is known at compile time. The compiler generates a direct call to the specific implementation. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process&lt;T: Handler&gt;(handler: T, request: Request) {
+    handler.handle(request); // compiled as a direct call to T::handle
+}</code></pre>
+                    <p>When you set a breakpoint on <code>Handler::handle</code> or on the concrete implementation, it resolves to the specific instantiation for the type used at that call site. The backtrace shows the concrete implementation’s frame.</p>
+                    <p><strong>Dynamic dispatch</strong> occurs when the call goes through a trait object:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process(handler: &amp;dyn Handler, request: Request) {
+    handler.handle(request); // compiled as a vtable lookup
+}</code></pre>
+                    <p>Here the concrete type is not known at compile time. The compiled code loads a function pointer from the trait object’s vtable and calls it. In the debugger, a breakpoint on <code>Handler::handle</code> may not resolve at all, because there is no single function with that symbol—there are multiple concrete implementations, one per type that implements the trait.</p>
+                    <p>A practical technique: set breakpoints on each candidate implementation, then run the program. The breakpoint that fires tells you which implementation was actually selected at runtime.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="finding-trait-implementations">
+                    <h3 id="finding-trait-implementations">Finding trait implementations</h3>
+                    <p>Before setting breakpoints, you need to know which types implement a given trait. A few approaches:</p>
+                    <ul>
+                        <li><strong>Text search</strong>: Search for <code>impl TraitName for</code> in the codebase. This finds every implementation in your source.</li>
+                        <li><strong>Documentation</strong>: For traits from crates, the generated documentation lists “Implementors.”</li>
+                        <li><strong><code>cargo doc --open</code></strong>: Build and open the local documentation, which includes a list of implementors for each trait.</li>
+                        <li><strong>IDE assistance</strong>: <code>rust-analyzer</code> in most editors shows implementors when you hover over a trait or use “go to implementations.”</li>
+                    </ul>
+                    <p>Once you have the list, set breakpoints in each implementation’s <code>handle</code> method. The one that fires is your answer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="inspecting-a-trait-object">
+                    <h3 id="inspecting-a-trait-object">Inspecting a trait object</h3>
+                    <p>For a trait object such as <code>Box&lt;dyn Handler&gt;</code>, the debugger can show you the concrete type stored inside.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable handler
+(Box&lt;dyn Handler&gt;) handler = {
+    pointer = 0x...
+    vtable = 0x...
+    // pretty-printed contents, if the pretty-printer knows the concrete type
+}</code></pre>
+                    <p>The exact display depends on the pretty-printer configuration and the amount of debug information. In some cases, the concrete type is shown. In others, the pretty-printer cannot determine the concrete type, and you see the raw pointer and vtable.</p>
+                    <p>If the display is ambiguous, set a breakpoint on each implementation of the trait method. The one that fires is the concrete type. You can then inspect the corresponding fields of that concrete type by using the correct type’s field names, or by using a debugger expression that casts the pointer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="trait-methods-and-default-implementations">
+                    <h3 id="trait-methods-and-default-implementations">Trait methods and default implementations</h3>
+                    <p>A trait method can have a default implementation, which a type may or may not override. When a type does not override the method, the default implementation is called. In the debugger:</p>
+                    <ul>
+                        <li>A breakpoint on the trait’s default implementation will fire when a type without an override calls the method.</li>
+                        <li>A breakpoint on a specific override will fire only when that override is called.</li>
+                    </ul>
+                    <p>If you are debugging a method and are not sure whether it was overridden, set breakpoints on both the default implementation and the overrides. Whichever fires tells you the runtime path.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="supertraits-in-debugging">
+                    <h3 id="supertraits-in-debugging">Supertraits in debugging</h3>
+                    <p>Supertraits such as <code>trait PrintableSummary: Display</code> require implementors to implement both traits. In the debugger, this matters when you are searching for the source of a call: a call such as <code>println!("{}", summary)</code> may dispatch through <code>Display</code>, not through the supertrait’s method. Set breakpoints on the actual trait method being called, not just the supertrait.</p>
+                    <p>A useful heuristic: when you are not sure which trait method is called, look at the source line. The method name in source corresponds to the trait that declares it. Set a breakpoint on the concrete implementation of <em>that</em> method.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="object-safety-in-debugging">
+                    <h3 id="object-safety-in-debugging">Object safety in debugging</h3>
+                    <p>Some traits are object-safe, meaning they can be used as <code>dyn Trait</code>. Others are not. This matters when you are debugging because a trait that is not object-safe cannot appear as a trait object in source, and therefore never appears as a vtable dispatch in the debugger.</p>
+                    <p>If a breakpoint on a trait method does not resolve and the trait is not object-safe, the issue is likely that the method was inlined or that it was monomorphized into the caller. Use a source-line breakpoint inside the method body instead.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-trait-objects">
+                <h2 id="debugging-trait-objects">Debugging trait objects</h2>
+                <p>For:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Box&lt;dyn Handler&gt;</code></pre>
+                <p>the concrete type is not necessarily obvious from the source line.</p>
+                <p>Inspect the value.</p>
+                <p>Then inspect the call path.</p>
+                <p>If necessary:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set</code></pre>
+                <p>on candidate implementations.</p>
+                <p>Run the program.</p>
+                <p>The breakpoint that resolves and fires gives you a concrete runtime observation.</p>
+
+                <section tabindex="0" aria-labelledby="the-vtable-as-debugging-evidence">
+                    <h3 id="the-vtable-as-debugging-evidence">The vtable as debugging evidence</h3>
+                    <p>A trait object in Rust is a “fat pointer”: it consists of a data pointer and a vtable pointer. The vtable is a static table of function pointers, one for each method of the trait. It also typically includes a pointer to the type’s <code>Drop</code> implementation and, for some traits, size and alignment information.</p>
+                    <p>Under the debugger, you can inspect the vtable to see the addresses of the methods that will be called for that concrete type. This is a low-level technique but occasionally useful when you want to confirm exactly which implementation is bound to a trait object.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable handler
+(Box&lt;dyn Handler&gt;) handler = {
+    pointer = 0x5555559e0a10
+    vtable = 0x5555557a3c40
+}</code></pre>
+                    <p>You can then inspect the vtable’s contents, or use <code>image lookup</code> on the address to find out which function it points to. This is rarely necessary—setting breakpoints on candidate implementations is usually faster—but it is useful when the trait object is passed across a boundary (FFI, C code) and the debugger cannot follow it automatically.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="identifying-the-concrete-type">
+                    <h3 id="identifying-the-concrete-type">Identifying the concrete type</h3>
+                    <p>A common debugging question is: “What concrete type is actually stored in this <code>Box&lt;dyn Trait&gt;</code>?”</p>
+                    <p>Several techniques, in order of increasing intrusiveness:</p>
+                    <ol>
+                        <li><strong>Pretty-printer output</strong>: Try <code>frame variable handler</code> and see whether the pretty-printer identifies the concrete type. This works when the pretty-printer knows the type.</li>
+                        <li><strong>Set breakpoints on each candidate</strong>: Run the program and see which one fires. This is the most common technique and often the fastest.</li>
+                        <li><strong>Use type name introspection</strong>: Some codebases provide a method on the trait (such as <code>fn type_name(&amp;self) -&gt; &amp;'static str</code>) that returns a string identifying the concrete type. This is a runtime feature rather than a debugger feature, but it is often more reliable than inspecting the vtable.</li>
+                        <li><strong>Inspect the vtable manually</strong>: As described above.</li>
+                    </ol>
+                    <p>For most debugging, the second technique is the right one. Breakpoints on candidate implementations are simple, reliable, and require no source changes.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="trait-objects-and-lifetime-erasure">
+                    <h3 id="trait-objects-and-lifetime-erasure">Trait objects and lifetime erasure</h3>
+                    <p>A trait object such as <code>Box&lt;dyn Handler + 'static&gt;</code> erases the concrete type and, optionally, the lifetime. In the debugger, this means:</p>
+                    <ul>
+                        <li>The concrete type is not visible in the type name of the variable.</li>
+                        <li>The lifetime bound is not visible at all (lifetimes are compile-time only and do not appear in debug information).</li>
+                        <li>If the trait object holds borrowed data, the concrete type’s fields that reference borrowed data will still be inspectable, but the borrow relationship itself is not visible.</li>
+                    </ul>
+                    <p>This is one of the cases where the debugger’s view is genuinely less informative than the source. The source may say <code>Box&lt;dyn Handler + Send&gt;</code>, but the debugger only shows the trait object layout. If you need to know the concrete type, use the techniques described above.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-practical-example">
+                    <h3 id="a-practical-example">A practical example</h3>
+                    <p>Consider a plugin system:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>trait Formatter {
+    fn format(&amp;self, value: i32) -&gt; String;
+}
+
+struct DecimalFormatter;
+struct HexFormatter;
+
+impl Formatter for DecimalFormatter {
+    fn format(&amp;self, value: i32) -&gt; String {
+        format!("{}", value)
+    }
+}
+
+impl Formatter for HexFormatter {
+    fn format(&amp;self, value: i32) -&gt; String {
+        format!("0x{:X}", value)
+    }
+}
+
+fn main() {
+    let formatters: Vec&lt;Box&lt;dyn Formatter&gt;&gt; = vec![
+        Box::new(DecimalFormatter),
+        Box::new(HexFormatter),
+    ];
+
+    for formatter in &amp;formatters {
+        println!("{}", formatter.format(255));
+    }
+}</code></pre>
+                    <p>Set breakpoints on both implementations:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name DecimalFormatter::format
+(lldb) breakpoint set --name HexFormatter::format
+(lldb) run</code></pre>
+                    <p>The first stop is inside <code>DecimalFormatter::format</code>. Continue:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) continue</code></pre>
+                    <p>The second stop is inside <code>HexFormatter::format</code>. The two breakpoints together confirm that both implementations are being called, in the order expected.</p>
+                    <p>If only one of the breakpoints fires, that tells you something about the loop or the vector’s contents. This is exactly the kind of observation that dynamic dispatch debugging is good at.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-generics">
+                <h2 id="debugging-generics">Debugging generics</h2>
+                <p>Generic Rust code can produce specialized machine code.</p>
+                <p>For:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process&lt;T&gt;(value: T)</code></pre>
+                <p>the debugger may display instantiated types rather than the source-level abstraction you are thinking about.</p>
+                <p>When debugging generic code, ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>What concrete type is being used here?
+
+Which instantiation am I actually executing?
+
+What value entered this specialization?</code></pre>
+                <p>The source tells you the generic design.</p>
+                <p>The debugger shows you a concrete execution.</p>
+
+                <section tabindex="0" aria-labelledby="monomorphization-and-debug-info">
+                    <h3 id="monomorphization-and-debug-info">Monomorphization and debug info</h3>
+                    <p>Rust’s monomorphization strategy means that each generic function is compiled once per concrete type that is actually used. For a function called with <code>i32</code> and <code>String</code>, the binary contains two separate compiled functions, each with its own mangled name.</p>
+                    <p>The debug information keeps track of the source-level name and the concrete type parameters. When you inspect a frame inside a generic function, LLDB uses this information to show you a name like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>my_app::process&lt;i32&gt;
+my_app::process&lt;alloc::string::String&gt;</code></pre>
+                    <p>Or, in some cases, it shows the demangled form. Either way, you can see which instantiation you are in. This is exactly what you want when a generic function has multiple call sites with different types.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="breakpoints-on-generic-functions">
+                    <h3 id="breakpoints-on-generic-functions">Breakpoints on generic functions</h3>
+                    <p>A breakpoint on a generic function can resolve in several ways:</p>
+                    <ul>
+                        <li><strong>All instantiations</strong>: LLDB resolves the breakpoint to every instantiation that matches the source-level name. This can produce many locations, one per concrete type.</li>
+                        <li><strong>One instantiation</strong>: LLDB picks one instantiation, often the first it finds. The behavior is version-dependent.</li>
+                        <li><strong>No resolution</strong>: If the function is fully inlined, no separate symbol exists for any instantiation.</li>
+                    </ul>
+                    <p>To control which instantiation a breakpoint targets, either use a source-line breakpoint (which is unaffected by monomorphization) or use a fully qualified symbol name with the concrete type, if you know it. The latter requires familiarity with Rust’s mangling scheme and is rarely worth the effort—source-line breakpoints are simpler and more reliable.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="observing-type-specific-behavior">
+                    <h3 id="observing-type-specific-behavior">Observing type-specific behavior</h3>
+                    <p>One of the most useful debugging techniques for generic code is to observe the behavior of a single instantiation. Suppose:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn largest&lt;T: PartialOrd + Copy&gt;(items: &amp;[T]) -&gt; Option&lt;T&gt; {
+    if items.is_empty() {
+        return None;
+    }
+    let mut max = items[0];
+    for &amp;item in items {
+        if item &gt; max {
+            max = item;
+        }
+    }
+    Some(max)
+}</code></pre>
+                    <p>Call it with <code>i32</code> and with <code>char</code>. The two calls produce two instantiations of <code>largest</code>. Set a source-line breakpoint on the line <code>if item &gt; max</code>. The breakpoint fires for each instantiation in turn.</p>
+                    <p>Inspect the values at that line:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable item max</code></pre>
+                    <p>The values are shown with their types. When the breakpoint is in the <code>i32</code> instantiation, you see integers. When it is in the <code>char</code> instantiation, you see characters. This is how you observe type-specific behavior at the same source line.</p>
+                    <p>If the same breakpoint fires twice at the same source line with different types, the second stop is the second instantiation. You can distinguish them by the type shown in the frame info or by inspecting the argument values.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="trait-bounds-as-debugging-clues">
+                    <h3 id="trait-bounds-as-debugging-clues">Trait bounds as debugging clues</h3>
+                    <p>When a function has a trait bound such as <code>T: PartialOrd + Copy</code>, the bound tells you what operations the generic code can perform. When debugging, this is a clue about what the compiled code will do: comparisons and copies.</p>
+                    <p>If a type implements a trait with unusual behavior—for example, a custom <code>PartialOrd</code> with non-standard ordering—the debugger will show the actual values but not the comparison logic. To understand the comparison, set a breakpoint inside the trait method’s implementation for that specific type.</p>
+                    <p>For example, if <code>item &gt; max</code> is behaving unexpectedly, set a breakpoint on the concrete implementation of <code>PartialOrd::gt</code> for the type in question. This is often the fastest way to see the comparison’s actual behavior.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="const-generics">
+                    <h3 id="const-generics">Const generics</h3>
+                    <p>Rust’s const generics allow generic parameters that are constant values, such as array sizes:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process_array&lt;const N: usize&gt;(values: [i32; N]) {
+    for value in values {
+        // ...
+    }
+}</code></pre>
+                    <p>The compiler generates one instantiation per distinct <code>N</code>. In the debugger, a breakpoint on <code>process_array</code> may resolve to all instantiations. The source-line breakpoint approach applies here as well: place the breakpoint on a specific line, and it will fire for each instantiation that reaches that line.</p>
+                    <p>Inspect the array size by looking at the frame information or by inspecting the array variable. Depending on LLDB’s configuration, the size may appear in the type name or in the array’s length field.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-closures">
+                <h2 id="debugging-closures">Debugging closures</h2>
+                <p>Closures can produce compiler-generated names and frames.</p>
+                <p>Do not depend on memorizing their internal names.</p>
+                <p>Instead:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>break at the source line
+→ step
+→ inspect values
+→ use bt</code></pre>
+                <p>Treat compiler-generated frames as implementation details unless you specifically need to investigate them.</p>
+
+                <section tabindex="0" aria-labelledby="what-closures-compile-into">
+                    <h3 id="what-closures-compile-into">What closures compile into</h3>
+                    <p>A closure in Rust is compiled into an anonymous struct that implements one or more of the <code>Fn</code>, <code>FnMut</code>, and <code>FnOnce</code> traits. The struct captures the variables the closure uses, and the closure’s body becomes the body of the <code>call</code> method of the corresponding trait implementation.</p>
+                    <p>For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let factor = 10;
+let multiply = |x| x * factor;</code></pre>
+                    <p>compiles into something like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>struct MultiplyClosure {
+    factor: i32,
+}
+
+impl Fn&lt;(i32,)&gt; for MultiplyClosure {
+    extern "rust-call" fn call(&amp;self, (x,): (i32,)) -&gt; i32 {
+        x * self.factor
+    }
+}</code></pre>
+                    <p>The exact structure is compiler-specific, but the pattern is consistent. A closure is a struct with captured fields, and its body is a method on that struct.</p>
+                    <p>In the debugger, the closure’s frame shows a compiler-generated name such as <code>main::{{closure}}</code> or <code>my_function::{{closure}}::{{closure}}</code>. The frame’s locals include the captured variables as fields of the closure struct. Inspecting the closure value shows the captured data.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="setting-breakpoints-in-closures">
+                    <h3 id="setting-breakpoints-in-closures">Setting breakpoints in closures</h3>
+                    <p>Because closures do not have stable names, name-based breakpoints on closures are unreliable. Use source-line breakpoints inside the closure body instead:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 12</code></pre>
+                    <p>If the closure is defined on that line, the breakpoint will fire when the closure is called. You can then inspect the closure’s captured variables and its arguments.</p>
+                    <p>A common pattern: closures are passed to iterator methods or thread constructors. When you break inside a closure, the backtrace shows the closure frame and the calling frame (often the iterator or thread machinery). Look for the frame of your own crate to understand the context in which the closure is being called.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="captured-variables-in-the-debugger">
+                    <h3 id="captured-variables-in-the-debugger">Captured variables in the debugger</h3>
+                    <p>Inside a closure’s frame, the captured variables are accessible as fields of the closure struct. Depending on the LLDB version and pretty-printers, you may see them as:</p>
+                    <ul>
+                        <li>Directly as locals named after the captured variables (<code>factor</code>).</li>
+                        <li>As fields of a compiler-generated struct (<code>self.factor</code> or <code>__0.factor</code>).</li>
+                        <li>Merged with the closure’s arguments in a way that requires careful inspection.</li>
+                    </ul>
+                    <p>In the well-supported case, <code>frame variable factor</code> gives you the captured value directly. In less well-supported cases, you may need to look at the closure’s internal structure to find the captured data. This is one of the areas where the debugger’s view is less convenient than the source’s.</p>
+                    <p>A practical workaround: when you are debugging a complex closure, temporarily refactor it into a named function that takes the captured variables as explicit arguments. This makes the closure’s behavior easier to inspect, at the cost of a small source change that you can revert once the bug is fixed.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="closures-and-move">
+                    <h3 id="closures-and-move">Closures and <code>move</code></h3>
+                    <p>A <code>move</code> closure takes ownership of the variables it captures. In the debugger, this means:</p>
+                    <ul>
+                        <li>The captured variables are moved into the closure’s struct.</li>
+                        <li>If you inspect the original variable after the closure was created, its value may be stale or uninitialized (as with any move).</li>
+                        <li>Inside the closure, the captured variables are owned by the closure and are valid.</li>
+                    </ul>
+                    <p>This is exactly the same pattern as for moved values in general. The debugger’s view is consistent with the source-level rules, with the caveat that moved-from memory may still show the old bytes.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-three-closure-traits">
+                    <h3 id="the-three-closure-traits">The three closure traits</h3>
+                    <p>A closure implements one or more of <code>Fn</code>, <code>FnMut</code>, and <code>FnOnce</code>, depending on how it uses its captured variables. This affects the debugger in the following ways:</p>
+                    <ul>
+                        <li><strong>Fn</strong>: The closure captures by shared reference. The captured values are read-only inside the closure. In the debugger, they are inspectable but immutable.</li>
+                        <li><strong>FnMut</strong>: The closure captures by mutable reference. The captured values can be modified. In the debugger, you can observe the mutation as you step through the closure.</li>
+                        <li><strong>FnOnce</strong>: The closure consumes the captured values. After the closure has been called, the captured values are gone. In the debugger, the closure itself may be invalid after its first call.</li>
+                    </ul>
+                    <p>When you are inspecting a closure in the debugger, remember which trait it implements. This tells you whether you should expect its captures to be read-only, mutable, or consumed.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-iterators">
+                <h2 id="debugging-iterators">Debugging iterators</h2>
+                <p>Iterator chains can be difficult to single-step because Rust may represent them as nested types and optimized code.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>items
+    .iter()
+    .filter(...)
+    .map(...)
+    .collect()</code></pre>
+                <p>A debugger may not provide a pleasant source-level experience for every intermediate stage.</p>
+                <p>A useful debugging technique is temporarily introducing named intermediate values:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let filtered = items.iter().filter(...);
+let mapped = filtered.map(...);
+let result = mapped.collect::&lt;Vec&lt;_&gt;&gt;();</code></pre>
+                <p>Now you have concrete source-level landmarks.</p>
+                <p>This is not a debugging failure.</p>
+                <p>It is making the program easier to observe.</p>
+
+                <section tabindex="0" aria-labelledby="why-iterator-chains-are-hard-to-debug">
+                    <h3 id="why-iterator-chains-are-hard-to-debug">Why iterator chains are hard to debug</h3>
+                    <p>An iterator chain is a composition of adapter types. Each adapter is a struct that wraps the previous adapter and adds behavior. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>items.iter().filter(predicate).map(transform).collect()</code></pre>
+                    <p>compiles into something like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Map {
+    inner: Filter {
+        inner: Iter { ... },
+        predicate: ...,
+    },
+    transform: ...,
+}.collect()</code></pre>
+                    <p>Each adapter is a distinct type with its own <code>next</code> method. When you step into the chain, the debugger descends into nested adapter types, showing frames such as <code>Map::next</code>, <code>Filter::next</code>, and <code>Iter::next</code>. This is technically informative but does not correspond to any single line of your source code.</p>
+                    <p>Understanding this structure helps you decide when to step into the chain and when to observe it from the outside.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="inspecting-an-iterator-chain">
+                    <h3 id="inspecting-an-iterator-chain">Inspecting an iterator chain</h3>
+                    <p>The most common problem with iterator chains is that they produce the wrong number of items, or produce items with wrong values. Two useful inspection strategies:</p>
+                    <ol>
+                        <li><strong>Inspect the result of <code>collect</code></strong>: Set a breakpoint on the line after the chain and inspect the collected result. If the result is wrong, this tells you that the bug is in the chain but not where.</li>
+                        <li><strong>Insert named intermediates</strong>: Split the chain into multiple bindings, then inspect each binding. This localizes the bug to a specific stage of the chain.</li>
+                    </ol>
+                    <p>The second technique is often the fastest. Instead of trying to step through nested adapter types, you observe the intermediate values directly:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let filtered: Vec&lt;_&gt; = items.iter().filter(...).collect();
+let mapped: Vec&lt;_&gt; = filtered.iter().map(...).collect();
+let result: Vec&lt;_&gt; = mapped;</code></pre>
+                    <p>Now set breakpoints at each of the three lines. If <code>filtered</code> is correct but <code>mapped</code> is wrong, the bug is in the <code>map</code> stage. If <code>filtered</code> is already wrong, the bug is in the <code>filter</code> stage. This is direct evidence about which stage is at fault.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-cost-of-named-intermediates">
+                    <h3 id="the-cost-of-named-intermediates">The cost of named intermediates</h3>
+                    <p>Named intermediates are not free. They typically allocate a new <code>Vec</code> at each stage, which changes the memory usage and possibly the performance of the program. This makes them unsuitable for production code, but they are excellent for debugging.</p>
+                    <p>A practical workflow:</p>
+                    <ol>
+                        <li>When a chain produces wrong output, temporarily refactor it into named stages.</li>
+                        <li>Debug using the named stages.</li>
+                        <li>Once the bug is identified, fix it.</li>
+                        <li>Refactor back into a single chain, using the same logic.</li>
+                    </ol>
+                    <p>The single chain is the production version; the named stages are the debugging version. Both express the same computation, but the debugging version makes it easier to observe.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="closure-frames-inside-iterators">
+                    <h3 id="closure-frames-inside-iterators">Closure frames inside iterators</h3>
+                    <p>When you step into an iterator chain, the debugger often ends up inside the closure you passed to <code>filter</code> or <code>map</code>. The frame for the closure shows its captured variables and its argument.</p>
+                    <p>For a <code>map</code> closure such as <code>|x| x * 2</code>, the argument <code>x</code> is the current element. Inspecting it tells you which element the closure is processing. If the closure returns the wrong value, you can see why by inspecting both the argument and the captured variables.</p>
+                    <p>For a <code>filter</code> closure such as <code>|&amp;&amp;n| n &gt; 3</code>, the argument is the current element (a double reference, hence <code>&amp;&amp;n</code>), and the closure returns a Boolean. Inspecting the argument tells you what was tested; inspecting the return value tells you whether the element was kept.</p>
+                    <p>Source-line breakpoints inside the closure body are the most reliable way to reach the closure. Once there, <code>frame variable</code> gives you the closure’s state.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="iterator-adapters-that-do-not-allocate">
+                    <h3 id="iterator-adapters-that-do-not-allocate">Iterator adapters that do not allocate</h3>
+                    <p>Some adapter methods do not allocate. For example, <code>take</code>, <code>skip</code>, <code>filter</code>, <code>map</code>, <code>enumerate</code>, and <code>zip</code> are lazy and produce new iterators without allocating. A chain of these can be stepped through, but the frames are nested adapters.</p>
+                    <p>Other methods do allocate. <code>collect</code>, <code>sum</code>, <code>fold</code>, <code>any</code>, and <code>all</code> are consuming methods that drive the iterator to completion. These methods appear as single frames and are easier to inspect because they have clear arguments and return values.</p>
+                    <p>The dividing line is: adapter methods return iterators (hard to debug), consuming methods return concrete values (easy to debug). For debugging, prefer to observe the boundary between adapters and consumers.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-example">
+                    <h3 id="a-worked-example">A worked example</h3>
+                    <p>Consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process(numbers: &amp;[i32]) -&gt; Vec&lt;i32&gt; {
+    numbers
+        .iter()
+        .filter(|&amp;&amp;n| n &gt; 5)
+        .map(|&amp;n| n * 2)
+        .collect()
+}
+
+fn main() {
+    let input = vec![1, 3, 5, 7, 9, 11];
+    let output = process(&amp;input);
+    println!("{:?}", output);
+}</code></pre>
+                    <p>The expected output is <code>[14, 18, 22]</code>. Suppose the program produces <code>[]</code>.</p>
+                    <p>Refactor the chain temporarily:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let filtered: Vec&lt;_&gt; = numbers.iter().filter(|&amp;&amp;n| n &gt; 5).collect();
+let mapped: Vec&lt;_&gt; = filtered.iter().map(|&amp;n| n * 2).collect();
+mapped
+</code></pre>
+                    <p>Set breakpoints on the <code>filtered</code> and <code>mapped</code> lines. Run. If <code>filtered</code> is empty, the bug is in the filter. If <code>filtered</code> is correct but <code>mapped</code> is empty, the bug is in the map.</p>
+                    <p>In this case, if the filter is wrong, inspect the closure’s argument:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable n</code></pre>
+                    <p>You may see <code>1</code>, which is the first element. The comparison <code>n &gt; 5</code> should be false for 1, so the element should be filtered out. That is correct behavior. Continue to the next element. If all elements are being filtered out, check the comparison.</p>
+                    <p>What you often find in real debugging is that the closure is comparing against the wrong value, or that the argument is a reference where a value was expected. The named intermediates make this observation possible without navigating the nested iterator structure.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-macros">
+                <h2 id="debugging-macros">Debugging macros</h2>
+                <p>Macros can obscure the source location.</p>
+                <p>If a macro expands into unexpected behavior:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>identify the macro call
+→ inspect the generated behavior
+→ locate the relevant expansion if necessary
+→ debug the resulting function</code></pre>
+                <p>For ordinary debugging, prefer the source-level macro invocation as the initial breakpoint.</p>
+                <p>Only investigate macro expansion when the expansion itself is the problem.</p>
+
+                <section tabindex="0" aria-labelledby="how-macros-affect-debug-info">
+                    <h3 id="how-macros-affect-debug-info">How macros affect debug info</h3>
+                    <p>Macros are expanded before compilation. The compiler sees the expanded code, not the macro invocation. Debug information maps the expanded code back to the macro invocation site as much as possible, but the mapping is imperfect.</p>
+                    <p>For a simple macro such as <code>println!</code> or <code>vec!</code>, the mapping is usually good. A breakpoint on the line containing the macro may fire inside the macro’s expansion, or it may not fire at all, depending on how the compiler attributes the expansion.</p>
+                    <p>For a complex procedural macro or a macro that generates control flow (such as a custom <code>try_</code> or an async state machine macro), the mapping can be very imperfect. The debugger’s frames may show compiler-generated functions whose names do not correspond to any source code you wrote.</p>
+                    <p>Understanding this limitation is the key to debugging macros effectively. You are not debugging the macro; you are debugging the code the macro expanded into. When that code is not visible in the source, the debugger’s view will be less useful than usual.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-declarative-macros">
+                    <h3 id="debugging-declarative-macros">Debugging declarative macros</h3>
+                    <p>Declarative macros (<code>macro_rules!</code>) are expanded by pattern matching on tokens. When they produce wrong behavior, the fastest way to understand them is often to see the expansion directly.</p>
+                    <p>Use <code>cargo expand</code> to view the expanded code:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo install cargo-expand
+cargo expand --lib</code></pre>
+                    <p>The expanded output is the source your macro produced. You can read it as ordinary Rust code, which is usually much easier to reason about than the macro itself.</p>
+                    <p>Once you have the expanded code, set breakpoints on its lines as if they were your own. The source location may show as the macro invocation, but the line numbers will correspond to the expansion.</p>
+                    <p>Note that the source locations in debug information for macro-generated code are often attributed to the macro invocation site, not to the expansion site. A breakpoint on the macro invocation may fire several times, once for each statement in the expansion, because the compiler attributes all of them to the same source location.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-procedural-macros">
+                    <h3 id="debugging-procedural-macros">Debugging procedural macros</h3>
+                    <p>Procedural macros run at compile time. They are not present in the binary you are debugging, because they have already done their work. To debug a procedural macro, you debug the macro’s expansion, not the macro itself.</p>
+                    <p>Two approaches:</p>
+                    <ul>
+                        <li><strong>Expand and inspect</strong>: Use <code>cargo expand</code> to see the output, and debug the generated code as regular Rust.</li>
+                        <li><strong>Debug the macro implementation</strong>: If the macro itself is producing wrong code, the right tool is not LLDB but a macro-debugging workflow, such as printing the generated tokens, or writing unit tests for the macro that compare its output against expected tokens.</li>
+                    </ul>
+                    <p>LLDB is not the right tool for debugging macro implementations. It is the right tool for debugging the code that macros produce, once they produce it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-panic-macro">
+                    <h3 id="the-panic-macro">The <code>panic!</code> macro</h3>
+                    <p>The <code>panic!</code> macro expands into a call to the panic function with a formatted message. When you stop on a panic, the frame immediately below the panic machinery is usually the function that contains the <code>panic!</code> invocation. This is the frame to inspect.</p>
+                    <p>Because <code>panic!</code> is so common, its expansion is well-supported by debug info. Breakpoints on the line containing <code>panic!</code> usually work correctly, and the backtrace shows the panic site with the correct source location.</p>
+                    <p>Other macros that generate panic-like behavior (such as <code>assert_eq!</code> or <code>unwrap</code>) work similarly. The expansion is visible enough in debug info to identify the source location.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-try-operator-as-a-macro-like-construct">
+                    <h3 id="the-try-operator-as-a-macro-like-construct">The <code>?</code> operator as a macro-like construct</h3>
+                    <p>Strictly speaking, the <code>?</code> operator is not a macro; it is a language construct. But it behaves like a macro in the sense that it expands into control flow that is not visible in the source. The expansion is roughly:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>match expr {
+    Ok(value) =&gt; value,
+    Err(e) =&gt; return Err(From::from(e)),
+}</code></pre>
+                    <p>When debugging code that uses <code>?</code>, you may see frames corresponding to this expansion. The frame for the function is your source-level function; the frames below it are the <code>From::from</code> conversion, if the error type is being converted.</p>
+                    <p>To inspect the error being propagated, set a breakpoint on the line after the <code>?</code> expression or inspect the caller’s return value. The conversion itself is often inlined, so you may not see a separate frame for it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-to-refactor-to-avoid-macros">
+                    <h3 id="when-to-refactor-to-avoid-macros">When to refactor to avoid macros</h3>
+                    <p>If a macro is causing more debugging difficulty than it is worth, consider refactoring the code to use a regular function or a trait instead. Macros are powerful, but they are not always the best choice. A regular function has a stable name, a clear stack frame, and full debug info support. A macro has none of these.</p>
+                    <p>The main cases where macros are worth the cost:</p>
+                    <ul>
+                        <li><strong>Syntax extensions</strong>: Macros that extend the language, such as <code>println!</code> or <code>vec!</code>. There is no non-macro equivalent.</li>
+                        <li><strong>Code generation for data structures</strong>: Macros that generate boilerplate for many types, such as serde’s derive. The boilerplate would otherwise be large and repetitive.</li>
+                        <li><strong>Domain-specific languages</strong>: Macros that implement a small DSL, such as the <code>html!</code> macro in the Yew framework.</li>
+                    </ul>
+                    <p>In other cases, a function or a trait is usually preferable. If you find yourself debugging a macro’s expansion more often than the code that uses it, that is a sign the macro may be doing too much work for a compile-time construct.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-combined-worked-example">
+                <h2 id="a-combined-worked-example">A combined worked example</h2>
+                <p>To bring the ideas in this chapter together, consider a small program that uses all the features at once:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>trait Formatter {
+    fn format(&amp;self, value: i32) -&gt; String;
+}
+
+struct Decimal;
+
+impl Formatter for Decimal {
+    fn format(&amp;self, value: i32) -&gt; String {
+        format!("{}", value)
+    }
+}
+
+fn process&lt;F: Formatter&gt;(items: &amp;[i32], formatter: &amp;F) -&gt; Vec&lt;String&gt; {
+    items
+        .iter()
+        .filter(|&amp;&amp;n| n &gt; 0)
+        .map(|&amp;n| formatter.format(n))
+        .collect()
+}
+
+fn main() {
+    let items = vec![-1, 0, 1, 2, 3];
+    let formatter = Decimal;
+    let result = process(&amp;items, &amp;formatter);
+    println!("{:?}", result);
+}</code></pre>
+                <p>This program uses a trait (<code>Formatter</code>), a generic function (<code>process</code>), a closure in <code>filter</code>, a closure in <code>map</code>, and an iterator chain. It is a small but representative example of what real Rust debugging involves.</p>
+                <p>Suppose you want to know why the output is not what you expect. Several debugging questions arise:</p>
+                <ol>
+                    <li><strong>Is the filter working?</strong> Set a source-line breakpoint inside the filter closure. Inspect the argument <code>n</code>. You should see values in order: -1, 0, 1, 2, 3. The closure should return false for -1 and 0, and true for 1, 2, 3.</li>
+                    <li><strong>Is the map working?</strong> Set a source-line breakpoint inside the map closure. Inspect <code>n</code>. It should be 1, 2, 3 (the values that passed the filter). The closure calls <code>formatter.format(n)</code> and returns the result.</li>
+                    <li><strong>Is the trait method being called correctly?</strong> Set a breakpoint on <code>Decimal::format</code>. It should fire for each element. Inspect <code>value</code> to confirm the value being formatted.</li>
+                    <li><strong>What type is F?</strong> Inside <code>process</code>, <code>F</code> is <code>Decimal</code>. The debugger’s frame info shows the concrete type. If there were multiple implementations, you could confirm which one is being used by setting breakpoints on each.</li>
+                    <li><strong>Is the iterator chain producing the right number of items?</strong> Set a breakpoint on the <code>collect</code> line. Inspect the resulting <code>Vec&lt;String&gt;</code>. It should have three elements.</li>
+                </ol>
+                <p>Working through this exercise with the debugger is more educational than reading about it. Each question corresponds to a specific breakpoint, a specific inspection, and a specific answer from the running program.</p>
+                <p>Once you have completed the exercise, try introducing a bug: for example, change the filter to <code>n &gt; 1</code> instead of <code>n &gt; 0</code>. Re-run the exercise. Notice which breakpoint reveals the bug and which do not. This kind of deliberate experimentation builds debugging intuition faster than reading about it.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-traits-generics-closures-iterators-macros">
+                <h2 id="rust-2024-notes-on-traits-generics-closures-iterators-macros">Rust 2024 notes</h2>
+                <p>A few Rust 2024 specifics affect debugging these features.</p>
+
+                <section tabindex="0" aria-labelledby="async-closures-and-debugging">
+                    <h3 id="async-closures-and-debugging">Async closures and debugging</h3>
+                    <p>Rust 2024 stabilizes async closures, which combine the closure and async state machine features. An async closure is a closure that returns a future. In the debugger, its frame structure reflects both: the closure struct holds captured variables, and the future returned by the closure is a separate state machine.</p>
+                    <p>When you break inside an async closure, the frame shows the closure’s captures and the future’s current state. This is analogous to debugging an <code>async fn</code> with captured variables. The same techniques apply: source-line breakpoints inside the closure body, inspection of captured variables, and stepping through the awaited operations.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="impl-trait-in-argument-position-and-2024">
+                    <h3 id="impl-trait-in-argument-position-and-2024"><code>impl Trait</code> in argument position and 2024</h3>
+                    <p>Rust 2024 continues to support <code>impl Trait</code> in argument position, which is syntactic sugar for a generic parameter. From a debugging perspective, this is identical to writing the generic parameter explicitly: the compiler monomorphizes, producing one instantiation per concrete type. Breakpoints on the function behave as they would on any generic function.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-iterator-traits">
+                    <h3 id="edition-2024-and-iterator-traits">Edition 2024 and iterator traits</h3>
+                    <p>The 2024 edition introduces a new trait, <code>IntoIterator</code> for arrays, which allows arrays to be used directly in <code>for</code> loops without needing a reference or an explicit <code>.iter()</code> call. From a debugging perspective, the compiled code is similar to the reference case; the main difference is that the loop consumes the array by value. Breakpoints inside the loop behave the same way.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-and-macros">
+                    <h3 id="unsafe-extern-and-macros"><code>unsafe extern</code> and macros</h3>
+                    <p>Macros that generate FFI code must generate <code>unsafe extern</code> blocks in Rust 2024. This is a source-level change. From a debugging perspective, the compiled code is the same as before: the foreign functions are called with the C ABI, and breakpoints inside the FFI boundary behave as they always have. The difference is purely in the source syntax you would use if you expanded the macro manually.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="gen-blocks-and-gen-fn">
+                    <h3 id="gen-blocks-and-gen-fn"><code>gen</code> blocks and <code>gen fn</code></h3>
+                    <p>Rust 2024 stabilizes <code>gen</code> blocks and <code>gen fn</code>, which are syntactic forms for creating iterators and generators. From a debugging perspective, a <code>gen</code> block compiles into a state machine similar to an async state machine: each <code>yield</code> is a suspension point, and the compiler generates a struct with a state field to track progress.</p>
+                    <p>When you debug a <code>gen</code> block, the frame structure looks similar to an async state machine. The <code>yield</code> points are analogous to <code>.await</code> points. The application-level frames are the important ones; the state machine’s internal poll method is the compiler-generated layer.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch15">
+                <h2 id="summary-ch15">Summary</h2>
+                <p>In this chapter, we covered debugging Rust’s most expressive features:</p>
+                <ul>
+                    <li><strong>Traits</strong>: static dispatch compiles to direct calls; dynamic dispatch compiles to vtable lookups. For dynamic dispatch, set breakpoints on candidate implementations and let the one that fires identify the runtime path.</li>
+                    <li><strong>Trait objects</strong>: the concrete type is erased in the source. Inspect the vtable for low-level evidence, or set breakpoints on each candidate implementation for runtime evidence.</li>
+                    <li><strong>Generics</strong>: monomorphization produces one instantiation per concrete type. Breakpoints on generic functions may resolve to all instantiations or one. Source-line breakpoints work reliably in all cases.</li>
+                    <li><strong>Closures</strong>: compiled into structs with captured fields. Name-based breakpoints are unreliable; use source-line breakpoints inside the closure body. Captured variables appear as fields of the closure struct.</li>
+                    <li><strong>Iterators</strong>: chains compile to nested adapter types. Stepping through them is rarely productive. Insert named intermediates to localize the bug to a specific stage of the chain.</li>
+                    <li><strong>Macros</strong>: expanded before compilation. Debug the code the macro produced, not the macro itself. Use <code>cargo expand</code> to see the expansion. Breakpoints on macro invocations may fire multiple times or at unexpected locations.</li>
+                </ul>
+                <p>The unifying principle: for each feature, understand what it compiles into. Then you know what the debugger can show and what it cannot. This understanding turns confusing debug sessions into predictable ones.</p>
+                <p>In the next chapter, we turn to a lower-level set of features: <code>unsafe</code> code, raw memory, and FFI. These require a different style of debugging, focused on memory and pointers rather than on source-level control flow.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-14.html">← Chapter 14</a>
+            <a class="nav-next" href="./chapter-16.html">Chapter 16 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

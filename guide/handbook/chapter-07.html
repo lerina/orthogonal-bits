@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 7: Polymorphism and Lifetimes – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch7-heading">
+            <h1 id="ch7-heading">Chapter 7: Polymorphism and Lifetimes</h1>
+
+            <p>We have spent the previous chapters defining concrete types such as structs and enums. These are excellent for modeling specific data, but real-world software often requires more flexibility! In real-world scenarios, we often need functions that can accept different types of data as long as they behave in a certain way.</p>
+            <p>In computer science, this concept is known as <strong>polymorphism</strong>. In Rust, we achieve this primarily through <strong>traits</strong> and <strong>generics</strong>. We will also cover <strong>lifetimes</strong>, which are a special form of generics that ensures references remain valid while our code becomes more abstract.</p>
+
+            <section tabindex="0" aria-labelledby="ad-hoc-polymorphism-traits">
+                <h2 id="ad-hoc-polymorphism-traits">Ad hoc polymorphism: defining behavior with traits</h2>
+                <p>The first step toward writing flexible code is changing how we view our data. Instead of focusing on the concrete details of what a type <em>is</em>, we focus on what it <em>can do</em>. In Rust, traits are used to define shared behaviors for different types, functioning as a contract between the programmer and the compiler. When a struct indicates that it implements a trait, it commits to providing the specific functions outlined by that trait. While similar to “interfaces” in other languages, Rust traits offer distinctive capabilities and flexibility, which we will examine in this section.</p>
+
+                <section tabindex="0" aria-labelledby="defining-a-trait">
+                    <h3 id="defining-a-trait">Defining a trait</h3>
+                    <p>To define a trait, we use the trait keyword followed by the name we want to give it. Inside the curly brackets, we list the method signatures that describe how the types that implement this trait will behave. Imagine we are creating software for a classic Italian coffee bar. We have a variety of machines, such as a simple Moka pot and a professional espresso machine. Although they are physically very different, they share one fundamental function: they both brew coffee. To represent this shared ability, we can define a trait called Brew:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>pub trait Brew {
+    // We only define the signature here, followed by a semicolon.
+    // We do not define the body implementation yet.
+    fn extract(&amp;self) -> String;
+}</code></pre>
+                    <p>In the definition, we return a String type. While this requires memory allocation, we choose it here to allow flexibility for formatting dynamic messages (such as specific temperatures) without complicating the code with lifetimes yet.</p>
+                    <p>Leaving the body empty and ending with a semicolon clearly indicates to the compiler that any type meant to be a Brew type needs to provide its own implementation of the extract method. The compiler diligently enforces this rule to help ensure you remember to implement the method properly.</p>
+
+                    <section tabindex="0" aria-labelledby="method-signatures-vs-default-implementations">
+                        <h4 id="method-signatures-vs-default-implementations">Method signatures versus default implementations</h4>
+                        <p>A trait does not always require the user to write new code from scratch. Sometimes, a behavior is so typical that we can provide a <strong>default implementation</strong> directly within the trait definition itself. This is incredibly useful for keeping your code <strong>DRY</strong> (which stands for <strong>Don’t Repeat Yourself</strong>). If a type implements the trait, it automatically gets this default behavior without needing to write a single line of code for it. However, if a specific type requires a unique approach, it can simply override the default.</p>
+                        <p>For example, let’s add a clean method to our Brew trait. For most simple coffee makers (such as the Moka pot), cleaning is just a matter of rinsing them with water. We can make this the default. However, a professional espresso machine has a complex self-cleaning cycle that requires a specific implementation:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs
+pub trait Brew {
+    fn extract(&amp;self) -> String;
+    // This is a default implementation.
+    // If a type doesn't define this method, it gets this version automatically.
+    fn clean(&amp;self) -> String {
+        String::from("Cleaning with a simple hot water rinse.")
+    }
+}
+
+pub struct Moka;
+pub struct EspressoMachine;
+
+impl Brew for Moka {
+    fn extract(&amp;self) -> String {
+        String::from("Bubbling up some coffee...")
+    }
+    // We don't implement clean() here.
+    // Moka automatically uses the default "hot water rinse".
+}
+
+impl Brew for EspressoMachine {
+    fn extract(&amp;self) -> String {
+        String::from("Pressurizing water...")
+    }
+    // We override the default because this machine is complex.
+    fn clean(&amp;self) -> String {
+        String::from("Running automatic descaling program.")
+    }
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="abstracting-behavior">
+                        <h4 id="abstracting-behavior">Abstracting behavior</h4>
+                        <p>Designing with traits encourages a fresh perspective. Instead of focusing on what specific data a type contains, think about the actions it can perform. This approach is really empowering because it separates your functions from the nitty-gritty details of the types they work with. Imagine a computer sending a document to a peripheral: what it truly needs is a device that can print. It doesn’t matter whether it’s a laser printer, an inkjet, or a thermal receipt printer, as long as the device can handle the Print action, the computer can send the job effortlessly. By focusing on these capabilities rather than specific structs, your code becomes more adaptable, making it easy to support new types in the future without having to overhaul your existing logic.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="implementing-traits">
+                        <h4 id="implementing-traits">Implementing traits</h4>
+                        <p>Defining a trait is just the beginning! To really make it work for us, we need to apply it to our specific data types. This step is known as “implementing” the trait. We do this using the impl TraitName syntax for TypeName, which clearly signals to the compiler that our particular struct has the behaviors outlined by the trait.</p>
+
+                        <section tabindex="0" aria-labelledby="implementing-custom-types">
+                            <h5 id="implementing-custom-types">Implementing custom types</h5>
+                            <p>Now, let’s return to our coffee example. We start by defining a simple Moka struct:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs
+pub struct Moka {
+    pub size: u8, // Capacity in cups
+}</code></pre>
+                            <p>At this stage, our Moka struct is just a container for data. It doesn’t know how to behave like a coffee maker yet. If we try to call the extract method immediately, the Rust compiler will stop us:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs
+fn main() {
+    let pot = Moka { size: 3 };
+    // This causes an error!
+    let coffee = pot.extract();
+}</code></pre>
+                            <p>The compiler will produce an error similar to this: no method named 'extract' found for struct 'Moka' in the current scope. To fix this and make the Moka usable as a coffee maker, we must explicitly implement the Brew trait we defined earlier. Notice how the following implementation logic is specific to the Moka pot. It mentions bubbling on a stove, whereas an espresso machine implementation would likely involve high pressure:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs
+impl Brew for Moka {
+    fn extract(&amp;self) -> String {
+        format!("Bubbling on the stove... ready to serve {} cups of rich coffee!", self.size)
+    }
+}</code></pre>
+                            <p>Now that the trait is implemented, the compiler knows exactly what to do when we call .extract().</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="the-orphan-rule">
+                            <h5 id="the-orphan-rule">The orphan rule (where implementation is allowed)</h5>
+                            <p>One important restriction to keep in mind is the <strong>orphan rule</strong>. We already mentioned it in the previous chapter, but let’s look at the details. Rust has a helpful rule: <em>you cannot implement an external trait on an external type</em>. This keeps things orderly. Think of it like renovation laws: you’re free to renovate your own house (a local type) or build a new structure if you have the blueprints (a local trait). But, just like you can’t walk up to a public monument and repaint it, you can’t add an external trait to an external type. This rule is in place to prevent chaos and ensure that different crates don’t conflict by adding the same method to a standard type, such as Vec.</p>
+                            <p>There is a workaround: the <strong>Newtype pattern</strong>. If you encounter this restriction, there is a standard way to circumvent it: use a wrapper type (often called the Newtype pattern). By wrapping the external type (such as Vec&lt;i32&gt;) inside a struct defined in your crate (such as struct MyVec(Vec&lt;i32&gt;)), Rust treats the wrapper as a <strong>local type</strong>, allowing you to implement any trait you want:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs
+use std::fmt;
+
+// --- ALLOWED SCENARIOS ---
+
+// 1. Implementing a LOCAL trait (Brew) on an EXTERNAL type (String).
+// This is allowed because we own the trait "Brew".
+impl Brew for String {
+    fn extract(&amp;self) -> String {
+        String::from("Pour-over coffee")
+    }
+}
+
+// 2. Implementing an EXTERNAL trait (Display) on a LOCAL type (Moka).
+// This is allowed because we own the type "Moka".
+impl fmt::Display for Moka {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Moka pot size {}", self.size)
+    }
+}
+
+// --- FORBIDDEN SCENARIO (The Orphan Rule) ---
+/*
+// ERROR: Implementing an EXTERNAL trait on an EXTERNAL type.
+// You cannot implement Display for Vec&lt;i32&gt; because you own neither!
+impl fmt::Display for Vec&lt;i32&gt; {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Vector content...")
+    }
+}
+*/
+
+// --- THE SOLUTION (Newtype Pattern) ---
+// We wrap the external type in a local struct.
+pub struct MyIntList(pub Vec&lt;i32&gt;);
+// Now MyIntList is LOCAL, so we can implement Display!
+impl fmt::Display for MyIntList {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -> fmt::Result {
+        // We access the wrapped Vec using .0
+        write!(f, "List: {:?}", self.0)
+    }
+}</code></pre>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="trait-objects">
+                    <h3 id="trait-objects">Trait objects</h3>
+                    <p>Sometimes we need to work with multiple different types at the same time, treating them all as a single abstract concept. Imagine a waiter holding a tray. The tray might contain a cappuccino, an espresso, and a latte. These are all different physical drinks, but they all share the property of being a “beverage.” In Rust, a standard collection such as a Vec is restricted to holding only one specific type. You cannot mix a Moka struct and an EspressoMachine struct in the same list because they have different sizes in memory. To solve this, Rust provides <strong>trait objects</strong>.</p>
+                    <p><strong>Note</strong>: We will cover Smart Pointers such as 'Box' in detail in <a href="./chapter-11.html"><em>Chapter 11</em></a>. For now, just know that 'Box' allows us to store these different types in the same list by putting them behind a pointer of a fixed size.</p>
+                    <p>Using the dyn keyword allows us to instruct the compiler to ignore the specific concrete type (such as Moka) and treat the item merely as “something that implements this trait.” This is called a trait object. Because the compiler cannot know the size of a trait object in advance (it could be a tiny Moka pot or a massive espresso machine), we must access it through a pointer:</p>
+                    <ul>
+                        <li><strong>Box&lt;dyn Brew&gt;</strong>: We use Box when we want to <strong>own</strong> the data. Box puts the specific struct on the heap and gives us a predictable pointer size on the stack.</li>
+                        <li><strong>&amp;dyn Brew</strong>: We can also use a simple reference if we only need to <strong>borrow</strong> the trait object without taking ownership.</li>
+                    </ul>
+                    <p>In the following example, we use Box so we can store mixed types inside a single vector:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs
+// 1. Setup: Let's define the types and implementations first.
+// (Moka was defined previously, but we define EspressoMachine here).
+
+pub struct Moka { pub size: u8 }
+impl Brew for Moka {
+    fn extract(&amp;self) -> String {
+        format!("Bubbling up {} cups.", self.size)
+    }
+}
+
+pub struct EspressoMachine { pub pressure: u8 }
+impl Brew for EspressoMachine {
+    fn extract(&amp;self) -> String {
+        format!("Extracting at {} bars of pressure.", self.pressure)
+    }
+}
+
+// 2. The Main Event: Storing mixed types using Trait Objects.
+fn main() {
+    // We can store mixed types because they both satisfy 'dyn Brew'.
+    // 'Box' puts the data on the heap, so the vector just stores pointers
+    // of the same size.
+    let machines: Vec&lt;Box&lt;dyn Brew&gt;&gt; = vec![
+        Box::new(Moka { size: 6 }),
+        Box::new(EspressoMachine { pressure: 9 }),
+    ];
+    for machine in machines {
+        println!("Coffee shop says: {}", machine.extract());
+    }
+}</code></pre>
+
+                    <section tabindex="0" aria-labelledby="static-vs-dynamic-dispatch">
+                        <h4 id="static-vs-dynamic-dispatch">Static versus dynamic dispatch</h4>
+                        <p>When you use trait objects with dyn, you are choosing to use what is called <strong>dynamic dispatch</strong>. This means the compiler does not know exactly which method to call at compile time. Instead, it creates code that finds the correct function at runtime using a specialized table of function pointers called a <strong>vtable</strong> (which stands for <strong>virtual method table</strong>).</p>
+                        <p>This flexibility comes with a performance cost. In standard generics (<strong>static dispatch</strong>), the compiler generates a specific version of the function for each concrete type, often “inlining” the code directly to maximize speed. With dynamic dispatch, the compiler cannot do this. Every time you call a method on a trait object, the program must perform a pointer dereference to look up the address in the vtable before it can execute the code. This extra layer of indirection not only adds a small runtime overhead but, more importantly, prevents the compiler from performing aggressive optimizations such as inlining. However, despite the overhead, dynamic dispatch is the only way to achieve true polymorphism, allowing you to store different types (such as Moka and EspressoMachine) in the same container.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="parametric-polymorphism-generics">
+                <h2 id="parametric-polymorphism-generics">Parametric polymorphism: abstracting with generics</h2>
+                <p>Now that we’ve explored how traits set shared behaviors, let’s move on to the next exciting concept: generics. Think of generics as a way to make your code adaptable, regardless of the types you’re working with, much like having a versatile tool that fits many jobs.</p>
+                <p>In computer science, this idea is known as <strong>parametric polymorphism</strong>, and you may have encountered it in action with collections such as Vec&lt;i32&gt; and Vec&lt;String&gt;. These collections employ the same logic for adding, removing, or accessing items, regardless of the data type contained within. Thanks to generics, we can create functions and structs with placeholders for types, which means we write the code once and it’s ready to handle any data type you need. Isn’t that wonderful?</p>
+
+                <section tabindex="0" aria-labelledby="the-problem-of-duplication">
+                    <h3 id="the-problem-of-duplication">The problem of duplication</h3>
+                    <p>Let’s consider why generics can be so helpful. Imagine you’re working on a function that finds the biggest number in a list of integers. You name it largest_i32. Later, you realize you also need the same function for a list of characters. So, you copy the code, change the signature, and rename it largest_char. The core of the function remains the same, iterating through the list and comparing values, but now you have two separate pieces of code just because the input types are different. This kind of repetition can be tedious and prone to mistakes. Plus, if you find a bug in your logic later, you’ll need to fix it in every version you’ve copied, which can be a real hassle.</p>
+
+                    <section tabindex="0" aria-labelledby="writing-the-same-function-for-different-types">
+                        <h4 id="writing-the-same-function-for-different-types">Writing the same function for different types</h4>
+                        <p>To see why generics are important, consider the alternative. Imagine you need to write a function that finds the largest number in a list of integers. You create a function called largest_i32. Later, you realize you need the same functionality for a list of characters. You copy and paste the code, change the signature, and rename it largest_char. The core of the function remains the same. It goes through the list and compares values. But you’re forced to duplicate the code just because the input types are different. This method is tedious and prone to errors. If you find a bug later, you have to remember to fix it in every copy.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// We are forced to write two functions with identical logic
+fn largest_i32(list: &amp;[i32]) -> i32 {
+    let mut largest = list[0];
+    for &amp;item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}
+
+fn largest_char(list: &amp;[char]) -> char {
+    let mut largest = list[0];
+    for &amp;item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="the-t-type-parameter">
+                        <h4 id="the-t-type-parameter">The &lt;T&gt; type parameter</h4>
+                        <p>To avoid this duplication, we use a placeholder instead of a specific type. In Rust, this is declared using angle brackets containing a type parameter, usually named T. Think of T as a variable, but for types rather than values. When defining the function, we specify that it works for any T type rather than just integers or characters. We add &lt;T&gt; immediately after the function name, which signals to the compiler that T is a generic type. It will be replaced with a specific type, such as i32 or String, later when the function is called:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// We read this as: "largest is a function generic over some type T"
+fn largest&lt;T&gt;(list: &amp;[T]) -> T {
+    let mut largest = list[0];
+    for &amp;item in list {
+        // NOTE: This specific line will cause a compiler error right now!
+        // We will explain why and fix it in the next section.
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="bounded-parametric-polymorphism-trait-bounds">
+                    <h3 id="bounded-parametric-polymorphism-trait-bounds">Bounded parametric polymorphism (trait bounds)</h3>
+                    <p>This idea serves as a welcoming bridge, linking traits and generics seamlessly. While generics give us the freedom to accept any type, we sometimes want to make sure that the type we choose has specific abilities.</p>
+
+                    <section tabindex="0" aria-labelledby="limiting-generics-with-traits">
+                        <h4 id="limiting-generics-with-traits">Limiting generics with traits (T: Trait)</h4>
+                        <p>If you tried to compile the largest function from the previous section, you would encounter an error. The compiler complains because the greater-than operator, &gt;, is not available for every possible type in the universe. For example, it makes no sense to ask whether one generic <em>file handle</em> is mathematically larger than another.</p>
+                        <p>To fix this, we need to restrict the generic T type. We must tell the compiler that we only accept types that know how to be compared. We do this using <strong>trait bounds</strong>. By changing the signature to fn largest&lt;T: PartialOrd + Copy&gt;(...), we indicate that T can be any type that implements the PartialOrd trait for comparison and the Copy trait, so we can move the value out of the slice:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs
+// We restrict T: It must be comparable (PartialOrd) and copyable (Copy)
+// We return Option&lt;T&gt; to handle the case where the list is empty.
+fn largest&lt;T: PartialOrd + Copy&gt;(list: &amp;[T]) -> Option&lt;T&gt; {
+    if list.is_empty() {
+        return None;
+    }
+    let mut largest = list[0];
+    for &amp;item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    Some(largest)
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="the-where-clause-for-complex-constraints">
+                        <h4 id="the-where-clause-for-complex-constraints">The where clause for complex constraints</h4>
+                        <p>Sometimes, a single function requires several generic types, each with its own set of traits. Writing all of this within the angle brackets can make the function signature quite lengthy and difficult to follow. It starts to resemble a crowded legal disclaimer rather than a neat and clear function definition. Luckily, Rust offers a helpful solution with the where clause. This enables you to place constraints at the end of the signature, separating the function name and arguments from the specific type requirements. As a result, the code becomes easier to scan and understand:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt::{Debug, Display};
+
+// Hard to read: The bounds clutter the function name
+fn compare_prints&lt;T: Display + Clone, U: Clone + Debug&gt;(t: &amp;T, u: &amp;U) { }
+
+// Easier to read: The bounds are moved to the 'where' clause
+fn compare_prints&lt;T, U&gt;(t: &amp;T, u: &amp;U)
+where
+    T: Display + Clone,
+    U: Clone + Debug,
+{
+    // Function body...
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="returning-types-that-implement-traits">
+                        <h4 id="returning-types-that-implement-traits">Returning types that implement traits</h4>
+                        <p>We can also use traits in return positions. Instead of returning a concrete type such as i32 or String, we can declare that a function returns impl Trait. This indicates to the caller that they will receive some type that implements the specified trait, but they don’t need to know exactly which one. This is especially useful when working with complex types such as iterators or closures, where writing out the full type signature can be difficult or impossible. It’s similar to a vending machine: you press a button for soda, and you get a can. You don’t need to know the specific brand or manufacturing details, only that it satisfies the Drinkable interface:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt::Display;
+
+// The caller doesn't know this is a String, only that it can be displayed.
+fn get_status() -> impl Display {
+    "System All Green"
+}
+
+// NOTE: This feature has a limit!
+// You cannot return distinct types conditionally.
+// This will NOT compile because the compiler needs one concrete type hidden behind the trait.
+fn invalid_return(flag: bool) -> impl Display {
+    if flag {
+        "Success" // This is a &amp;str
+    } else {
+        100       // This is an i32
+    }
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="monomorphization">
+                    <h3 id="monomorphization">Monomorphization</h3>
+                    <p>Performance can sometimes be a worry when working with high-level abstractions. In many programming languages, generic code may lead to some runtime overhead because the program needs to frequently verify the type of data it handles. Rust avoids this entirely through a process called <strong>monomorphization</strong>. This term originates from Greek, meaning “single form.” It refers to the process the compiler uses to transform your versatile, generic code into specific machine instructions. Instead of relying on one generic function that attempts to manage everything at runtime, the compiler decomposes it into specialized functions during compilation.</p>
+
+                    <section tabindex="0" aria-labelledby="how-rust-optimizes-polymorphism-zero-cost">
+                        <h4 id="how-rust-optimizes-polymorphism-zero-cost">How Rust optimizes polymorphism (zero-cost)</h4>
+                        <p>The result of this process is what we call a <strong>zero-cost abstraction</strong>. When you compile your code, Rust examines every instance where you used a generic function and generates a separate version of that function for the specific types you actually used. If you call a generic function with an integer and later with a float, the compiler silently creates two separate copies of that function in the binary. This means your generic code runs exactly as fast as if you had manually copied and pasted the function for each type. You get the benefits of clean, abstract code without any performance cost during execution.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="lifetimes-polymorphism-for-scope">
+                <h2 id="lifetimes-polymorphism-for-scope">Lifetimes: polymorphism for scope</h2>
+                <p>And now we have finally arrived at the topic that keeps many new Rustaceans up at night: lifetimes. Often cited as the single hardest concept to grasp in the language, lifetimes are the secret sauce that allows Rust to manage memory safely without a garbage collector. If you’ve heard horror stories about <em>fighting the borrow checker</em>, this is usually the battlefield, but rest assured: the logic behind it is more straightforward than it seems.</p>
+
+                <section tabindex="0" aria-labelledby="the-necessity-of-lifetimes">
+                    <h3 id="the-necessity-of-lifetimes">The necessity of lifetimes</h3>
+                    <p>Lifetimes are more than just a syntax rule; they are a key part of how Rust keeps your memory safe without needing a garbage collector. Their primary role is to prevent <strong>dangling references</strong>, which occur when a program attempts to use data that has already been deleted or modified. In languages such as C or C++, this can often lead to crashes and security vulnerabilities because the compiler may allow you to access memory that’s no longer valid. Rust helps prevent these problems by ensuring that every reference remains valid for as long as it’s needed.</p>
+
+                    <section tabindex="0" aria-labelledby="the-dangling-reference-problem">
+                        <h4 id="the-dangling-reference-problem">The dangling reference problem</h4>
+                        <p>Lifetimes avoid a bug known as a dangling reference, which occurs when a program references data that has been deleted or reassigned. In C++, this can lead to crashes or security vulnerabilities because pointers direct to invalid memory locations. Rust prevents this by disallowing references to variables that no longer exist after a function finishes, thereby ensuring that references remain valid and do not point to invalid data:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let reference_to_nothing;
+    {
+        let x = 5;
+        // Error: 'x' only lives inside this block
+        reference_to_nothing = &amp;x;
+    } // 'x' is dropped here
+    // This would crash if Rust allowed it!
+    println!("r: {}", reference_to_nothing);
+}</code></pre>
+                        <p>In this example, the x variable is created inside the inner set of curly brackets. This specific area where the variable is valid is known as its <strong>scope</strong>. In Rust, memory management is tied strictly to these scopes. As soon as the code execution reaches the closing bracket, }, of the inner block, x goes out of scope. When this happens, Rust automatically performs a cleanup process called <strong>dropping</strong>. Dropping means that the value of 5 is removed from memory, and the resources it occupied are returned to the system. Consequently, reference_to_nothing is left holding a reference to a memory address that no longer contains valid data. If Rust allowed us to run the final println!, we would be trying to read garbage memory, which leads to crashes or unpredictable bugs. The compiler catches this lifetime mismatch immediately.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="how-the-borrow-checker-validates-scopes">
+                        <h4 id="how-the-borrow-checker-validates-scopes">How the borrow checker validates scopes</h4>
+                        <p>To ensure that references are valid, the Rust compiler uses a component called the <strong>borrow checker</strong>. This acts like a strict auditor that runs during compilation. It compares the scope of a variable (how long it lives) with the scope of any references to it. If the borrow checker sees that a reference tries to outlive the data it points to, it stops the compilation immediately. This prevents the program from ever running with invalid pointers:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs
+fn main() {
+    let r;                // ---------+-- 'a (Outer scope: Long duration)
+    {                     //           |
+        let x = 5;        // -+-- 'b   | (Inner scope: Short duration)
+        r = &amp;x;           //  |       |
+    }                     // -+       | &lt;--- 'b ends here (x is dropped)
+    println!("r: {}", r); //           |
+}                         // ---------+ &lt;--- 'a ends here
+
+// Error: The reference 'r' has lifetime 'a, but refers to 'x' which has lifetime 'b.
+// Because the scope 'b is shorter (ends earlier) than 'a, 'r' is left pointing to invalid memory.</code></pre>
+                        <p>In this diagram, the vertical lines represent the duration, or scope, of each variable. We label the outer scope 'a and the inner scope 'b. Visually, you can see that 'b is strictly shorter than 'a. This creates a conflict because r (which lives for the long duration, 'a) tries to hold a reference to x (which only exists for the short duration, 'b). When the inner scope, 'b, ends, x is dropped, but r is still alive and trying to look at it. Rust forbids this: the data being referenced must always live at least as long as the reference itself.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="generic-lifetime-annotations">
+                    <h3 id="generic-lifetime-annotations">Generic lifetime annotations</h3>
+                    <p>In most cases, Rust manages lifetimes automatically, so you don’t need to worry about them. However, the compiler sometimes cannot infer reference lifetimes automatically. This often occurs when a function takes multiple references and returns one. In such cases, the compiler is unsure whether the returned reference borrows from the first or second argument. Because it checks function signatures rather than implementation, we need to assist it by explicitly specifying the lifetimes.</p>
+
+                    <section tabindex="0" aria-labelledby="the-a-syntax">
+                        <h4 id="the-a-syntax">The &lt;’a&gt; syntax</h4>
+                        <p>Lifetime annotations differ slightly from the generic types we saw earlier. They always begin with an apostrophe ('). The names are arbitrary, so you could call a lifetime 'pizza if you wanted to. However, the Rust community prefers very short, lowercase names such as 'a, 'b, and 'c. These declarations are enclosed in angle brackets, just like generic types. It’s very important to understand that adding these annotations doesn’t change how your code runs. It doesn’t make a variable live longer. Instead, it labels the relationships between the lifetimes of different references so the compiler can verify them:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>&amp;i32          // a reference
+&amp;'a i32       // a reference with an explicit lifetime 'a
+&amp;'a mut i32   // a mutable reference with an explicit lifetime 'a</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="annotating-functions-holding-references">
+                        <h4 id="annotating-functions-holding-references">Annotating functions holding references</h4>
+                        <p>Let’s examine a practical example where this is necessary. Imagine a function that takes in two string slices and gives back the longer one. If you try to compile this without annotations, Rust will gently remind you with an error. The compiler notices that the function returns a reference, but it’s not quite sure whether that reference belongs to the first or second argument. This can be a bit confusing because the two inputs might have different lifespans. To clarify, we introduce a generic lifetime, 'a, and specify it for both the input parameters and the return type. This signature tells Rust: “There is some lifetime, 'a, that both x and y satisfy.” In practice, when you call this function, Rust determines 'a to be the overlap of the two input scopes. This means the returned reference is guaranteed to be valid only as long as the <strong>shorter</strong> of the two inputs:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// We declare 'a and say that x, y, and the return value all share this lifetime.
+// Crucially, this means the return value is valid only as long as the
+// SHORTER of the two input lifetimes.
+fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -> &amp;'a str {
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="the-relationship-between-input-and-output-lifetimes">
+                        <h4 id="the-relationship-between-input-and-output-lifetimes">The relationship between input and output lifetimes</h4>
+                        <p>When we specify the same lifetime, 'a, for multiple parameters, we’re basically setting a shared constraint based on where those references live. Think of 'a as representing the <em>overlap</em> (or intersection) of all the input lifetimes. So, if you pass in a reference that lasts the whole program and another that only exists briefly in a small part of the code, the return value will be limited to that small part. This is the contract we sign with the compiler. We promise that the returned reference will not outlive the shortest-lived input, making sure we never accidentally access data that has been cleaned up.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="lifetimes-in-data-structures">
+                        <h4 id="lifetimes-in-data-structures">Lifetimes in data structures</h4>
+                        <p>Until now, we have only defined structs that own their data. For example, a struct containing a String or Vec&lt;i32&gt; type is straightforward because the struct and its data are created and destroyed together. However, in some cases, it is more efficient for a struct to store a reference to data managed by another entity. This situation is common when creating parsers or views, where copying large text blocks is undesirable. Since the struct does not own the data, the compiler requires assurance that the struct won’t outlive the referenced data. We ensure this safety by including lifetime annotations in the struct definition.</p>
+
+                        <section tabindex="0" aria-labelledby="structs-with-references">
+                            <h5 id="structs-with-references">Structs with references</h5>
+                            <p>To define a struct that contains a reference, we need to add a lifetime annotation in two places:</p>
+                            <ul>
+                                <li>First, we declare the lifetime parameter inside angle brackets immediately after the struct name.</li>
+                                <li>Second, we assign that lifetime to the specific field that holds the reference.</li>
+                            </ul>
+                            <p>This creates a binding contract. It informs the compiler that an instance of this struct cannot outlive the data it points to. If the original data is dropped (cleaned up from memory) while this struct is still trying to use it, the compiler will instantly flag an error. This guarantees you never accidentally access “dead” data or dangling pointers:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs
+// This struct holds a reference, so it needs a lifetime 'a
+struct ImportantExcerpt&lt;'a&gt; {
+    part: &amp;'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmael. Some years ago...");
+    // The instance 'first_sentence' cannot outlive 'novel'
+    let first_sentence = ImportantExcerpt {
+        part: &amp;novel[0..15],
+    };
+    // If 'novel' were dropped here, 'first_sentence' would become invalid.
+}</code></pre>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="the-impl-block-for-lifetime-bound-structs">
+                            <h5 id="the-impl-block-for-lifetime-bound-structs">The impl block for lifetime-bound structs</h5>
+                            <p>When you decide to add methods to a struct that holds references, the syntax might seem a bit repetitive initially because you see the lifetime annotation twice. However, this is necessary because we are separating <strong>declaration</strong> from <strong>usage</strong>. First, we must write impl&lt;'a&gt; to <strong>declare</strong> the lifetime parameter. This tells the compiler, “I am about to use a generic lifetime symbol named 'a inside this block.” Second, we write Highlight&lt;'a&gt; to <strong>use</strong> that specific lifetime, applying it to the struct we are targeting. Since the lifetime is part of the struct’s type identity, we cannot implement methods for just Highlight; we must implement them for Highlight&lt;'a&gt;:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Highlight&lt;'a&gt; {
+    part: &amp;'a str,
+}
+
+// 1. impl&lt;'a&gt;: We DECLARE the lifetime parameter here so the compiler knows it exists.
+// 2. Highlight&lt;'a&gt;: We USE it here to select the specific struct type.
+impl&lt;'a&gt; Highlight&lt;'a&gt; {
+    fn announce(&amp;self) {
+        println!("Attention to: {}", self.part);
+    }
+}</code></pre>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="advanced-lifetime-concepts">
+                    <h3 id="advanced-lifetime-concepts">Advanced lifetime concepts</h3>
+                    <p>We have discussed the strict syntax where we manually label every reference. However, if this were always necessary for every function, writing Rust would become extremely tedious. Luckily, the language includes smart features to automatically handle the most common patterns. Now, we will explore how the compiler can often determine lifetimes on its own without help. We will also look at a special reserved lifetime for data that remains valid for the entire duration of the program.</p>
+
+                    <section tabindex="0" aria-labelledby="lifetime-elision-rules">
+                        <h4 id="lifetime-elision-rules">Lifetime elision rules</h4>
+                        <p>In early versions of Rust, every function that used a reference needed explicit lifetime annotations. This made the code cluttered and repetitive. The Rust team saw that developers kept writing the same lifetime patterns repeatedly. To fix this, they embedded these common patterns directly into the compiler as <strong>elision rules</strong>. This isn’t magic; it’s just a set of predictable assumptions. For example, if your function takes exactly one reference as input, the compiler automatically assigns that same lifetime to the output reference. You only need to add annotations manually when there is ambiguity, such as when a function accepts multiple references and the compiler can’t determine which one is being returned:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// What you write (Elided):
+// This works automatically ONLY because there is exactly one input reference.
+// If there were multiple inputs, elision would fail.
+fn get_part(s: &amp;str) -> &amp;str { ... }
+
+// What the compiler actually understands (Explicit):
+fn get_part&lt;'a&gt;(s: &amp;'a str) -> &amp;'a str { ... }</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="the-static-lifetime-static">
+                        <h4 id="the-static-lifetime-static">The static lifetime (‘static)</h4>
+                        <p>The language reserves a special lifetime name called 'static, which means the data stays accessible throughout the whole program run. Interestingly, you’ve been using this lifetime quite often without realizing it. For example, every string literal, such as "Hello World", is stored right in the program’s binary. Since this binary is loaded into memory whenever the program runs, those strings are always available for you to use. Therefore, they have the 'static lifetime. While this can be helpful, it’s important not to overuse it. Many new Rust programmers try to fix lifetime errors by making everything 'static, but this is usually not the right approach. It tends to hide the real problem by keeping data in memory longer than necessary instead of properly managing how references are used.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This string data is baked into the executable.
+// It is valid from the moment the program starts until it exits.
+let s: &amp;'static str = "I have a static lifetime.";</code></pre>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="applied-polymorphism-a-project">
+                <h2 id="applied-polymorphism-a-project">Applied polymorphism: a project</h2>
+                <p>We have analyzed the tools individually; now it is time to see them in action. In this chapter, we’ve explored the three main pillars of Rust’s flexible architecture: traits, generics, and lifetimes. While it’s helpful to understand each one on its own, their true strength really shines when you see them working together. In everyday Rust development, you’ll find these concepts usually mixing and matching rather than standing alone.</p>
+                <p>In this final section, we’ll bring together everything we’ve learned into a single, clear example. This will demonstrate how these features work together to enable us to write code that is safe, fast, and easy to reuse. You’ll often come across generic structs constrained by traits that hold references with specific lifetimes, and understanding how they fit into this bigger picture will make your coding journey even more rewarding.</p>
+
+                <section tabindex="0" aria-labelledby="building-a-zero-copy-configuration-parser">
+                    <h3 id="building-a-zero-copy-configuration-parser">Building a zero-copy configuration parser</h3>
+                    <p>To illustrate these abstract ideas clearly, we will create a “zero-copy configuration loader.” The aim is to develop a system that accepts input from any source, such as custom text formats or JSON, without requiring the core logic to be rewritten. This involves traits to define the common behavior. Additionally, we want it to be highly efficient. Rather than creating new strings for each configuration key, which consumes extra memory, the configuration struct should directly reference the original input data. This particular requirement necessitates using lifetimes to guarantee safety. Additionally, we aim for the system to be adaptable to any type of configuration structure, which calls for generics.</p>
+
+                    <section tabindex="0" aria-labelledby="defining-the-capability-the-parse-trait">
+                        <h4 id="defining-the-capability-the-parse-trait">Defining the capability (the Parse trait)</h4>
+                        <p>Let’s start by setting up the interface in a clear and straightforward way. We want a simple method to turn raw text into a structured Rust object, no matter the format. To achieve this, we’ll define a trait called Parse. Think of this trait as a kind of agreement: any type that adopts it must include a parse method. This method takes in a string slice with the raw data and produces an instance of that type. It’s also important that we specify a lifetime, 'a, on the trait itself. This detail is essential for our zero-copy approach, as it informs the compiler that the created object might hold references directly to the input string, sharing their lifecycles:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// We define a lifetime 'a so the returned Self can hold references to 'input'
+trait Parse&lt;'a&gt; {
+    fn parse(input: &amp;'a str) -> Self;
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="abstracting-the-input-using-generics">
+                        <h4 id="abstracting-the-input-using-generics">Abstracting the input (using generics)</h4>
+                        <p>Now that we have this trait, we can build a function around it that’s really versatile. We’re aiming for a single loader function that can handle any kind of configuration, whether it’s for a database, a web server, or something else. That’s where generics really come in handy. So, we’ll create a function called load_configuration, but instead of tying it to a specific struct, we’ll make it work with any T type. Of course, we can’t just accept any type; we need to set some rules. We do this by adding a trait bound, making sure T implements our Parse trait. This way, we know that every type passing through this function will have the parse method we need to turn a string into a struct:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function works for ANY type T that implements Parse
+// The &lt;'a&gt; ensures that the returned T cannot outlive the input string.
+fn load_configuration&lt;'a, T&gt;(input: &amp;'a str) -> T
+where
+    T: Parse&lt;'a&gt;,
+{
+    println!("Loading configuration...");
+    T::parse(input)
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="the-safety-guarantee">
+                        <h4 id="the-safety-guarantee">The safety guarantee</h4>
+                        <p>Because we linked the 'a lifetime of the input string to the T: Parse&lt;'a&gt; trait bound, Rust enforces a strict safety contract. If we try to drop the original input string while holding onto the configuration struct, the compiler will stop us:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function works for ANY type T that implements Parse
+// The &lt;'a&gt; ensures that the returned T cannot outlive the input string.
+fn load_configuration&lt;'a, T&gt;(input: &amp;'a str) -> T
+where
+    T: Parse&lt;'a&gt;,
+{
+    println!("Loading configuration...");
+    T::parse(input)
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="validating-references-integrating-lifetimes">
+                        <h4 id="validating-references-integrating-lifetimes">Validating references (integrating lifetimes)</h4>
+                        <p>Finally, we put the logic into a concrete struct. We create a ServerConfig struct that keeps references to the input string, so we avoid copying the data into new String objects. This is where the lifetimes do their essential work. We need to declare 'a on the struct and incorporate it into the implementation block. This links the input of the parse function to the fields of the struct. By doing this, we achieve <strong>zero-copy parsing</strong>. Instead of allocating new memory on the heap for the address and port, our struct simply holds “views” (slices) into the original configuration string. If the original configuration string is released from memory, the compiler will ensure that our ServerConfig struct is immediately invalidated, ensuring that we never accidentally read a port number from memory after it has been cleared:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs
+struct ServerConfig&lt;'a&gt; {
+    address: &amp;'a str,
+    port: &amp;'a str,
+}
+
+impl&lt;'a&gt; Parse&lt;'a&gt; for ServerConfig&lt;'a&gt; {
+    fn parse(input: &amp;'a str) -> Self {
+        // We look for a space to separate the address and port.
+        // Example Input: "localhost 8080"
+        let index = input.find(' ').unwrap_or(input.len());
+        // ZERO-COPY MAGIC:
+        // We use slicing syntax to create references that point directly
+        // into the original 'input' memory buffer.
+        // No new strings are allocated here!
+        ServerConfig {
+            address: &amp;input[..index],       // Borrow the first part
+            port: &amp;input[index + 1..],      // Borrow the second part
+        }
+    }
+}</code></pre>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch7">
+                <h2 id="summary-ch7">Summary</h2>
+                <p>In this chapter, we moved beyond defining concrete types and explored how to write code that is flexible, reusable, and safe. We started by examining traits, which allow us to define shared behavior across different types. We learned that by focusing on what a type <em>can do</em> rather than what it <em>is</em>, we can write functions that accept any data capable of performing a specific action, similar to interfaces in other languages. We also covered the orphan rule for implementations and the trade-offs between static dispatch and dynamic dispatch using trait objects.</p>
+                <p>Next, we introduced generics as the primary tool for reducing code duplication. By using type parameters such as &lt;T&gt;, we saw how to write a single function or struct that works with any data type. We discussed how trait bounds allow us to restrict these generics to ensure they support the operations we need. Crucially, we learned about monomorphization, the compiler process that generates specific code for each concrete type, ensuring that our high-level abstractions act as “zero-cost” features that do not slow down our program at runtime.</p>
+                <p>Finally, we tackled lifetimes, which act as a form of polymorphism for scope. We saw that lifetimes are the mechanism the borrow checker uses to prevent dangling references and ensure memory safety. While the compiler often infers these for us through elision rules, we learned how to manually annotate functions and structs using syntax such as &lt;'a&gt; when relationships are ambiguous. By combining traits, generics, and lifetimes, we built a zero-copy configuration parser, demonstrating how these three pillars work together to create efficient and robust software.</p>
+                <p>With the powerful combination of traits and generics in our toolkit, we’re ready to tackle a question that puzzles many developers transitioning from languages such as Java or C++: Does Rust actually support object-oriented programming? The short answer is: yes.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignment-ch7">
+                <h2 id="questions-and-assignment-ch7">Questions and assignment</h2>
+
+                <section tabindex="0" aria-labelledby="questions-ch7">
+                    <h3 id="questions-ch7">Questions</h3>
+                    <ol>
+                        <li>In Rust, what is the primary purpose of a trait?</li>
+                        <li>What is the process called where the Rust compiler generates specific code for each concrete type used in a generic function?</li>
+                        <li>Explain the orphan rule regarding trait implementations.</li>
+                        <li>When defining a fn largest&lt;T&gt;(list: &amp;[T]) generic function, why might you need to add a bound such as T: PartialOrd?</li>
+                        <li>What is the specific problem that Rust’s lifetimes are designed to prevent?</li>
+                        <li>What is the correct syntax to declare a Highlight struct that holds a string slice reference with a lifetime, 'a?</li>
+                        <li>What does the keyword dyn indicate in Rust, for example, in Box&lt;dyn Brew&gt;?</li>
+                        <li>What is the 'static lifetime?</li>
+                        <li>Why do we sometimes need to specify lifetimes such as &lt;'a&gt; in function signatures?</li>
+                        <li>What is the purpose of the where clause in a generic function definition?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignment-ch7-the-universal-media-player">
+                    <h3 id="assignment-ch7-the-universal-media-player">Assignment: The universal media player</h3>
+                    <p>Your task is to build a simple system for a media application that can handle different types of content using the polymorphic tools we learned in this chapter:</p>
+                    <ol>
+                        <li><strong>Define a trait</strong>: Create a trait named Playable. It should have one method signature: play(&amp;self).</li>
+                        <li><strong>Create types</strong>: Define two distinct structs: AudioBook (with fields such as title and author) and VideoGame (with fields such as name and platform).</li>
+                        <li><strong>Implement behavior</strong>: Implement the Playable trait for both structs. The AudioBook implementation should print “Now playing book: [Title]...”, and the VideoGame implementation should print “Launching game: [Name]...”.</li>
+                        <li><strong>Write a generic function</strong>: Write a generic function named consume_media. It should accept any T type that implements Playable and call the .play() method on it.</li>
+                        <li><strong>Lifetimes (bonus)</strong>: Create a struct named Metadata&lt;'a&gt; that holds a reference to a string slice (e.g., a description). Instantiate this struct in your main function, pointing to a string literal, ensuring that the lifetime logic is valid.</li>
+                    </ol>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-06.html">← Chapter 6</a>
+            <a class="nav-next" href="./chapter-08.html">Chapter 8 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

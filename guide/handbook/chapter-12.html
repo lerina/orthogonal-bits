@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 12: Managing System Resources – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch12-heading">
+            <h1 id="ch12-heading">Chapter 12: Managing System Resources</h1>
+
+            <p>Welcome to <em>Chapter 12</em>!</p>
+            <p>Let’s look at another vital aspect of real-world applications: managing system resources. This includes things such as files on your disk, network connections, memory, and processor time. Engaging with these resources really helps your program run smoothly, reliably, and at its best quality!</p>
+            <p>You might wonder, “Why is managing resources so important?” As applications become complex or handle heavy workloads, efficient resource handling is very important. Here are a few reasons why:</p>
+            <ul>
+                <li><strong>Performance is key</strong>: Disk I/O and network communication are often much slower than CPU operations. Inefficient handling can make your program sluggish. Efficient management minimizes unnecessary operations.</li>
+                <li><strong>Stability and reliability</strong>: Applications can crash from resource leaks, such as when they run out of file handles or consume all memory. Rust’s ownership and RAII patterns help, but mindful design is essential.</li>
+                <li><strong>Scalability matters</strong>: Efficient resource management allows applications to support more users or larger datasets without failures.</li>
+                <li><strong>Good system citizenship</strong>: A well-behaved application limits its resource consumption to maintain system stability.</li>
+                <li><strong>Cost considerations</strong>: In cloud deployments, inefficient resource use can lead to higher operational costs. Using less CPU, memory, and bandwidth reduces bills.</li>
+            </ul>
+            <p>Rust offers tools and a strong type system for safe resource management. However, you, the developer, must grasp the core principles. In this chapter, we’ll get practical with common system resources:</p>
+            <ul>
+                <li><strong>File I/O</strong>: We’ll explore file operations, including reading, writing, and file manipulation, focusing on efficiency and safety.</li>
+                <li><strong>Network programming</strong>: You’ll learn how to create TCP servers and clients to handle connections and data exchange while improving performance with buffered I/O.</li>
+                <li><strong>Secure network communication</strong>: We’ll look at enhancing network security with TLS using relevant Rust crates.</li>
+                <li><strong>Best practices and performance</strong>: We’ll discuss resource management strategies, memory efficiency, optimizing file/network performance, and security.</li>
+                <li><strong>Real-world examples</strong>: We’ll review comprehensive examples simulating real-world applications, illustrating resource management techniques.</li>
+            </ul>
+            <p>By the end of this chapter, you’ll have a good understanding of how to manage system resources in Rust, which will help you build apps that are not only functional and fast but also reliable.</p>
+            <p>We’re excited to see you grow your skills and create amazing projects! Let’s dive into file I/O essentials!</p>
+
+            <section tabindex="0" aria-labelledby="working-with-files-in-rust-file-io">
+                <h2 id="working-with-files-in-rust-file-io">Working with files in Rust (file I/O)</h2>
+                <p>A program interacts with the system by reading and writing files, whether loading configuration, processing datasets, saving user work, or writing logs. File I/O (Input/Output) is essential. Rust’s standard library, especially the <code>std::fs</code> and <code>std::io</code> modules, offers safe tools for these operations. We’ll explore common file tasks while emphasizing Rust’s focus on error handling and resource management.</p>
+                <figure>
+<img src="https://placehold.co/800x400?text=File+I/O+Strategy+Flowchart" alt="Flowchart for selecting the appropriate file I/O strategy in Rust" />
+                    <figcaption>Figure 12.1: Flowchart for selecting the appropriate file I/O strategy in Rust (Placeholder)</figcaption>
+                </figure>
+
+                <section tabindex="0" aria-labelledby="core-concepts-of-file-operations">
+                    <h3 id="core-concepts-of-file-operations">Core concepts of file operations</h3>
+                    <p>Before we jump into code, let’s cover a few core ideas:</p>
+                    <ul>
+                        <li><strong>Files and paths</strong>: Files are identified by paths. Rust’s <code>std::path::Path</code> and <code>PathBuf</code> types help you work with file paths in a platform-independent way.</li>
+                        <li><strong>Opening files</strong>: To read or write, you first need to “open” a file. This operation can fail (e.g., file doesn’t exist, no permissions), so Rust’s file opening functions typically return a <code>Result</code>.</li>
+                        <li><strong>Reading and writing</strong>: Once a file is open, you can read bytes from it or write bytes to it. These operations can also fail (e.g., disk full, network error for a remote file system).</li>
+                        <li><strong>Closing files</strong>: When you’re done with a file, it should be closed to free up system resources and ensure any buffered data is written to disk. In Rust, files are often represented by types such as <code>std::fs::File</code>, which implement the <code>Drop</code> trait. This means when an instance of <code>File</code> goes out of scope, its <code>drop</code> method is automatically called, which handles closing the file. This RAII pattern is a great way to help prevent resource leaks by naturally tying a resource’s lifespan to the scope of its owning variable.</li>
+                        <li><strong>Buffering</strong>: I/O operations are often “buffered” for efficiency. Instead of processing one byte at a time, data is read/written in larger chunks to an in-memory buffer. This is commonly done using <code>std::io::BufReader</code> and <code>std::io::BufWriter</code>.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="reading-from-files">
+                    <h3 id="reading-from-files">Reading from files</h3>
+                    <p>Depending on your needs, there are several ways to read data from a file in Rust. Let’s see them.</p>
+
+                    <section tabindex="0" aria-labelledby="reading-an-entire-file-into-a-string">
+                        <h4 id="reading-an-entire-file-into-a-string">Reading an entire file into a string</h4>
+                        <p>If a file isn’t excessively large and you need all its content at once (perhaps it’s a configuration file or a small text document), the simplest way is often to read it directly into a string. The <code>std::fs::read_to_string</code> function is perfect for this.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs;
+use std::path::Path;
+use std::process;
+
+fn main() {
+    let sample_path = Path::new("my_sample_file.txt");
+
+    // --- Success Case: Read an existing file ---
+    // First, let's create a file to ensure it exists for our success case.
+    if let Err(e) = fs::write(sample_path, "Hello from a Rust test file!") {
+        eprintln!("Setup failed: Could not write to sample file: {}", e);
+        process::exit(1);
+    }
+
+    println!("--- Attempting to read '{}' ---", sample_path.display());
+    match fs::read_to_string(sample_path) {
+        Ok(contents) => {
+            println!("Success! File contents: '{}'", contents);
+        }
+        Err(e) => {
+            // This part shouldn't run if the file was created successfully.
+            eprintln!("Unexpected error reading the file: {}", e);
+        }
+    }
+
+    // Clean up the created file.
+    let _ = fs::remove_file(sample_path);
+
+    println!("\n--------------------------------\n");
+
+    // --- Failure Case: Try to read a non-existent file ---
+    let non_existent_path = Path::new("no_such_file.txt");
+    println!("--- Attempting to read '{}' ---", non_existent_path.display());
+    match fs::read_to_string(non_existent_path) {
+        Ok(_) => {
+            // This should not happen.
+            println!("Unexpectedly found a file that should not exist!");
+        }
+        Err(e) => {
+            // This is the expected outcome.
+            eprintln!("Correctly failed to read non-existent file. Error: {}", e);
+        }
+    }
+}
+
+use std::path::Path;
+use std::fs;
+
+fn safe_write(path: &amp;Path, content: &amp;str) {
+    if path.exists() {
+        // The file already exists. Decide what to do:
+        // 1. Return an error.
+        // 2. Ask the user for confirmation.
+        // 3. Do nothing.
+        eprintln!("Error: File '{}' already exists. Aborting to prevent overwrite.", path.display());
+    } else {
+        // The file doesn't exist, so it's safe to write.
+        if let Err(e) = fs::write(path, content) {
+            eprintln!("Error writing to new file: {}", e);
+        } else {
+            println!("Successfully wrote to new file '{}'", path.display());
+        }
+    }
+}</code></pre>
+                        <ul>
+                            <li><strong>Success case</strong>: We first use <code>fs::write</code> to ensure a sample file exists. Then, <code>fs::read_to_string(sample_path)</code> is called. The <code>match</code> statement handles the <code>Ok(contents)</code> variant by printing the file’s content.</li>
+                            <li><strong>Failure case</strong>: We define a path to a file we know doesn’t exist. We then call <code>fs::read_to_string</code> on this path. The <code>match</code> statement handles the expected <code>Err(e)</code> variant by printing the I/O error message. This demonstrates the robust error handling required when working with files.</li>
+                        </ul>
+                        <p><strong>A note on safe file writing: avoiding overwrites</strong><br>
+                        The <code>fs::write()</code> function (and <code>File::create()</code>) is really handy to use. However, it’s good to keep in mind that it will always overwrite the destination file if it already exists. In real, everyday applications, especially command-line tools, this might accidentally cause data loss if a user points it at an important file. To be safer, consider checking if the file exists before writing. You can do this easily with the <code>Path::exists()</code> method.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="reading-a-file-line-by-line">
+                        <h4 id="reading-a-file-line-by-line">Reading a file line by line</h4>
+                        <p>For larger files, or when you want to process data as it comes in without loading everything into memory, reading line by line is more efficient. This is typically done using <code>std::fs::File</code> to open the file, then wrapping it in a <code>std::io::BufReader</code> for efficient buffered reading, and then using the <code>.lines()</code> method.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader};
+use std::path::Path;
+
+fn main() -> io::Result&lt;()&gt; {
+    let log_file_path = Path::new("events.log");
+    // Setup: Create a dummy log file for the example.
+    fs::write(log_file_path, "INFO: User logged in.\nWARN: Disk space is low.\nERROR: Failed to fetch resource.")?;
+
+    println!("--- Reading '{}' line by line ---", log_file_path.display());
+
+    // 1. Open the file. The '?' operator propagates errors.
+    let file = File::open(log_file_path)?;
+
+    // 2. Wrap the file in a BufReader for efficient, buffered reading.
+    let reader = BufReader::new(file);
+
+    // 3. Use the .lines() method to get an iterator over each line.
+    for (index, line_result) in reader.lines().enumerate() {
+        // Each line is a Result, as I/O can fail mid-read.
+        // '?' will propagate the error if a line is malformed or read fails.
+        let line = line_result?;
+        // Process the line.
+        println!("[Line {}] Content: {}", index + 1, line);
+    }
+
+    // Cleanup: Remove the dummy file. .ok() ignores a potential error if removal fails.
+    fs::remove_file(log_file_path).ok();
+
+    Ok(())
+}</code></pre>
+                        <ul>
+                            <li><code>File::open(path)?</code>: First, we open the file, handling potential errors immediately with <code>?</code>.</li>
+                            <li><code>BufReader::new(file)</code>: We wrap the file in a <code>BufReader</code>. This is a key performance optimization, as it reads the file in larger chunks into an internal buffer, minimizing slow system calls.</li>
+                            <li><code>reader.lines()</code>: This method returns an iterator that yields each line from the buffer as an <code>io::Result&lt;String&gt;</code>. The result is necessary because an I/O error could occur at any point while reading.</li>
+                            <li><code>let line = line_result?;</code>: Inside the loop, we use <code>?</code> again to concisely get the string content from the result for each line. This makes the loop body clean while still handling potential errors correctly.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="writing-to-files">
+                    <h3 id="writing-to-files">Writing to files</h3>
+                    <p>Just like reading, Rust provides several ways to write data to files for different needs.</p>
+
+                    <section tabindex="0" aria-labelledby="writing-a-string-or-bytes-to-a-file">
+                        <h4 id="writing-a-string-or-bytes-to-a-file">Writing a string or bytes to a file</h4>
+                        <p>To write an entire string or a slice of bytes to a file, you can use <code>std::fs::write</code>. For more control, such as ensuring a file is created or truncated, you can open a file with <code>File::create</code> and then use its <code>write_all</code> method (from the <code>std::io::Write</code> trait).</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs; // For fs::write and fs::read_to_string (for verification)
+use std::fs::File; // For File::create
+use std::io::{self, Write}; // For the Write trait and its methods like write_all
+use std::io::ErrorKind;
+use std::path::Path;
+
+fn save_report_to_file(report_path: &amp;Path, report_content: &amp;str) -> io::Result&lt;()&gt; {
+    // Method 1: Using fs::write (convenient for simple, complete writes)
+    // This will create the file if it doesn't exist, or truncate and overwrite it if it does.
+    // fs::write(report_path, report_content)?;
+
+    // Method 2: Using File::create and write_all for more explicit control
+    // File::create opens a file in write-only mode.
+    // If the file already exists, its content is truncated (emptied).
+    // If it does not exist, a new file is created.
+    let mut output_file = File::create(report_path)?;
+    // The write_all method takes a byte slice (&amp;[u8]).
+    // It will attempt to write the entire buffer to the file.
+    output_file.write_all(report_content.as_bytes())?;
+
+    println!("Successfully wrote report to '{}'", report_path.display());
+    Ok(())
+}
+
+fn main() {
+    let my_report_path = Path::new("financial_report.txt");
+    let report_data = "Q1 Report:\nSales: $1,000,000\nExpenses: $400,000\nProfit: $600,000\n";
+
+    if let Err(e) = save_report_to_file(my_report_path, report_data) {
+        eprintln!("Error writing report to file: {}", e);
+    } else {
+        // Verify by reading it back
+        match fs::read_to_string(my_report_path) {
+            Ok(content_read) => {
+                println!("\n--- Report Read Back for Verification ---");
+                println!("{}", content_read);
+                println!("--- End of Verification ---");
+            }
+            Err(e) => eprintln!("Error reading back report for verification: {}", e),
+        }
+    }
+
+    // Clean up the dummy file
+    if let Err(e) = fs::remove_file(my_report_path) {
+        eprintln!("Cleanup error: Failed to remove report file '{}': {}", my_report_path.display(), e);
+    }
+}</code></pre>
+                        <ul>
+                            <li><code>std::fs::write(path, content)</code> is a quick and convenient function if you need to write the entire contents of a string or byte slice to a file in one go. It handles opening (creating or truncating) and closing the file for you.</li>
+                            <li><code>File::create(path)?</code> explicitly opens a file for writing. If the file exists, it is truncated (its current contents are erased). If it doesn’t exist, it’s created.</li>
+                            <li>The <code>Write</code> trait (brought into scope by <code>using std::io::Write;</code>) must be imported to use methods such as <code>write_all</code> on <code>File</code> instances.</li>
+                            <li><code>output_file.write_all(report_content.as_bytes())?</code> takes the content (converted to a byte slice via <code>.as_bytes()</code>) and attempts to write every byte to the file. The <code>?</code> handles any potential <code>io::Error</code>.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="appending-content-to-an-existing-file">
+                        <h4 id="appending-content-to-an-existing-file">Appending content to an existing file</h4>
+                        <p>Often, you don’t want to overwrite a file but instead add new content to its end. You need to open the file with specific options, typically using <code>std::fs::OpenOptions</code>.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::path::Path;
+
+/// Opens a file in append mode and writes a new line to it.
+/// Creates the file if it doesn't exist.
+fn append_line_to_file(file_path: &amp;Path, line_to_append: &amp;str) -> io::Result&lt;()&gt; {
+    // Use OpenOptions to configure how the file is opened.
+    let mut file = OpenOptions::new()
+        .append(true) // Set to append mode.
+        .create(true) // Create the file if it does not exist.
+        .open(file_path)?;
+
+    // writeln! is convenient for writing a string followed by a newline.
+    writeln!(file, "{}", line_to_append)?;
+    Ok(())
+}
+
+fn main() -> io::Result&lt;()&gt; {
+    let log_path = Path::new("application.log");
+    // Start with a clean slate for the example.
+    // .ok() converts Result to Option, so we ignore errors if file doesn't exist.
+    match std::fs::remove_file(log_path) {
+        Ok(_) => {
+            // Successfully removed the old file, we can optionally log this
+            println!("Note: Removed old log file for a clean run.");
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // This is perfectly fine, the file just didn't exist.
+            // We can do nothing and continue.
+        }
+        Err(e) => {
+            // This is an unexpected error (like permission denied).
+            // We'll print a warning but continue the program.
+            eprintln!(
+                "Warning: Could not remove old log file '{}': {}. Proceeding anyway.",
+                log_path.display(), e
+            );
+        }
+    }
+
+    println!("Preparing to write to '{}'...", log_path.display());
+
+    // Append several lines to the same file.
+    append_line_to_file(log_path, "[INFO] Application started.")?;
+    append_line_to_file(log_path, "[WARN] Low disk space detected.")?;
+    append_line_to_file(log_path, "[INFO] User 'admin' logged in.")?;
+
+    println!("Finished writing log entries.");
+
+    // Verify the final contents of the file.
+    let final_content = fs::read_to_string(log_path)?;
+    println!("\n--- Final Contents of '{}' ---", log_path.display());
+    println!("{}", final_content);
+    println!("--------------------------------");
+
+    // Clean up the created file.
+    fs::remove_file(log_path)?;
+    Ok(())
+}</code></pre>
+                        <ul>
+                            <li><code>OpenOptions::new()</code>: This builder creates a set of options for opening a file.</li>
+                            <li><code>create(true)</code>: This option will create the file if it does not already exist.</li>
+                            <li><code>.append(true)</code>: This is the key option. It ensures that when the file is opened for writing, the “cursor” is placed at the end of the file, so any new writes add to the existing content instead of overwriting it.</li>
+                            <li><code>writeln!(file, "...")?</code>: This macro conveniently writes a formatted string, followed by a newline, to the file. It returns an <code>io::Result&lt;()&gt;</code>, allowing the <code>?</code> operator to be used for concise error handling.</li>
+                            <li>The <code>main</code> function calls <code>append_line_to_file</code> multiple times, reads the file back to show the aggregated result, and then cleans up.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="manipulating-files-and-directories">
+                    <h3 id="manipulating-files-and-directories">Manipulating files and directories</h3>
+                    <p>The <code>std::fs</code> module provides functions for various file system operations beyond basic reading and writing. Key functions include the following:</p>
+                    <ul>
+                        <li><code>fs::create_dir("path/to/new_dir")</code>: Creates a directory, failing if it exists or a parent doesn’t.</li>
+                        <li><code>fs::create_dir_all("path/to/possibly/nested/dirs")</code>: Creates a directory and necessary parents if they don’t exist.</li>
+                        <li><code>fs::remove_dir("path/to/empty_dir")</code>: Removes an empty directory; fails if it’s not empty or doesn’t exist.</li>
+                        <li><code>fs::remove_dir_all("path/to/dir_with_contents")</code>: Removes a directory and all contents; use with caution!</li>
+                        <li><code>fs::remove_file("path/to/file.txt")</code>: Deletes a file.</li>
+                        <li><code>fs::rename("old/path/name.txt", "new/path/name.txt")</code>: Renames or moves a file/directory. Behavior may vary across platforms when moving between file systems.</li>
+                        <li><code>fs::copy("source_file.txt", "destination_file.txt")</code>: Copies contents from one file to another, failing if the destination exists unless using <code>OpenOptions</code> carefully.</li>
+                        <li><code>fs::read_dir("path/to/dir")</code>: Returns an iterator of entries (<code>DirEntry</code>) in the directory, with each item being a <code>Result&lt;DirEntry, io::Error&gt;</code>.</li>
+                        <li><code>fs::metadata("path/to/item")</code>: Retrieves metadata about a file/directory, including size, permissions, and modification times. Most functions return an <code>io::Result</code> to handle potential errors such as “path not found,” “permission denied,” or “directory not empty.”</li>
+                    </ul>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs;
+use std::path::{Path, PathBuf};
+use std::io;
+
+fn demonstrate_fs_operations() -> io::Result&lt;()&gt; {
+    let playground_dir = PathBuf::from("my_temp_playground");
+
+    // 1. Create a directory structure
+    if playground_dir.exists() {
+        // Clean up from previous run if necessary (use with caution)
+        fs::remove_dir_all(&amp;playground_dir)?;
+        println!("Cleaned up existing '{}'", playground_dir.display());
+    }
+    fs::create_dir_all(&amp;playground_dir)?;
+    println!("Created directory: '{}'", playground_dir.display());
+
+    let notes_subdir = playground_dir.join("notes");
+    fs::create_dir(&amp;notes_subdir)?;
+    println!("Created subdirectory: '{}'", notes_subdir.display());
+
+    // 2. Create and write to a file
+    let important_file = notes_subdir.join("important.txt");
+    fs::write(&amp;important_file, "Initial notes for the project.")?;
+    println!("Created and wrote to: '{}'", important_file.display());
+
+    let draft_file = notes_subdir.join("draft.md");
+    fs::write(&amp;draft_file, "# My Draft\n\nThis is a draft document.")?;
+    println!("Created and wrote to: '{}'", draft_file.display());
+
+    // 3. List directory contents and get metadata
+    println!("\nContents of '{}':", notes_subdir.display());
+    for entry_result in fs::read_dir(&amp;notes_subdir)? {
+        let entry = entry_result?; // Each entry itself is a Result
+        let path = entry.path();
+        let metadata = fs::metadata(&amp;path)?;
+        let entry_type = if metadata.is_dir() {
+            "DIR"
+        } else if metadata.is_file() {
+            "FILE"
+        } else {
+            "OTHER"
+        };
+        let size = if metadata.is_file() { metadata.len() } else { 0 };
+        println!(" - [{}] {} (Size: {} bytes)",
+            entry_type,
+            path.file_name().unwrap_or_default().to_string_lossy(),
+            size
+        );
+    }
+
+    // 4. Copy and Rename a file
+    let copied_file_path = playground_dir.join("important_backup.txt");
+    fs::copy(&amp;important_file, &amp;copied_file_path)?;
+    println!("\nCopied '{}' to '{}'", important_file.display(), copied_file_path.display());
+
+    let renamed_draft_path = notes_subdir.join("final_ideas.md");
+    fs::rename(&amp;draft_file, &amp;renamed_draft_path)?;
+    println!("Renamed '{}' to '{}'", draft_file.display(), renamed_draft_path.display());
+
+    // 5. Clean up (remove the entire playground directory)
+    // Use with caution in real applications!
+    fs::remove_dir_all(&amp;playground_dir)?;
+    println!("\nSuccessfully cleaned up and removed directory: '{}'", playground_dir.display());
+
+    Ok(())
+}
+
+fn main() {
+    if let Err(e) = demonstrate_fs_operations() {
+        eprintln!("A file system operation failed: {}", e);
+    }
+}</code></pre>
+                    <ul>
+                        <li>We use <code>PathBuf::from("...")</code> to create an owned path, which is often more flexible than <code>Path::new("...")</code> if you need to modify it (though <code>Path::new</code> is fine for fixed paths). <code>playground_dir.join("notes")</code> is a convenient, platform-aware way to construct sub-paths.</li>
+                        <li><code>fs::create_dir_all</code> is generally safer than <code>fs::create_dir</code> for ensuring a directory path exists, as it creates any necessary parent directories.</li>
+                        <li><code>fs::read_dir</code> returns an iterator over <code>io::Result&lt;DirEntry&gt;</code>. You must handle the result for the iteration itself and for each <code>DirEntry</code> obtained.</li>
+                        <li><code>fs::metadata</code> retrieves information about a file system item, such as its type (file/directory) and size.</li>
+                        <li>The example demonstrates creating directories, writing files, listing contents, copying, renaming, and finally, cleaning up by removing the top-level directory with <code>fs::remove_dir_all</code>.</li>
+                        <li>Always remember that these operations can fail for many reasons (permissions, path not found, disk issues), so robust error handling using the returned <code>Result</code> is essential.</li>
+                    </ul>
+                    <p><strong>Warning: Use <code>fs::remove_dir_all</code> with extreme caution!</strong><br>
+                    The <code>fs::remove_dir_all</code> function is a very powerful tool, but it can also be quite dangerous. Think of it like running <code>rm -rf</code> on the command line: it deletes a directory and all its contents at once, and there’s no way to undo it. In our example, we use it carefully to clean up a temporary directory we’ve just created. However, it’s really important to never use this function on a path that comes from a user input (such as from a command-line argument) unless you’ve added some safety checks first. In real-world applications, it’s a good idea to include a confirmation prompt (such as “Are you sure you want to delete this? [y/N]”) to help prevent accidental data loss.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="key-takeaways-for-file-io-in-rust">
+                    <h3 id="key-takeaways-for-file-io-in-rust">Key takeaways for file I/O in Rust</h3>
+                    <p>Working with files in Rust is designed to be both safe and reasonably ergonomic:</p>
+                    <ul>
+                        <li><strong>Error handling is explicit</strong>: Most file operations return <code>Result</code>, compelling you to address potential errors. This is essential to Rust’s reliability approach.</li>
+                        <li><strong>RAII for resource management</strong>: File objects (and <code>BufReader</code>/<code>BufWriter</code> wrapping them) implement the <code>Drop</code> trait. This means their <code>drop</code> method is automatically called when these objects go out of scope, which ensures the underlying file is closed. This reduces the risk of resource leaks such as unclosed file handles.</li>
+                        <li><strong>Buffering for efficiency</strong>: Use <code>std::io::BufReader</code> when reading files, especially line by line or in small chunks, and <code>std::io::BufWriter</code> when writing multiple small pieces of data. Buffering minimizes direct, costly system calls and can significantly improve performance.</li>
+                        <li><strong>Path types for portability</strong>: Utilize <code>std::path::Path</code> (a borrowed slice) and <code>PathBuf</code> (an owned, string-like type) for working with filesystem paths. These types provide methods for path manipulation (such as <code>.join()</code>) that are aware of platform-specific differences (such as the path separators <code>/</code> versus <code>\</code>), making your code more portable. It’s also important to distinguish between <strong>absolute paths</strong> (which start from a root, such as <code>/home/user</code> or <code>C:\Users</code>) and <strong>relative paths</strong> (such as <code>my_file.txt</code>), which are interpreted relative to your program’s current working directory. Rust’s standard library provides <code>std::env::current_dir()</code> to find this location, which is very helpful for resolving relative paths into absolute ones.</li>
+                    </ul>
+                    <p>File I/O is a common source of runtime issues in many applications (files not existing, permission problems, disk full conditions, etc.). Rust’s strong emphasis on handling <code>Result</code> and its RAII pattern for automatic resource cleanup are significant aids in writing programs that can manage these situations gracefully and reliably.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="network-programming-essentials-in-rust">
+                <h2 id="network-programming-essentials-in-rust">Network programming essentials in Rust</h2>
+                <p>Beyond manipulating files on a local disk, many applications require communication over a network, whether fetching data from a web API, interacting with a database server, or building a peer-to-peer application. Rust’s standard library offers solid primitives for network programming, especially for working with TCP and UDP protocols. In this section, we’ll focus on the fundamentals of TCP networking by building a simple client and server to demonstrate these concepts in action.</p>
+                <p>The following one is not a detailed explanation, but more of a refresher (there are entire books and materials about networking). Also, if you are already familiar with these concepts, feel free to skip the following section.</p>
+
+                <section tabindex="0" aria-labelledby="fundamentals-of-network-communication">
+                    <h3 id="fundamentals-of-network-communication">Fundamentals of network communication</h3>
+                    <p>Before diving into Rust code, let’s briefly touch upon some core networking concepts.</p>
+                    <ul>
+                        <li><strong>IP addresses and ports</strong>: To communicate, computers on a network need addresses. The IP address (such as <code>127.0.0.1</code> for your local machine, or <code>192.168.1.101</code> for a device on your local network) identifies a specific machine. Once you’ve found the machine, a port number (e.g., 80 for HTTP, 443 for HTTPS, or custom ports such as 7878) identifies a specific application or service running on that machine. An IP address plus a port number creates a unique endpoint for communication, often called a <strong>socket address</strong>.</li>
+                        <li><strong>TCP (Transmission Control Protocol)</strong>: This is one of the main protocols in the Internet protocol suite. TCP provides reliable, ordered, and error-checked delivery of a stream of bytes between applications running on hosts communicating via an IP network. It’s a connection-oriented protocol, meaning a connection must be established between two endpoints (e.g., a client and a server) before data can be exchanged. Think of it like a phone call – you dial, the other person answers, and then you can talk. This is what we’ll primarily use.</li>
+                        <li><strong>UDP (User Datagram Protocol)</strong>: Another core protocol, UDP is connectionless and provides a simpler, faster, but unreliable datagram (packet) service. It doesn’t guarantee delivery, order, or error checking in the same way TCP does. It’s more like sending a postcard – quick, but no guarantees. UDP is often used for applications where speed is critical and some data loss is acceptable (e.g., streaming video, online games). We won’t focus on UDP in this introductory section.</li>
+                        <li><strong>Sockets</strong>: A socket is an internal endpoint for sending or receiving data at a single node in a computer network. Conceptually, it’s one end of a two-way communication link between two programs running on the network. When you write network code, you’re typically interacting with socket APIs provided by the operating system (which Rust’s standard library wraps for you).</li>
+                        <li><strong>Client-server model</strong>: This is a common architectural pattern. A <em>server</em> is a program that waits for incoming connection requests from other programs, called <em>clients</em>. Once a connection is established, the client can send requests to the server, and the server processes these requests and sends back responses.</li>
+                    </ul>
+                    <p>With these basics in mind, let’s see how to build a simple TCP server in Rust.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="building-a-basic-tcp-server">
+                    <h3 id="building-a-basic-tcp-server">Building a basic TCP server</h3>
+                    <p>A TCP server’s primary job is to “listen” on a specific IP address and port for incoming client connection attempts. When a client tries to connect, the server “accepts” the connection, creating a new communication channel (another socket) specifically for that client.</p>
+                    <ul>
+                        <li><strong>Listening for connections with TcpListener</strong>: Rust’s <code>std::net::TcpListener</code> struct creates a TCP server socket that listens for incoming connections. You “bind” a <code>TcpListener</code> to a socket address (IP address and port).</li>
+                        <li><strong>Handling incoming client connections</strong>: Once bound, you can call the <code>incoming()</code> method on the <code>TcpListener</code>. This method returns an iterator that blocks until a new connection is established. Each item this iterator produces is a <code>Result&lt;TcpStream, std::io::Error&gt;</code>. A <code>TcpStream</code> represents the established connection with a client; you can use it to read and write data from that client.</li>
+                        <li><strong>Reading requests and sending responses</strong>: After accepting a connection and getting a <code>TcpStream</code>, you typically want to do the following:
+                            <ol>
+                                <li>Read the request sent by the client from the <code>TcpStream</code>.</li>
+                                <li>Process the request.</li>
+                                <li>Write a response back to the client via the same <code>TcpStream</code>.</li>
+                            </ol>
+                            The <code>Read</code> and <code>Write</code> traits (from <code>std::io</code>) are implemented by <code>TcpStream</code>, so you can use methods such as <code>read()</code> and <code>write_all()</code>.
+                        </li>
+                    </ul>
+                    <p>Let’s build a very simple “echo server.” It will listen for connections, read whatever the client sends, and then send the same data right back to the client.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::net::{TcpListener, TcpStream};
+use std::io::{Read, Write};
+
+/// Handles a single client connection by reading from the stream and echoing back.
+fn handle_client(mut stream: TcpStream) -> std::io::Result&lt;()&gt; {
+    println!("Accepted connection from: {}", stream.peer_addr()?);
+
+    // A buffer to hold incoming data.
+    // 1024 bytes (1KB) is a common size for simple examples. In a real
+    // application, buffer size is a trade-off:
+    // - Too small (e.g., 64 bytes) can lead to many system calls, which is inefficient.
+    // - Too large (e.g., 1MB) wastes memory, especially if you have many
+    //   concurrent connections.
+    // Common sizes for I/O buffers are often 4KB (4096) or 8KB (8192).
+    let mut buffer = [0u8; 1024]; // A buffer to hold incoming data
+
+    // Loop to read data and echo it back
+    loop {
+        // Read data from the client into the buffer
+        let bytes_read = stream.read(&amp;mut buffer)?;
+
+        // If read() returns 0 bytes, the client has closed the connection
+        if bytes_read == 0 {
+            println!("Client disconnected.");
+            return Ok(());
+        }
+
+        // Echo the received data back to the client
+        stream.write_all(&amp;buffer[..bytes_read])?;
+        println!("Echoed {} bytes.", bytes_read);
+    }
+}
+
+fn main() -> std::io::Result&lt;()&gt; {
+    let listener_address = "127.0.0.1:8080";
+    let listener = TcpListener::bind(listener_address)?;
+    println!("Simple Echo Server listening on {}", listener_address);
+    println!("Waiting for connections...");
+
+    // listener.incoming() is an iterator that blocks until a new connection arrives.
+    // This loop processes one client connection fully before accepting the next.
+    for stream_result in listener.incoming() {
+        match stream_result {
+            Ok(stream) => {
+                // A new client has connected successfully.
+                if let Err(e) = handle_client(stream) {
+                    eprintln!("Error handling client: {}", e);
+                }
+            }
+            Err(e) => {
+                // An error occurred while accepting a new connection.
+                eprintln!("Failed to accept incoming connection: {}", e);
+            }
+        }
+    }
+    Ok(())
+}</code></pre>
+                    <p>This server demonstrates the fundamental TCP server lifecycle:</p>
+                    <ul>
+                        <li><code>TcpListener::bind(address)?</code>: This binds the server to a local IP address and port, making it ready to accept connections.</li>
+                        <li><code>listener.incoming()</code>: This method returns an iterator that blocks and waits for new clients to connect. The <code>for</code> loop processes each incoming connection sequentially.</li>
+                        <li><code>handle_client(stream)</code>: This function contains the logic for a single client session.</li>
+                        <li><code>stream.read(&amp;mut buffer)?</code>: This reads data from the client into a buffer. It’s a blocking call that waits for data. If it returns <code>Ok(0)</code>, the client has closed the connection.</li>
+                        <li><code>stream.write_all(&amp;buffer[..bytes_read])?</code>: This takes the data that was just read (a slice of the buffer) and writes it back to the same client, effectively “echoing” it.</li>
+                        <li><strong>Error handling</strong>: The <code>?</code> operator is used for concise error handling. If any read or write operation fails, the error is propagated up, and a message is printed in <code>main</code>.</li>
+                        <li><strong>Limitation</strong>: This simple server handles clients one at a time. The main loop is blocked until <code>handle_client</code> finishes, preventing other clients from connecting. We’ll address this with threads in later examples.</li>
+                    </ul>
+                    <p><strong>Important: This server is sequential (one client at a time)</strong><br>
+                    It’s important to understand the limitation of this simple server: it is sequential. Because the <code>for stream_result in listener.incoming()</code> loop calls <code>handle_client(stream)</code> directly and waits for that function to finish before it can loop again to accept another connection, it can only handle one client at a time. Imagine the server is a bank with only one teller. Client 2 must wait for Client 1 to completely finish, even if Client 2’s request is very fast. If Client 1 is slow, the entire server is blocked for everyone else. The multi-threaded version we’ll build next is like opening more teller windows, which is far more responsive and efficient.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="creating-a-basic-tcp-client">
+                    <h3 id="creating-a-basic-tcp-client">Creating a basic TCP client</h3>
+                    <p>We now have a server that listens for connections, so we need a client program to initiate connections and exchange data. A TCP client actively connects to a TCP server at a specific address and port. Once connected, it can send requests and receive responses based on the server’s expected protocol. For our echo server, the “protocol” is simple: send some bytes and expect the same bytes back.</p>
+
+                    <section tabindex="0" aria-labelledby="connecting-to-a-server-with-tcpstreamconnect">
+                        <h4 id="connecting-to-a-server-with-tcpstreamconnect">Connecting to a server with <code>TcpStream::connect</code></h4>
+                        <p>The client also uses the <code>std::net::TcpStream</code> type used by the server to manage accepted connections to initiate a connection. The <code>TcpStream::connect(socket_address)</code> method establishes a TCP connection to the server at the specified <code>socket_address</code> (typically <code>127.0.0.1:8080</code>). This call is blocking by default: the client program pauses here until the connection is established or an error occurs (e.g., the server isn’t running, the address is wrong, or a firewall blocks the connection). Like most I/O operations in Rust, <code>TcpStream::connect</code> returns a <code>Result&lt;TcpStream, std::io::Error&gt;</code>. If successful, you get <code>Ok(stream)</code>, where <code>stream</code> is the <code>TcpStream</code> for communication. If it fails, you receive an <code>Err</code> with details about the connection failure.</p>
+
+                        <section tabindex="0" aria-labelledby="sending-data-and-receiving-responses">
+                            <h5 id="sending-data-and-receiving-responses">Sending data and receiving responses</h5>
+                            <p>Once the <code>TcpStream</code> is established, the client can send data to the server and receive responses. The <code>TcpStream</code> type implements the <code>std::io::Write</code> and <code>std::io::Read</code> traits, providing methods such as the following:</p>
+                            <ul>
+                                <li><code>write_all(&amp;buf)</code>: Sends data (a byte slice <code>&amp;[u8]</code>) to the server, attempting to send all bytes.</li>
+                                <li><code>read(&amp;mut buf)</code>: Reads data from the server into a buffer and returns the number of bytes read.</li>
+                                <li><code>flush()</code>: It’s essential to <code>flush()</code> the stream to ensure all buffered data is sent. While <code>write_all</code> often attempts this, explicit flushing can be necessary in some scenarios. The client and server must agree on message structure or delimiters, whether messages are a fixed size, terminated by a newline character, or prefixed by their length. In our echo server example, if the server reads until a newline or echoes chunks, the client needs to send data in a processable format and be ready to read the echoed responses similarly.</li>
+                            </ul>
+                            <p>Let’s write a client that connects to our echo server on port 8080, sends a few lines of text, and prints the echoed responses.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::net::TcpStream;
+use std::io::{self, Write, BufRead, BufReader};
+
+fn main() -> io::Result&lt;()&gt; {
+    let server_address = "127.0.0.1:8080";
+    println!("Connecting to echo server at {}...", server_address);
+
+    // 1. Connect to the server. The '?' operator handles connection errors concisely.
+    let mut stream = TcpStream::connect(server_address)?;
+    println!("Connected! Type a message and press Enter. Type 'quit' to exit.");
+
+    // 2. Prepare for reading and writing.
+    // We can clone the stream to have separate handles for reading and writing.
+    // This is a common pattern for more complex I/O.
+    let mut reader = BufReader::new(stream.try_clone()?);
+
+    loop {
+        // Read a line of input from the user's keyboard.
+        let mut input_line = String::new();
+        io::stdin().read_line(&amp;mut input_line)?;
+        let message_to_send = input_line.trim(); // Trim whitespace and newline
+
+        if message_to_send == "quit" || message_to_send.is_empty() {
+            break; // Exit loop if user types 'quit' or just presses Enter
+        }
+
+        // 3. Send the message to the server.
+        // We add a newline so the server's `read_line` can process it.
+        writeln!(stream, "{}", message_to_send)?;
+        stream.flush()?; // Ensure the buffered data is sent immediately.
+
+        // 4. Read the echo back from the server.
+        let mut echoed_response = String::new();
+        reader.read_line(&amp;mut echoed_response)?;
+        print!("Server echoed: {}", echoed_response); // `read_line` includes the newline
+    }
+
+    println!("Disconnecting from server.");
+    Ok(())
+}</code></pre>
+                            <ul>
+                                <li><strong>Connection</strong>: <code>TcpStream::connect(server_address)?</code> establishes the connection, propagating errors with <code>?</code>.</li>
+                                <li><strong>I/O setup</strong>: In this example, we use <code>stream.try_clone()?</code> to create a duplicate handle to the <code>TcpStream</code>. This is a safe and efficient operation because <code>TcpStream</code> is designed to be cloned, allowing both the original handle and the new one to refer to the same underlying network connection (or socket). We then wrap this new read-handle in a <code>BufReader</code>, which lets us use the original <code>stream</code> handle exclusively for writing. While this is a robust pattern, it’s worth noting that for simpler, strictly sequential communication (where you write a request, then read a response), you could often just reuse the same stream handle for both operations, perhaps by wrapping it in a <code>BufWriter</code> first, flushing, and then wrapping it in a <code>BufReader</code>.</li>
+                                <li><strong>The loop</strong>: Inside the loop, the program reads a line of input from the user’s terminal using <code>io::stdin().read_line()</code>, sends that message to the server using the <code>writeln!</code> macro, ensures it’s sent immediately by calling <code>stream.flush()</code>, and then blocks until <code>reader.read_line()</code> receives the echoed response back from the server.</li>
+                                <li><strong>Termination</strong>: The loop ends when the user types “quit” or enters an empty line. The <code>TcpStream</code> is automatically closed when <code>stream</code> and its clone go out of scope at the end of <code>main</code>.</li>
+                            </ul>
+                            <p>For this chapter, we’re focusing on the <code>std::net</code> methods (blocking and thread-per-client). Async/await is a more advanced topic we’ll explore later.</p>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="ensuring-robust-and-secure-network-applications">
+                    <h3 id="ensuring-robust-and-secure-network-applications">Ensuring robust and secure network applications</h3>
+                    <p>Building network applications that “work” on the happy path is one thing; creating robust applications against network glitches, server issues, and security threats is another challenge. This section discusses handling network errors gracefully and securing communication with <strong>Transport Layer Security (TLS)</strong>.</p>
+                    <p><strong>Tip: Which I/O model should I use (blocking versus async)?</strong><br>
+                    It can be confusing to know when to use timeouts, threads, or async. Here’s a simple guide to the trade-offs:</p>
+                    <ol>
+                        <li><strong>Basic blocking (what we’re doing)</strong>: Use this for simple clients or servers that only need to handle one connection at a time. It’s easy to read but will freeze if the network is slow or if a second client tries to connect.</li>
+                        <li><strong>Blocking with timeouts</strong>: This is a more robust version of the preceding. You still handle one client at a time, but you add <code>.set_read_timeout()</code> and <code>.set_write_timeout()</code> to your <code>TcpStream</code>. This prevents your program from freezing indefinitely if the other end becomes unresponsive. This is a good, simple default for basic clients.</li>
+                        <li><strong>Thread-per-client</strong>: This is what we did in our multi-threaded server example. It’s great for handling a moderate number of concurrent connections (e.g., 5-100) because it’s relatively simple to understand. Its main drawback is that it can use a lot of memory and system resources, as each thread has its own stack.</li>
+                        <li><strong>Asynchronous I/O (async/await)</strong>: This is the most efficient and modern solution for handling thousands of connections at once (e.g., a high-performance web server or chat application). It uses a few threads to manage all connections by never blocking on I/O. It has a steeper learning curve but is the standard for high-performance I/O-bound applications.</li>
+                    </ol>
+
+                    <section tabindex="0" aria-labelledby="graceful-error-handling-in-network-code">
+                        <h4 id="graceful-error-handling-in-network-code">Graceful error handling in network code</h4>
+                        <p>As we’ve seen, almost every operation in <code>std::net</code> (such as <code>TcpStream::connect</code>, <code>read</code>, <code>write</code>, <code>TcpListener::bind</code>, <code>accept</code>) returns a <code>Result&lt;T, std::io::Error&gt;</code>. This is Rust compelling you to acknowledge that network operations are inherently fallible. Ignoring these results is a shortcut to an unreliable application!</p>
+
+                        <section tabindex="0" aria-labelledby="handling-result-from-network-operations">
+                            <h5 id="handling-result-from-network-operations">Handling Result from network operations</h5>
+                            <p>We’ve already been using <code>?</code> and <code>match</code> to handle results in our examples. It’s important to continue this practice diligently. Let’s look at a more focused example on handling connection errors and preventing our program from hanging indefinitely.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::net::TcpStream;
+use std::io::{self, Write, ErrorKind};
+use std::time::Duration;
+
+/// Attempts to connect to a server and returns a custom, more descriptive error.
+fn connect_to_server(server_addr: &amp;str) -> Result&lt;TcpStream, String&gt; {
+    // Set a timeout for the connection attempt itself.
+    let timeout = Duration::from_secs(5);
+    println!("Attempting to connect to {} (timeout: {:?})...", server_addr, timeout);
+
+    match TcpStream::connect_timeout(&amp;server_addr.parse().unwrap(), timeout) {
+        Ok(stream) => {
+            println!("Connection successful!");
+            Ok(stream)
+        }
+        Err(e) => {
+            // Match on the error kind to provide a better error message.
+            let error_message = match e.kind() {
+                ErrorKind::ConnectionRefused => {
+                    "Connection refused. Is the server running on that port?".to_string()
+                }
+                ErrorKind::TimedOut => {
+                    "Connection timed out. Check network or firewall.".to_string()
+                }
+                _ => {
+                    format!("An unexpected error occurred: {}", e)
+                }
+            };
+            Err(error_message)
+        }
+    }
+}
+
+fn main() {
+    // This address is unlikely to have a server running, so it should fail.
+    let bad_address = "127.0.0.1:9999";
+    println!("--- Testing connection to a non-existent server ---");
+    if let Err(e) = connect_to_server(bad_address) {
+        eprintln!("Operation failed as expected: {}", e);
+    }
+
+    // To test a success case, you would run one of the echo servers from
+    // a previous example (e.g., on port 8080) and call:
+    // connect_to_server("127.0.0.1:8080");
+}</code></pre>
+                            <ul>
+                                <li><code>TcpStream::connect_timeout</code>: Instead of <code>connect</code>, which can block indefinitely, <code>connect_timeout</code> is used. It attempts a connection for a specified duration and returns a timeout error if it takes too long. This is a crucial technique for preventing your application from freezing.</li>
+                                <li><strong>Specific error handling</strong>: The <code>match</code> block on the <code>Err</code> case inspects <code>e.kind()</code>. This allows us to provide more user-friendly and specific error messages for common problems, such as <code>ConnectionRefused</code> (server isn’t running) or <code>TimedOut</code>.</li>
+                                <li><strong>Clearer function signature</strong>: The <code>connect_to_server</code> function returns a <code>Result&lt;TcpStream, String&gt;</code>, abstracting the <code>io::Error</code> into a more descriptive <code>String</code> error message for the caller (<code>main</code> in this case) to use directly.</li>
+                            </ul>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="timeouts-and-non-blocking-operations">
+                            <h5 id="timeouts-and-non-blocking-operations">Timeouts and non-blocking operations</h5>
+                            <p>Network operations can hang indefinitely if the remote side is unresponsive or the network is down. Relying solely on blocking operations without any escape hatch can make your application freeze and become unusable.</p>
+                            <ul>
+                                <li><strong>Timeouts</strong>: As demonstrated in the preceding code example, <code>TcpStream</code> provides methods such as <code>set_read_timeout(Option&lt;Duration&gt;)</code> and <code>set_write_timeout(Option&lt;Duration&gt;)</code>. Setting a timeout is a fundamental technique for robustness. It ensures that if a network read or write operation takes longer than the specified duration, the operation will be interrupted and return an <code>io::Error</code> (usually with <code>kind()</code> set to <code>ErrorKind::TimedOut</code>). This allows your program to regain control, log the issue, retry, or inform the user, instead of waiting forever. Passing <code>None</code> as the <code>Option&lt;Duration&gt;</code> will remove any previously set timeout, reverting to blocking behavior.</li>
+                                <li><strong>Non-blocking I/O</strong>: A more advanced strategy for handling many network connections concurrently without dedicating a thread to each one is to use <strong>non-blocking I/O</strong>. You can configure a <code>TcpStream</code> to be non-blocking by calling <code>stream.set_nonblocking(true)</code>. In non-blocking mode:
+                                    <ul>
+                                        <li><code>read()</code> and <code>write()</code> calls (and <code>connect()</code> or <code>accept()</code> for listeners) will return immediately.</li>
+                                        <li>If the operation could be completed without waiting (e.g., data was available to read, or there was space in the OS send buffer to write), they return <code>Ok(...)</code> with the number of bytes processed.</li>
+                                        <li>If the operation would have blocked, they instead return an <code>io::Error</code> with its <code>kind()</code> set to <code>ErrorKind::WouldBlock</code> (sometimes seen as <code>EAGAIN</code> or <code>EWOULDBLOCK</code> at the operating system level). This allows a single thread to attempt operations on many sockets, only processing those that are ready and skipping those that would block. This is the foundation of event loops and asynchronous programming frameworks (such as Tokio, async-std, or libraries such as <code>mio</code> for lower-level polling). While <code>std::net</code> supports setting non-blocking mode, effectively managing many non-blocking sockets directly often requires an event notification mechanism (such as <code>epoll</code> on Linux, <code>kqueue</code> on macOS, or <code>IOCP</code> on Windows), which is what async runtimes provide.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <p>For now, the key takeaway is that using <strong>timeouts</strong> with your standard blocking <code>TcpStream</code> operations is a significant and relatively easy step towards making your network code more robust against unresponsive peers or network issues. Full non-blocking I/O with an event loop is a more advanced topic, often handled by dedicated async libraries.</p>
+                        </section>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="implementing-secure-connections-with-tls">
+                        <h4 id="implementing-secure-connections-with-tls">Implementing secure connections with TLS</h4>
+                        <p>So far, our TCP client and server have been sending data “in the clear.” This means anyone who can intercept the network traffic between them could potentially read or even modify the data. For many applications, especially those handling sensitive information such as passwords, personal details, or financial transactions, this is unacceptable. We need a way to make these connections secure. The standard solution for this on the internet is <strong>Transport Layer Security (TLS)</strong>.</p>
+
+                        <section tabindex="0" aria-labelledby="introduction-to-tls-for-secure-communication">
+                            <h5 id="introduction-to-tls-for-secure-communication">Introduction to TLS for secure communication</h5>
+                            <p>Transport Layer Security (TLS), the successor to the now-deprecated Secure Sockets Layer (SSL), is a cryptographic protocol designed to provide secure communication over a computer network. When you see “HTTPS” in your web browser’s address bar, that “S” signifies that your connection to the website is secured by TLS. TLS provides three main security benefits:</p>
+                            <ul>
+                                <li><strong>Encryption</strong>: Data exchanged between the client and server is encrypted, making it unreadable to any third party who might intercept it. Only the client and server, with the correct cryptographic keys, can decrypt and understand the information.</li>
+                                <li><strong>Authentication</strong>: TLS allows the client to verify the identity of the server (and optionally, for the server to verify the client’s identity). This is typically done using digital certificates issued by trusted Certificate Authorities (CAs). When your browser connects to an HTTPS site, it checks the site’s certificate to ensure it’s genuine and issued to the correct domain. This prevents “man-in-the-middle” attacks, where an attacker might impersonate a legitimate server.</li>
+                                <li><strong>Integrity</strong>: TLS ensures that the data sent between the client and server has not been tampered with or altered during transit. It uses message authentication codes (MACs) to detect any modifications.</li>
+                            </ul>
+                            <p>In short, if your application needs to send or receive data over a network securely, especially over the public internet, using TLS is a must.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="how-tls-works">
+                            <h5 id="how-tls-works">How TLS works</h5>
+                            <p>To secure a connection, two main handshakes must occur. First, as shown at the top of the following diagram, a TCP handshake (the “three-way handshake” using SYN, SYN ACK, and ACK) establishes a basic, raw connection. Think of this as simply getting a clear phone line. Second, the TLS handshake happens immediately after, on top of that TCP connection, to encrypt the line and verify who you’re talking to. The following diagram illustrates this two-phase process:</p>
+                            <figure>
+                                <img src="https://via.placeholder.com/800x400?text=TCP+and+TLS+Handshake+Sequence" alt="Diagram showing the TCP three-way handshake followed by the TLS handshake steps" />
+                                <figcaption>Figure 12.2: The TCP and TLS handshake sequence (Placeholder)</figcaption>
+                            </figure>
+                            <p>Let’s break down the important TLS steps from the diagram, as this is what crates like <code>native-tls</code> and <code>rustls</code> handle for you:</p>
+                            <ul>
+                                <li><strong>ClientHello</strong>: This is the client’s first message in the secure handshake. It tells the server what encryption methods it supports. Crucially, this message also contains the hostname (such as <code>www.rust-lang.org</code>) that the client is trying to reach. This is a vital feature called <strong>Server Name Indication (SNI)</strong>, and it’s what allows a single server IP address to host multiple secure websites.</li>
+                                <li><strong>ServerHello, Certificate</strong>: The server replies. It agrees on an encryption method and sends its <strong>Certificate</strong>. Think of the certificate as the server’s digital ID card, proving it is who it claims to be (e.g., “I am genuinely www.rust-lang.org”).</li>
+                                <li><strong>Client-side verification (the most important step, not a packet)</strong>: After receiving the certificate, your client (or the TLS library) performs the most critical security check: it <strong>verifies the certificate</strong>. It checks that the name on the certificate matches the SNI hostname it requested and, most importantly, that the certificate was assigned by a trusted Certificate Authority (CA) (such as Let's Encrypt, or DigiCert). Your operating system maintains a list of these trusted CAs. If this verification fails (e.g., the certificate is expired, for the wrong domain, or self-signed and untrusted), the connection is immediately aborted.</li>
+                                <li><strong>ClientKeyExchange, ChangeCipherSpec, Finished</strong>: This is the final phase where the client and server use the server’s public key (from the trusted certificate) to securely negotiate a brand-new, secret session key. Once both sides send <code>ChangeCipherSpec</code> and <code>Finished</code>, the handshake is complete. From this point on, all application data (such as your HTTP requests and responses) sent over this <code>TcpStream</code> is encrypted using the secret session key that only the client and server know.</li>
+                            </ul>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="using-crates-for-tls">
+                            <h5 id="using-crates-for-tls">Using crates for TLS</h5>
+                            <p>Rust’s standard library (<code>std::net</code>) provides the building blocks for TCP and UDP networking, but it does not include a TLS implementation directly. This is because TLS is a complex protocol with many cryptographic dependencies, and Rust prefers to keep its standard library lean, relying on the rich ecosystem of crates for more specialized functionality. To add TLS capabilities to your Rust network applications, you’ll use external crates. Two of the most prominent choices are as follows:</p>
+                            <ul>
+                                <li><strong><code>native-tls</code></strong>: This crate provides a high-level API that acts as a wrapper around the native or OS-provided TLS library. For example, on Windows, it might use SChannel; on macOS, Secure Transport; and on Linux, it often uses OpenSSL (though this can vary).
+                                    <ul>
+                                        <li><strong>Pros</strong>: Leverages well-vetted, platform-specific TLS implementations. Often easier to set up for basic use cases.</li>
+                                        <li><strong>Cons</strong>: Introduces a dependency on system libraries (such as OpenSSL on Linux), which can sometimes complicate cross-compilation or deployment if those libraries aren’t present or are the wrong version.</li>
+                                    </ul>
+                                </li>
+                                <li><strong><code>rustls</code></strong>: This is a modern TLS library implemented entirely in Rust.
+                                    <ul>
+                                        <li><strong>Pros</strong>: Being pure Rust, it avoids dependencies on C-based libraries such as OpenSSL, which can simplify building and deployment, and offers the memory safety benefits of Rust throughout the TLS stack. It’s gaining a lot of traction.</li>
+                                        <li><strong>Cons</strong>: Might require a bit more configuration for certain advanced scenarios compared to <code>native-tls</code> if you’re not using a higher-level library that integrates it (such as <code>hyper-rustls</code> for HTTP clients).</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <p>For integrating with asynchronous frameworks such as Tokio or async-std, you’ll often find adapter crates such as <code>tokio-native-tls</code>, <code>tokio-rustls</code>, or <code>async-tls</code> that make these TLS libraries work smoothly in an async context. For our first example of a blocking TLS client, <code>native-tls</code> can be quite straightforward to get started with.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="example-setting-up-a-basic-tls-client-or-server">
+                            <h5 id="example-setting-up-a-basic-tls-client-or-server">Example: Setting up a basic TLS client or server</h5>
+                            <p>Let’s write a simple client that connects to a public HTTPS server, such as <code>www.rust-lang.org</code> on port 443 (the standard port for HTTPS), and attempts to send a basic HTTP GET request. This will demonstrate how to layer TLS on top of a regular TCP connection.</p>
+                            <p>First, you’ll need to add <code>native-tls</code> to your <code>Cargo.toml</code> dependencies (you need <code>pkg-config</code> package for your OS):</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+native-tls = "0.2" # Check crates.io for the latest version
+# std::net and std::io are part of the standard library, no need to add them.</code></pre>
+                            <p>Now, for the Rust code:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>use native_tls::{TlsConnector, TlsStream}; // Key types from native-tls
+use std::net::TcpStream;
+use std::io::{self, Read, Write};
+
+fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; { // Using Box&lt;dyn Error&gt; for simple error handling
+    let domain = "www.rust-lang.org";
+    let port = 443; // HTTPS port
+    let server_address = format!("{}:{}", domain, port);
+
+    // 1. Create a TlsConnector builder and build the connector.
+    // TlsConnector::new() provides default settings which usually work for
+    // connecting to public servers by using the system's certificate trust store.
+    let connector = TlsConnector::builder()
+        // You could add custom configurations here if needed
+        .build()
+        .map_err(|e| format!("Failed to build TLS connector: {}", e))?;
+
+    println!("Attempting TCP connection to {}...", server_address);
+
+    // 2. Establish a regular TCP connection to the server.
+    let tcp_stream = TcpStream::connect(&amp;server_address)
+        .map_err(|e| format!("TCP connect to '{}' failed: {}", server_address, e))?;
+    println!("TCP connection established.");
+
+    println!("Attempting TLS handshake with domain '{}'...", domain);
+
+    // 3. Wrap the TCP stream with the TlsConnector to perform the TLS handshake.
+    // The `connect` method on the connector takes the domain name (for SNI and certificate validation)
+    // and the existing TcpStream.
+    let mut tls_stream: TlsStream&lt;TcpStream&gt; = connector.connect(domain, tcp_stream)
+        .map_err(|e| format!("TLS handshake with '{}' failed: {}", domain, e))?;
+    println!("TLS connection established successfully!");
+
+    // 4. Now, the `tls_stream` can be used much like a regular TcpStream.
+    // It implements the `Read` and `Write` traits. Data written to it will be
+    // encrypted, and data read from it will be decrypted.
+    // Let's send a very basic HTTP/1.1 GET request.
+    let http_request = format!(
+        "GET / HTTP/1.1\r\nHost: {}\r\nConnection: close\r\nUser-Agent: RustBookClient/0.1\r\n\r\n",
+        domain
+    );
+    println!("\nSending HTTP GET request...");
+    tls_stream.write_all(http_request.as_bytes())
+        .map_err(|e| format!("Failed to write HTTP request: {}", e))?;
+    tls_stream.flush() // Ensure all data in the writer's buffer is sent
+        .map_err(|e| format!("Failed to flush stream after request: {}", e))?;
+    println!("HTTP GET request sent.");
+
+    println!("\nReading HTTP response (first part):");
+    let mut response_buffer = Vec::new(); // Use a Vec for dynamic sizing
+
+    // Note: For this simple example, we only perform *one* read to get the
+    // first chunk. A real-world HTTP client would need to parse
+    // the response headers (which are in this first chunk) to find the
+    // 'Content-Length' header, or loop .read() until it returns Ok(0)
+    // (EOF) to get the entire response body.
+    let mut temp_chunk = [0u8; 512]; // Read in chunks of 512 bytes
+
+    // Read the server's response.
+    // A real HTTP client would parse headers, status codes, content length, etc.
+    // This simple example just reads a chunk of the response.
+    match tls_stream.read(&amp;mut temp_chunk) {
+        Ok(0) => {
+            println!("Server closed connection without sending a response after our request.");
+        }
+        Ok(bytes_read) => {
+            response_buffer.extend_from_slice(&amp;temp_chunk[..bytes_read]);
+            println!("Read {} bytes from server.", bytes_read);
+
+            // Attempt to print the received part as UTF-8.
+            // HTTP responses usually start with text headers.
+            match String::from_utf8(response_buffer) {
+                Ok(response_str) => {
+                    println!("--- Response Snippet (first {} bytes) ---", bytes_read);
+                    println!("{}", response_str.trim_end());
+                    if bytes_read == temp_chunk.len() {
+                        println!("... (response might be longer)");
+                    }
+                    println!("--- End of Response Snippet ---");
+                }
+                Err(_) => {
+                    println!("Response data (first {} bytes) is not valid UTF-8. Displaying as hex:", bytes_read);
+                    for byte_val in &amp;temp_chunk[..bytes_read] {
+                        print!("{:02x} ", byte_val);
+                    }
+                    println!();
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error reading HTTP response: {}", e);
+            return Err(Box::new(e)); // Convert io::Error to Box&lt;dyn Error&gt; for main
+        }
+    }
+
+    // The TlsStream (and the underlying TcpStream) will be closed automatically
+    // when `tls_stream` goes out of scope due to the Drop trait.
+    Ok(())
+}</code></pre>
+                            <ul>
+                                <li><strong>Dependency</strong>: The example uses the <code>native-tls</code> crate, which you would add to your <code>Cargo.toml</code>.</li>
+                                <li><strong>TlsConnector</strong>: We create a <code>TlsConnector::builder().build()?</code>. This object is responsible for setting up the parameters for a TLS connection, such as how to verify server certificates. The default <code>TlsConnector::new()</code> or <code>builder().build()</code> typically uses the operating system’s trusted root certificate store, which is usually what you want for connecting to public websites.</li>
+                                <li><strong>Establish TCP connection</strong>: First, a standard, unencrypted <code>TcpStream::connect()</code> is made to the server (e.g., <code>www.rust-lang.org</code> on port 443).</li>
+                                <li><strong>TLS handshake</strong>: The most important step is <code>connector.connect(domain, tcp_stream)?</code>. This method takes the domain string (which is important for Server Name Indication (SNI) – allowing a server hosting multiple HTTPS sites on one IP to know which site you want – and for validating the server’s certificate against that domain) and the existing <code>tcp_stream</code>. It performs the TLS handshake over the <code>tcp_stream</code>. This involves cryptographic negotiations, exchanging certificates, and establishing a shared secret key. If the handshake is successful, it returns a <code>TlsStream&lt;TcpStream&gt;</code>.</li>
+                                <li><strong>Using TlsStream</strong>: The returned <code>tls_stream</code> now represents the secure, encrypted connection. It implements the <code>Read</code> and <code>Write</code> traits, just like a regular <code>TcpStream</code>. Any data you write to this <code>tls_stream</code> will be automatically encrypted by <code>native-tls</code> before being sent over the underlying <code>TcpStream</code>, and any data read from it will be automatically decrypted.</li>
+                                <li><strong>Sending an HTTP request</strong>: We then craft a very basic HTTP/1.1 GET request as a string, convert it to bytes, and send it using <code>tls_stream.write_all()</code> followed by <code>tls_stream.flush()</code>.</li>
+                                <li><strong>Reading the response</strong>: We attempt to read a chunk of the server’s response using <code>tls_stream.read()</code>. In a real HTTP client, this part would be much more sophisticated, involving parsing HTTP headers, status codes, content length, and potentially handling chunked transfer encoding. Our example just reads the first few hundred bytes and tries to print them.</li>
+                                <li><strong>Error handling</strong>: All network and TLS operations can fail, so they return <code>Result</code>. The <code>?</code> operator or <code>map_err</code> is used throughout to handle these potential errors. The <code>main</code> function returns <code>Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt;</code> as a common way to allow different error types to be propagated up using <code>?</code>.</li>
+                            </ul>
+                            <p>This example demonstrates the fundamental layering: TCP provides the basic connection, and TLS (via a crate such as <code>native-tls</code>) adds the security layer on top. For most practical HTTP/HTTPS client needs, you would likely use a higher-level HTTP client library such as <code>reqwest</code>, <code>ureq</code>, or <code>hyper</code>, which handle the complexities of HTTP and TLS (often offering choices between <code>native-tls</code> and <code>rustls</code> backends) for you. However, understanding this underlying process is valuable.</p>
+                            <p>We’ve now covered the mechanics of handling files and building secure network applications. To tie all these concepts together, let’s explore some essential best practices that ensure your Rust applications manage system resources not just correctly, but also efficiently, reliably, and securely!</p>
+                        </section>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="best-practices-for-system-resource-management">
+                <h2 id="best-practices-for-system-resource-management">Best practices for system resource management</h2>
+                <p>We’ve now covered the mechanics of file I/O and basic TCP networking in Rust. While Rust’s safety features and Resource Acquisition Is Initialization (RAII) via the <code>Drop</code> trait save us from many common pitfalls such as forgetting to close files, building truly robust and efficient applications requires a bit more thought. Let’s discuss some general best practices and performance considerations when your Rust programs interact with system resources.</p>
+
+                <section tabindex="0" aria-labelledby="efficient-memory-usage-with-io-operations">
+                    <h3 id="efficient-memory-usage-with-io-operations">Efficient memory usage with I/O operations</h3>
+                    <p>I/O operations, especially with files and networks, can often involve handling significant amounts of data. Being mindful of memory here is key:</p>
+                    <ul>
+                        <li><strong>Avoid reading entire large files into memory</strong>: While <code>fs::read_to_string()</code> is convenient for small configuration files, using it for multi-gigabyte log files or datasets will likely exhaust your system’s memory. Prefer line-by-line processing (with <code>BufReader</code>) or chunk-based processing for large files.</li>
+                        <li><strong>Stream when possible</strong>: If you’re reading data from one source (file/network) and writing it to another, try to stream it in chunks rather than loading the whole thing into a single large buffer in memory. This reduces your application’s peak memory footprint.</li>
+                        <li><strong>Reuse buffers where appropriate</strong>: If your program, especially in a loop, needs to repeatedly read data (e.g., from a file or network), allocating a new <code>Vec&lt;u8&gt;</code> or <code>String</code> for each read can be inefficient due to frequent memory allocations. A more performant pattern is to allocate the buffer once outside the loop and pass a mutable reference to it on each iteration. The <code>read</code> method will fill this existing buffer, and you can then process the valid data within it. Let’s look at a practical example. We’ll write a function that reads a file in 8 KB (8,192 bytes) chunks and counts how many zero-bytes (<code>0x00</code>) it contains, all while reusing the same buffer for every chunk.</li>
+                    </ul>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs::{self, File};
+use std::io::{self, Read, BufReader};
+use std::path::Path;
+
+// Define a standard chunk size for reading. 8KB is a common, efficient size.
+const CHUNK_SIZE: usize = 8 * 1024; // 8192 bytes
+
+/// Reads a file in chunks, reusing a buffer to count zero bytes.
+fn count_zero_bytes(file_path: &amp;Path) -> io::Result&lt;u64&gt; {
+    let file = File::open(file_path)?;
+    // Wrap in a BufReader for efficiency, even though we read in chunks.
+    let mut reader = BufReader::new(file);
+
+    // 1. Allocate the buffer *once*, outside the loop.
+    // We use a Vec, which is heap-allocated, as a very large
+    // stack-allocated array could cause a stack overflow.
+    let mut buffer = vec![0u8; CHUNK_SIZE];
+    let mut total_zero_bytes = 0;
+
+    loop {
+        // 2. Pass a mutable reference to the *existing* buffer to `read`.
+        let bytes_read = match reader.read(&amp;mut buffer) {
+            Ok(0) => break, // Ok(0) means End of File (EOF). We're done.
+            Ok(n) => n, // `n` is the number of bytes actually read.
+            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue, // Interrupted by a signal, retry.
+            Err(e) => return Err(e), // A real I/O error occurred.
+        };
+
+        // 3. Process only the valid part of the buffer (`&amp;buffer[..bytes_read]`).
+        // Our "processing" is just counting zero bytes.
+        let count_in_chunk = buffer[..bytes_read]
+            .iter()
+            .filter(|&amp;&amp;b| b == 0x00)
+            .count() as u64;
+        total_zero_bytes += count_in_chunk;
+    }
+
+    Ok(total_zero_bytes)
+}
+
+fn main() {
+    let test_file = Path::new("chunk_test.dat");
+
+    // --- Setup: Create a dummy file with some zero bytes ---
+    let mut content = vec![1, 2, 3, 4, 5, 0, 6, 7, 0, 8];
+    content.resize(10_000, 1); // Make it ~10KB with mostly 1s
+    content[2000] = 0; // Add a few more zeros
+    content[9000] = 0;
+    fs::write(test_file, &amp;content).expect("Failed to create dummy file");
+    // We now have a file with 4 zero bytes.
+
+    // --- Act: Run our function ---
+    match count_zero_bytes(test_file) {
+        Ok(count) => {
+            println!("Found {} zero bytes in '{}'.", count, test_file.display());
+            assert_eq!(count, 4); // Check our logic
+        }
+        Err(e) => {
+            eprintln!("Error processing file '{}': {}", test_file.display(), e);
+        }
+    }
+
+    // --- Cleanup ---
+    fs::remove_file(test_file).ok();
+}</code></pre>
+                    <ul>
+                        <li>This function allocates a single 8 KB buffer before the loop starts, which is a key performance optimization. Inside the loop, <code>reader.read()</code> repeatedly fills this same buffer, and we process only the slice of valid data (<code>&amp;buffer[..bytes_read]</code>) each time, completely avoiding the high cost of allocating new memory for every chunk.</li>
+                        <li><strong>Be mindful of string allocations</strong>: When processing text data, frequent creation of new <code>String</code> objects (e.g., one for every line, one for every word) can lead to many small heap allocations. If performance is critical, consider techniques such as working with string slices (<code>&amp;str</code>) as much as possible, or using specialized string interning libraries if you have many duplicate strings.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="optimizing-file-io-performance">
+                    <h3 id="optimizing-file-io-performance">Optimizing file I/O performance</h3>
+                    <p>Disk I/O is often a bottleneck. Here’s how to make it more efficient:</p>
+
+                    <section tabindex="0" aria-labelledby="buffering-strategies-recap">
+                        <h4 id="buffering-strategies-recap">Buffering strategies recap</h4>
+                        <p>We’ve already emphasized this, but it bears repeating: always use <code>BufReader</code> when reading and <code>BufWriter</code> when writing files, especially if you’re doing multiple small reads/writes or line-by-line processing. They significantly reduce the number of direct, costly system calls by interacting with an in-memory buffer. Remember to <code>flush()</code> your <code>BufWriter</code> when you need to ensure data is persisted to disk!</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="processing-large-files-in-chunks">
+                        <h4 id="processing-large-files-in-chunks">Processing large files in chunks</h4>
+                        <p>For very large binary files or structured data files where line-by-line processing isn’t appropriate, reading the file in manageable chunks (e.g., a few kilobytes or megabytes at a time) into a buffer is a common strategy. You process one chunk, then read the next, overwriting the buffer. This keeps memory usage constant regardless of file size.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs::File;
+use std::io::{self, Read, BufReader};
+use std::path::Path;
+
+const CHUNK_SIZE: usize = 8 * 1024; // 8KB chunks
+
+fn process_large_file_in_chunks(file_path: &amp;Path) -> io::Result&lt;()&gt; {
+    let file = File::open(file_path)?;
+    let mut reader = BufReader::new(file); // Buffering is still good!
+    let mut chunk = vec![0u8; CHUNK_SIZE];
+
+    loop {
+        // Attempt to fill the chunk buffer
+        // reader.read() might not fill the whole buffer if EOF is reached.
+        let bytes_read = match reader.read(&amp;mut chunk) {
+            Ok(0) => break, // End of file
+            Ok(n) => n,
+            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue, // Retry on interrupt
+            Err(e) => return Err(e), // Other error
+        };
+
+        // Process the data in `&amp;chunk[..bytes_read]`
+        // For example, count occurrences of a byte, hash the chunk, etc.
+        println!("Processed a chunk of {} bytes", bytes_read);
+        // In a real app, you'd do something more useful here.
+
+        if bytes_read < CHUNK_SIZE {
+            break; // Likely reached EOF or a partial last chunk
+        }
+    }
+    Ok(())
+}
+
+fn main() {
+    // You'd need a large_test_file.dat for this to be meaningful
+    // For now, let's just show the function definition and conceptual call
+    // if let Err(e) = process_large_file_in_chunks(Path::new("large_test_file.dat")) {
+    //     eprintln!("Error processing large file: {}", e);
+    // }
+    println!("Conceptual chunked file processing function defined.");
+}</code></pre>
+                        <p>The <code>process_large_file_in_chunks</code> function demonstrates reading a file in fixed-size portions.</p>
+                        <ul>
+                            <li>A chunk buffer is allocated once.</li>
+                            <li>In a loop, <code>reader.read(&amp;mut chunk)</code> attempts to fill this buffer; <code>read()</code> returns the number of bytes actually read, which might be less than <code>CHUNK_SIZE</code> if the end of the file is reached.</li>
+                            <li><code>Ok(0)</code> from <code>read()</code> signals that the end of the file has been definitively reached.</li>
+                            <li>The <code>&amp;chunk[..bytes_read]</code> slice contains the valid data for the current chunk to be processed. This approach ensures that memory usage remains constant and low, irrespective of the total file size.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="optimizing-network-io-performance">
+                    <h3 id="optimizing-network-io-performance">Optimizing network I/O performance</h3>
+                    <p>Network latency and bandwidth are often critical performance factors.</p>
+
+                    <section tabindex="0" aria-labelledby="understanding-asynchronous-io-for-networking">
+                        <h4 id="understanding-asynchronous-io-for-networking">Understanding asynchronous I/O for networking</h4>
+                        <p>While the thread-per-client model we just discussed works well, it’s good to keep in mind that for applications handling many connections at once (such as large web servers or chat platforms), a more sophisticated approach called <strong>asynchronous I/O</strong> is often a better fit. We’ll dive into this topic more deeply in <a href="./chapter-13.html">Chapter 13, Concurrency and Parallelism</a>, as it offers an effective alternative to assigning one OS thread per connection. Async I/O allows a small number of threads to handle thousands of connections by not blocking when waiting for network events. Libraries such as <code>tokio</code> and <code>async-std</code> provide the runtimes and utilities for this in Rust. While <code>std::net</code> provides blocking I/O, these async libraries build upon non-blocking primitives to offer much greater scalability for I/O-bound network applications.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="managing-network-buffers-and-packet-sizes">
+                        <h4 id="managing-network-buffers-and-packet-sizes">Managing network buffers and packet sizes</h4>
+                        <ul>
+                            <li><strong>Buffering (recap)</strong>: Just like with files, <code>BufReader</code> and <code>BufWriter</code> are beneficial for <code>TcpStream</code> to reduce system call overhead.</li>
+                            <li><strong>TCP Nagle’s algorithm and TCP_NODELAY</strong>: By default, TCP often tries to bundle small outgoing packets together to improve network efficiency (Nagle’s algorithm). This can introduce latency for applications that need to send small messages frequently (e.g., real-time games, some RPC protocols). <code>TcpStream</code> has a <code>set_nodelay(true)</code> method that can disable Nagle’s algorithm, potentially reducing latency for small, frequent messages at the cost of slightly increased network overhead. Use it judiciously.</li>
+                            <li><strong>Application-level buffering</strong>: Sometimes your application protocol involves messages of known or variable sizes. Managing your own buffers to assemble or parse these messages before writing to/after reading from the <code>TcpStream</code> can be more efficient than many small <code>read()</code>/<code>write()</code> calls on the stream itself.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="general-security-principles-for-resource-handling">
+                    <h3 id="general-security-principles-for-resource-handling">General security principles for resource handling</h3>
+                    <p>When your application interacts with system resources, especially those influenced by external input (files from users, network data), security becomes a concern.</p>
+
+                    <section tabindex="0" aria-labelledby="validating-inputs-from-external-sources">
+                        <h4 id="validating-inputs-from-external-sources">Validating inputs from external sources</h4>
+                        <ul>
+                            <li><strong>File paths</strong>: If your program takes file paths as input (e.g., from a user or a config file), be extremely careful. Maliciously crafted paths (e.g., containing <code>..</code> to traverse directories or pointing to sensitive system files) can lead to security vulnerabilities (path traversal attacks). Sanitize and validate any externally supplied paths before using them with <code>File::open</code> or other <code>fs</code> operations. Consider restricting operations to a specific base directory if possible.</li>
+                            <li><strong>Network data</strong>: Data received over the network should never be trusted implicitly. Always validate its format, size, and content before processing it. For example, if you expect a number, parse it carefully and handle parsing errors. If you expect a certain message structure, verify it. This helps prevent crashes, denial-of-service, and other attacks.</li>
+                            <li><strong>Resource limits</strong>: Impose limits on resource usage. For example, limit the maximum size of a file that can be uploaded or processed, the maximum number of concurrent network connections, or the maximum amount of data read from a socket in one go. This prevents a malicious client or a malformed file from exhausting system resources.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="principle-of-least-privilege">
+                        <h4 id="principle-of-least-privilege">Principle of least privilege</h4>
+                        <p>When your application performs operations that require system privileges (such as writing to certain file locations or binding to low-numbered network ports), it should ideally only hold those privileges for the minimum time necessary. If possible, drop privileges after the privileged operation is complete. While Rust itself doesn’t manage OS-level user privileges directly in <code>std</code>, this is a good design principle to keep in mind for the overall application architecture, especially for system daemons or services.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="minimizing-resource-contention-in-concurrent-scenarios">
+                        <h4 id="minimizing-resource-contention-in-concurrent-scenarios">Minimizing resource contention in concurrent scenarios</h4>
+                        <p>This topic ties directly into the concepts we will explore in <a href="./chapter-13.html">Chapter 13, Concurrency and Parallelism</a>. When multiple threads try to access shared system resources (such as a file or a network socket, though direct sharing of such OS handles is often complex and better managed through higher-level abstractions), you can run into contention.</p>
+                        <ul>
+                            <li><strong>Locking shared resources</strong>: If multiple threads must write to the same file or send data over the same (non-thread-safe by default) network connection, you’d need to protect access with a mutex or similar synchronization primitive. As always, keep the locked sections short.</li>
+                            <li><strong>Dedicated I/O threads with message passing</strong>: A common pattern is to dedicate one or a few threads to handle specific I/O tasks (e.g., a logging thread that writes to a file, a network thread that manages all socket communication) and have other worker threads communicate with these I/O threads via message-passing channels. This can serialize access to the resource and often simplifies reasoning about its state.</li>
+                            <li><strong>Connection pooling</strong>: For resources such as database connections or outgoing network connections that are expensive to establish, using a “pool” of pre-established connections that threads can borrow from and return to can be much more efficient than each thread creating and tearing down its own connection repeatedly. Crates exist to help manage such pools.</li>
+                        </ul>
+                        <p>By being mindful of these practices, you can build Rust applications that are correct and safe, and efficient and well-behaved citizens of the systems they run on.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="real-world-scenarios-and-examples">
+                <h2 id="real-world-scenarios-and-examples">Real-world scenarios and examples</h2>
+                <p>We’ve covered a fair bit of ground on file I/O, basic networking, security considerations, and best practices for managing system resources. Now, let’s try to bring some of these concepts together by looking at a few more practical, albeit simplified, real-world-inspired scenarios.</p>
+
+                <section tabindex="0" aria-labelledby="example-1-building-a-more-robust-http-server">
+                    <h3 id="example-1-building-a-more-robust-http-server">Example 1: Building a more robust HTTP server</h3>
+                    <p>Earlier, we built a very basic TCP echo server and then a multi-threaded version. Let’s refine that into a slightly more recognizable (though still very simple) multi-threaded HTTP server that can serve a couple of static HTML files and return a 404 error. This will combine TCP listening, multi-threading, file reading, and basic HTTP response formatting. (This example will be more conceptual in its HTTP handling for brevity, focusing on resource management aspects such as concurrent connection handling and file reading per request.)</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs;
+use std::io::{Read, Write, BufReader, BufRead};
+use std::net::{TcpListener, TcpStream};
+
+/// Handles a single client connection, parses a simple GET request, and serves a file.
+/// This function will block until it is finished with the client.
+fn handle_http_connection(mut stream: TcpStream) -> std::io::Result&lt;()&gt; {
+    let client_addr = stream.peer_addr().unwrap_or_else(|_| "unknown".parse().unwrap());
+    println!("Handling connection from {}", client_addr);
+
+    // Wrap the stream in a BufReader to read lines
+    let mut reader = BufReader::new(&amp;stream);
+
+    // --- 1. Read the HTTP Request Line ---
+    let mut request_line = String::new();
+    if reader.read_line(&amp;mut request_line).is_err() {
+        eprintln!("Failed to read request line from {}", client_addr);
+        return Ok(()); // Close connection on read error
+    }
+    println!("Request from {}: {}", client_addr, request_line.trim());
+
+    // --- 2. Read (and ignore) HTTP Headers ---
+    // A real HTTP request has headers after the request line,
+    // ending in a blank line (e.g., "\r\n"). We must read them
+    // to consume the full request, even if we don't use them.
+    let mut header_line = String::new();
+    loop {
+        match reader.read_line(&amp;mut header_line) {
+            Ok(0) => { // Client disconnected prematurely
+                eprintln!("Client disconnected during header read.");
+                return Ok(());
+            }
+            Ok(_) => {
+                // If the line is just "\r\n" or "\n", it's the end of the headers.
+                if header_line.trim().is_empty() {
+                    break; // End of headers, break the loop
+                }
+                // We're just ignoring the header line in this simple server.
+            }
+            Err(e) => {
+                eprintln!("Error reading headers: {}", e);
+                return Err(e);
+            }
+        }
+        header_line.clear(); // Clear string for the next line
+    }
+
+    // At this point, we've consumed the headers.
+
+    // --- 3. Very basic request routing ---
+    let (status_line, filename) = if request_line.starts_with("GET / HTTP/1.1") || request_line.starts_with("GET /index.html HTTP/1.1") {
+        ("HTTP/1.1 200 OK", "index.html")
+    } else if request_line.starts_with("GET /about.html HTTP/1.1") {
+        ("HTTP/1.1 200 OK", "about.html")
+    } else {
+        ("HTTP/1.1 404 NOT FOUND", "404.html")
+    };
+
+    // --- 4. Read File Content and Send Response ---
+    let file_contents = match fs::read_to_string(filename) {
+        Ok(contents) => contents,
+        Err(_) => {
+            // If the specific file isn't found, try to send the generic 404 page
+            println!("File '{}' not found for {}. Sending 404.", filename, client_addr);
+            let not_found_page = "404.html"; // Assume this one exists
+            let generic_404_content = fs::read_to_string(not_found_page)
+                .unwrap_or_else(|_| "&lt;h1&gt;404 Not Found&lt;/h1&gt;&lt;p&gt;The requested resource was not found.&lt;/p&gt;".to_string());
+            let response = format!(
+                "HTTP/1.1 404 NOT FOUND\r\nContent-Length: {}\r\n\r\n{}",
+                generic_404_content.len(),
+                generic_404_content
+            );
+            // Send 404 response
+            if let Err(e) = stream.write_all(response.as_bytes()) {
+                eprintln!("Error sending 404 response to {}: {}", client_addr, e);
+            }
+            if let Err(e) = stream.flush() {
+                eprintln!("Error flushing 404 response to {}: {}", client_addr, e);
+            }
+            return Ok(());
+        }
+    };
+
+    // --- 5. Construct and send the successful HTTP response ---
+    let response = format!(
+        "{}\r\nContent-Length: {}\r\n\r\n{}",
+        status_line,
+        file_contents.len(),
+        file_contents
+    );
+    if let Err(e) = stream.write_all(response.as_bytes()) {
+        eprintln!("Error sending response to {}: {}", client_addr, e);
+    }
+    if let Err(e) = stream.flush() {
+        eprintln!("Error flushing response to {}: {}", client_addr, e);
+    }
+
+    println!("Response sent to {}. Closing connection.", client_addr);
+    Ok(())
+}
+
+fn main() -> std::io::Result&lt;()&gt; {
+    // --- Setup: Prepare dummy HTML files for the server to serve ---
+    fs::write("index.html", "&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;This is the main page.&lt;/p&gt;&lt;p&gt;&lt;a href=\"/about.html\"&gt;About Us&lt;/a&gt;&lt;/p&gt;")?;
+    fs::write("about.html", "&lt;h1&gt;About Us&lt;/h1&gt;&lt;p&gt;We are a Rust learning example!&lt;/p&gt;&lt;p&gt;&lt;a href=\"/\"&gt;Home&lt;/a&gt;&lt;/p&gt;")?;
+    fs::write("404.html", "&lt;h1&gt;404 - Page Not Found&lt;/h1&gt;&lt;p&gt;Sorry, the page you are looking for does not exist.&lt;/p&gt;&lt;p&gt;&lt;a href=\"/\"&gt;Go Home&lt;/a&gt;&lt;/p&gt;")?;
+
+    let listener_address = "127.0.0.1:7878";
+    let listener = TcpListener::bind(listener_address)?;
+    println!("Simple HTTP Server listening on http://{}", listener_address);
+
+    // Accept connections one at a time (sequentially)
+    for stream_result in listener.incoming() {
+        match stream_result {
+            Ok(stream) => {
+                println!("Main: Accepted new connection. Handling...");
+                // Handle the connection directly in the main thread.
+                // The loop will block here until this client is done.
+                if let Err(e) = handle_http_connection(stream) {
+                    eprintln!("Connection error: {}", e);
+                }
+            }
+            Err(e) => {
+                eprintln!("Main: Failed to accept connection: {}", e);
+            }
+        }
+    }
+
+    // --- Cleanup (in a real server, this part wouldn't be reached) ---
+    fs::remove_file("index.html")?;
+    fs::remove_file("about.html")?;
+    fs::remove_file("404.html")?;
+    Ok(())
+}</code></pre>
+                    <ul>
+                        <li><strong>Setup</strong>: Before <code>main</code> runs the listener, we create three dummy HTML files (<code>index.html</code>, <code>about.html</code>, <code>404.html</code>) in the current directory so the server has something to serve.</li>
+                        <li><strong>Listening and threading</strong>: <code>main</code> sets up a <code>TcpListener</code> and then, for each incoming connection (<code>stream</code>), it spawns a new thread that calls <code>handle_http_connection(stream)</code>. This allows the server to handle multiple client requests concurrently.</li>
+                        <li><strong>Reads headers</strong>: This server is more robust than our echo server because the <code>handle_http_connection</code> function now includes a loop to read and consume the HTTP headers (the lines after the first <code>GET /</code> line) until it finds the blank line (<code>\r\n</code>) that signifies the end of the header block. This is important for properly handling HTTP requests.</li>
+                        <li><strong>Basic routing</strong>: It performs simple routing by checking the <code>request_line</code> and serves different files based on the requested path.</li>
+                        <li><strong>Serves files</strong>: It uses <code>fs::read_to_string</code> to read the contents of the requested HTML file and sends it back to the client with the correct HTTP status line and <code>Content-Length</code> header.</li>
+                    </ul>
+                    <p><strong>Important limitation: sequential handling</strong><br>
+                    Notice that in the <code>main</code> function, we call <code>handle_http_connection(stream)</code> directly inside the <code>for</code> loop. This server is <strong>sequential</strong> (or single-threaded in its handling). This means it can only handle one client at a time. If Client A connects and <code>handle_http_connection</code> is busy processing their request (e.g., reading a large file, or if the client is on a slow connection), Client B cannot connect. Client B’s connection attempt will sit in a queue, and the server’s main loop will be blocked until <code>handle_http_connection</code> for Client A finally finishes. This is a major bottleneck for any real-world server. To solve this and handle multiple clients concurrently, we need to use the concurrency techniques we will explore in the next chapter, such as spawning a new thread for each connection.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="example-2-command-line-tool-for-file-operations">
+                    <h3 id="example-2-command-line-tool-for-file-operations">Example 2: Command-line tool for file operations</h3>
+                    <p>Let’s build a very simplified version of the <code>wc</code> (word count) utility that takes a file path as a command-line argument and prints out the number of lines, words, characters (UTF-8), and the total file size in bytes. This example combines argument parsing and file I/O in a practical CLI tool.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::env;
+use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader};
+use std::path::Path;
+use std::process;
+
+#[derive(Debug, Default)]
+struct FileStats {
+    lines: usize,
+    words: usize,
+    chars: usize,
+}
+
+fn main() -> io::Result&lt;()&gt; {
+    // 1. Get file path from command-line arguments.
+    let file_path_str = match env::args().nth(1) {
+        Some(path) => path,
+        None => {
+            eprintln!("Usage: my_wc &lt;file_path&gt;");
+            process::exit(1);
+        }
+    };
+    let file_path = Path::new(&amp;file_path_str);
+
+    // 2. Open the file and prepare to read it line by line.
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+
+    // 3. Process the file to gather stats.
+    let mut stats = FileStats::default();
+    for line_result in reader.lines() {
+        let line = line_result?; // Propagate I/O error if reading a line fails
+        stats.lines += 1;
+        stats.words += line.split_whitespace().count();
+        stats.chars += line.chars().count();
+    }
+
+    // 4. Get total file size in bytes from metadata for accuracy.
+    let file_size_bytes = fs::metadata(file_path)?.len();
+
+    // 5. Print the results.
+    println!("\n--- Statistics for '{}' ---", file_path.display());
+    println!(" Lines: {}", stats.lines);
+    println!(" Words: {}", stats.words);
+    println!(" Characters: {}", stats.chars);
+    println!(" Bytes: {}", file_size_bytes);
+
+    Ok(())
+}</code></pre>
+                    <ul>
+                        <li><strong>Argument parsing</strong>: <code>env::args().nth(1)</code> is used to directly get the first command-line argument after the program name. If it’s <code>None</code>, we print a usage message and exit.</li>
+                        <li><strong>Error handling with ?</strong>: The <code>main</code> function returns an <code>io::Result&lt;()&gt;</code>, allowing us to use the <code>?</code> operator for concise error handling on file operations such as <code>File::open</code>, <code>fs::metadata</code>, and reading lines. If any of these fail, the program will exit, and the OS will typically print the I/O error.</li>
+                        <li><strong>Statistics calculation</strong>:
+                            <ul>
+                                <li>A loop over <code>reader.lines()</code> efficiently processes the file line by line.</li>
+                                <li><code>line.chars().count()</code> accurately counts Unicode characters.</li>
+                                <li><code>line.split_whitespace().count()</code> gives a simple word count.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Accurate byte count</strong>: Instead of approximating the byte count from string lengths, this version uses <code>fs::metadata(file_path)?.len()</code> to get the exact file size from the file system, which is more reliable.</li>
+                        <li><strong>Output</strong>: The final statistics are printed in a clean format.</li>
+                    </ul>
+                    <p><strong>Next steps</strong><br>
+                    The examples in this chapter, such as our simple HTTP server and <code>my_wc</code> tool, were intentionally built using only Rust’s standard library. This was to help you understand the fundamentals of how Rust handles system resources such as <code>TcpStreams</code> and <code>Files</code> directly. However, for building real-world, production-ready applications, you will almost always want to use the powerful, high-level crates that the Rust community has built. These frameworks handle much of the complex, boilerplate logic for you, allowing you to focus on your application’s features.</p>
+                    <ul>
+                        <li>For a real HTTP server, you wouldn’t build one from raw <code>TcpStreams</code>. Instead, you would use a mature web framework such as Actix Web, Axum, or Rocket.</li>
+                        <li>For a command-line tool, you wouldn’t parse arguments manually with <code>std::env::args()</code>. You’d use a powerful crate such as <code>clap</code> or <code>argp</code> to define arguments and get robust parsing and help-message generation for free.</li>
+                        <li>For secure networking (TLS), you would typically use a high-level HTTP client such as <code>reqwest</code>, which handles TLS internally, rather than using <code>native-tls</code> directly.</li>
+                    </ul>
+                    <p>Frameworks and high-level libraries like these evolve much faster than the Rust standard library. This book emphasizes the stable fundamentals that remain relevant. With your solid understanding of file I/O and networking, you’re now ready to explore advanced crates and read their documentation to create powerful applications.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch12">
+                <h2 id="summary-ch12">Summary</h2>
+                <p>We have reached the end of Chapter 12, which covered managing system resources in Rust. It explored how Rust interacts with external resources, such as the file system and the network. Resource management is essential for building functional, efficient, reliable, and secure applications. Rust’s design emphasizes safety through explicit error handling via the <code>Result</code> type and automatic resource cleanup using the <code>Drop</code> trait (RAII).</p>
+                <p><strong>Recap:</strong></p>
+                <ul>
+                    <li><strong>Why resource management matters</strong>: We emphasized managing resources such as files and network connections for performance, stability, scalability, and system health.</li>
+                    <li><strong>File I/O in Rust</strong>:
+                        <ul>
+                            <li>We learned how to read files, loading them into strings for smaller files or processing line by line for larger files using <code>BufReader</code>.</li>
+                            <li>We explored writing data using <code>File::create</code> and <code>fs::write</code> for creating/overwriting, or <code>OpenOptions</code> for appending.</li>
+                            <li>We covered filesystem operations in <code>std::fs</code>, such as creating directories, renaming files, and reading contents.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Network programming essentials (TCP)</strong>:
+                        <ul>
+                            <li>We discussed TCP basics, including IP addresses, ports, and the client-server model.</li>
+                            <li>We used <code>TcpListener</code> to accept incoming connections and handled multiple clients by spawning threads for each <code>TcpStream</code>.</li>
+                            <li>For clients, <code>TcpStream::connect</code> was used to establish connections with <code>read</code> and <code>write_all</code> for communication.</li>
+                            <li>The benefits of <code>BufReader</code> and <code>BufWriter</code> for network I/O performance were highlighted.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Ensuring robust and secure network applications</strong>:
+                        <ul>
+                            <li>We emphasized careful error handling for all network operations returning <code>Result</code>.</li>
+                            <li>The importance of <code>set_read_timeout</code> and <code>set_write_timeout</code> on <code>TcpStream</code> was introduced to avoid indefinite blocking.</li>
+                            <li>We discussed Transport Layer Security (TLS), introducing external crates such as <code>native-tls</code>, <code>rustls</code>, and a basic TLS client example.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Best practices for system resource management</strong>:
+                        <ul>
+                            <li>We covered strategies for efficient memory usage during I/O, optimizing file and network performance (e.g., buffering, chunking, and asynchronous I/O).</li>
+                            <li>Key security principles, such as validating external inputs, were highlighted.</li>
+                            <li>We also briefly linked concurrency concepts to minimize resource contention.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Real-world examples</strong>: We provided real-world examples to better understand how they are used.</li>
+                </ul>
+                <p>In this chapter, we looked at how to manage system resources such as files and network streams. Our simple server examples showed a key limitation: they can only handle one client at a time. To create more efficient applications that can manage several tasks simultaneously, we’ll move on to the next chapter, <strong>Concurrency and Parallelism</strong>. There, we’ll explore how to use threads, share data safely, and see why Rust’s compile-time guarantees make this exciting feature known as “fearless concurrency” a term the Rust community often uses.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch12">
+                <h2 id="questions-and-assignments-ch12">Questions and assignments</h2>
+
+                <section tabindex="0" aria-labelledby="questions-ch12">
+                    <h3 id="questions-ch12">Questions</h3>
+                    <ol>
+                        <li>What are the main differences between <code>std::fs::read_to_string()</code> and using <code>File::open()</code> followed by <code>BufReader::new().lines()</code> for reading a text file? When would you prefer one over the other?</li>
+                        <li>Explain the purpose of <code>File::create()</code> versus using <code>OpenOptions::new().append(true).create(true).open()</code>. What happens if the file already exists in each case?</li>
+                        <li>What does <code>TcpListener::bind()</code> do, and what kind of errors might it return?</li>
+                        <li>When handling a <code>TcpStream</code> on a server, why is it common to spawn a new thread for each accepted connection? What problem does this solve?</li>
+                        <li>What is the role of <code>stream.flush()</code> after a <code>write_all()</code> call on a <code>TcpStream</code> or <code>BufWriter</code>? Why is it sometimes important?</li>
+                        <li>Briefly explain why TLS is important for network communication and what main security benefits it provides.</li>
+                        <li>What is “buffering” in the context of I/O, and why are <code>BufReader</code> and <code>BufWriter</code> useful?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch12">
+                    <h3 id="assignments-ch12">Assignments</h3>
+                    <ul>
+                        <li><strong>Assignment 12.1: Simple file copy utility</strong>
+                            <p><strong>Goal</strong>: Get comfortable with basic file I/O and error handling.</p>
+                            <p><strong>Task</strong>:</p>
+                            <ol>
+                                <li>Create a Rust command-line program that takes two arguments: a <code>source_file</code> path and a <code>destination_file</code> path.</li>
+                                <li>The program should read the entire contents of the <code>source_file</code>.</li>
+                                <li>It should then write those contents to the <code>destination_file</code>, creating it if it doesn’t exist or overwriting it if it does.</li>
+                                <li>Handle potential errors gracefully. If the source file cannot be read or the destination file cannot be written, print a clear error message to standard error (<code>eprintln!</code>) and exit with a non-zero status code (<code>std::process::exit(1)</code>).</li>
+                            </ol>
+                            <p><strong>Steps and hints</strong>:</p>
+                            <ul>
+                                <li>Use <code>std::env::args()</code> to get the command-line arguments.</li>
+                                <li><code>std::fs::read()</code> can read the entire file into a <code>Vec&lt;u8&gt;</code> (a vector of bytes), which is good for handling any kind of file, not just text.</li>
+                                <li><code>std::fs::write()</code> is a convenient way to write an entire byte slice (<code>&amp;[u8]</code>) to a file.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Assignment 12.2: Simple key-value TCP server</strong>
+                            <p><strong>Goal</strong>: Practice networking, basic protocol parsing, and in-memory state management.</p>
+                            <p><strong>Task</strong>: Implement a simple in-memory key-value store server that listens on a TCP port (e.g., <code>127.0.0.1:8989</code>). You do not need to build a separate client program; you can test your server using a tool such as <code>netcat</code> (<code>nc</code>) or <code>telnet</code>.</p>
+                            <ul>
+                                <li><strong>Server setup</strong>:
+                                    <ul>
+                                        <li>The server should use a <code>TcpListener</code> to accept connections. For this assignment, handling clients one at a time (sequentially) is fine.</li>
+                                        <li>It should maintain an in-memory <code>HashMap&lt;String, String&gt;</code> to store the key-value pairs.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Command handling</strong>:
+                                    <ul>
+                                        <li>For each connected client, the server should read commands line by line.</li>
+                                        <li>It must support two commands:
+                                            <ul>
+                                                <li><code>SET &lt;key&gt; &lt;value&gt;</code>: Stores the value associated with the key. The server should respond with <code>OK\n</code>. If the key already exists, its value should be updated.</li>
+                                                <li><code>GET &lt;key&gt;</code>: Retrieves the value for the key. If the key exists, the server should respond with <code>VALUE &lt;value&gt;\n</code>. If the key does not exist, it should respond with <code>NOT_FOUND\n</code>.</li>
+                                            </ul>
+                                        </li>
+                                        <li>Any other command can be considered invalid, and the server might respond with <code>INVALID_COMMAND\n</code>.</li>
+                                    </ul>
+                                </li>
+                                <li><strong>Error handling</strong>: The server should handle client disconnections gracefully without crashing.</li>
+                            </ul>
+                            <p><strong>Steps and hints</strong>:</p>
+                            <ul>
+                                <li>Use <code>BufReader::read_line()</code> to read commands from the <code>TcpStream</code>.</li>
+                                <li>Use <code>split_whitespace()</code> on the received line to parse the command and its arguments. Be sure to handle cases where not enough arguments are provided.</li>
+                                <li>Use a <code>HashMap</code> owned by your main loop or handler function to store the data.</li>
+                                <li>Use <code>writeln!</code> or <code>write_all</code> on the <code>TcpStream</code> to send responses back to the client. Remember to <code>flush()</code>!</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-11.html">← Chapter 11</a>
+            <a class="nav-next" href="./chapter-13.html">Chapter 13 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

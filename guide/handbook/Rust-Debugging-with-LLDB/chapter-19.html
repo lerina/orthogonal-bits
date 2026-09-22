@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 19: When to Stop Using the Debugger – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch19-heading">
+            <h1 id="ch19-heading">Chapter 19: When to Stop Using the Debugger</h1>
+
+            <p>The debugger is a powerful instrument, but it is not always the right one. Some of the most frustrating debugging sessions are the ones where the wrong tool was used for the question at hand. A programmer reaches for LLDB when the problem is static, and the compiler already had the answer. Or the programmer uses LLDB for a long-running observation when logging would have been simpler. Or the programmer tries to reproduce a bug under the debugger when the bug only appears in production, where no debugger is available.</p>
+            <p>This chapter is about recognizing those situations. It is not about diminishing the debugger; it is about using it where it belongs and using other tools where they are better.</p>
+            <p>The chapter is organized around the question: for this specific kind of problem, is the debugger the right tool, or is another approach more appropriate?</p>
+
+            <section tabindex="0" aria-labelledby="when-to-stop-using-the-debugger-section">
+                <h2 id="when-to-stop-using-the-debugger-section">When to stop using the debugger</h2>
+                <p>LLDB is not always the best tool.</p>
+                <p>Use ordinary logging when:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>you need long-running observations
+you need to see many events
+timing changes the behavior
+the bug occurs only after a long execution</code></pre>
+                <p>Use tests when:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>the behavior can be isolated
+you need repeatability
+you want a regression test</code></pre>
+                <p>Use compiler diagnostics when:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>the problem is ownership
+types
+lifetimes
+trait bounds
+borrow checking</code></pre>
+                <p>Use LLDB when:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>the program compiles
+the problem occurs at runtime
+you need to observe actual execution state</code></pre>
+
+                <section tabindex="0" aria-labelledby="the-core-question">
+                    <h3 id="the-core-question">The core question</h3>
+                    <p>Before every debugging session, ask:</p>
+                    <blockquote>
+                        <p>What kind of question is this?</p>
+                    </blockquote>
+                    <p>The answer determines the right tool. There are four broad categories:</p>
+                    <ul>
+                        <li><strong>Static questions</strong>: about the code as written. “Will this compile? Is this sound? Does this satisfy the type system?”</li>
+                        <li><strong>Runtime questions</strong>: about a specific execution. “What value does this variable hold? Which branch did this take? Which thread is doing what?”</li>
+                        <li><strong>Historical questions</strong>: about how the behavior evolved over time. “What events happened before the crash? How many requests triggered the bug? What was the state of the system an hour ago?”</li>
+                        <li><strong>Reproducibility questions</strong>: about whether a behavior can be reliably observed. “Can I reproduce this in a test? What is the minimal input that triggers the bug?”</li>
+                    </ul>
+                    <p>The debugger is the primary tool for runtime questions. For static questions, the compiler is the primary tool. For historical questions, logging is the primary tool. For reproducibility questions, tests are the primary tool.</p>
+                    <p>Many productive sessions use more than one. But the choice of which to reach for first depends on the kind of question.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-cost-of-the-wrong-tool">
+                    <h3 id="the-cost-of-the-wrong-tool">The cost of the wrong tool</h3>
+                    <p>Using the wrong tool is not merely inefficient; it can be actively harmful.</p>
+                    <ul>
+                        <li><strong>Using the debugger for a static question</strong>: if the program does not compile, the debugger cannot help at all. Time spent trying to load a broken binary is wasted. The compiler must be the first stop.</li>
+                        <li><strong>Using the debugger for a historical question</strong>: if the bug depends on events that occurred over the past hour, stopping at a breakpoint means the events may never occur. The debugger changes the timing and often the behavior of long-running programs.</li>
+                        <li><strong>Using the debugger for a reproducibility question</strong>: if you cannot reproduce the bug reliably, a debugging session produces observations about a run that may not be representative. Tests are the tool for reproducibility; the debugger is a tool for inspecting a program that has already been made reproducible.</li>
+                        <li><strong>Using the debugger for a production question</strong>: if the bug only occurs in production, attaching a debugger may be impossible (due to permissions), may pause the service (affecting users), or may change the system’s behavior enough that the bug no longer appears.</li>
+                    </ul>
+                    <p>The cost of the wrong tool is not just lost time; it is also the risk of drawing wrong conclusions from a session that was never well-suited to the problem.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-right-tool-for-the-question">
+                    <h3 id="the-right-tool-for-the-question">The right tool for the question</h3>
+                    <p>A simple table summarizes the mapping from question to tool:</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th>Best Tool</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Does this compile? Does this satisfy ownership rules?</td>
+                                <td>Rust compiler</td>
+                            </tr>
+                            <tr>
+                                <td>What does this value hold at this point in this run?</td>
+                                <td>LLDB</td>
+                            </tr>
+                            <tr>
+                                <td>Which branch was taken here?</td>
+                                <td>LLDB</td>
+                            </tr>
+                            <tr>
+                                <td>How many times does this happen over an hour?</td>
+                                <td>Logging</td>
+                            </tr>
+                            <tr>
+                                <td>Can I reproduce this reliably?</td>
+                                <td>Tests</td>
+                            </tr>
+                            <tr>
+                                <td>Is this behavior undefined according to Rust semantics?</td>
+                                <td>Miri</td>
+                            </tr>
+                            <tr>
+                                <td>Which commit introduced this bug?</td>
+                                <td>git bisect</td>
+                            </tr>
+                            <tr>
+                                <td>Why did this run take three times longer than usual?</td>
+                                <td>Profiler</td>
+                            </tr>
+                            <tr>
+                                <td>What is happening inside this C library I did not write?</td>
+                                <td>LLDB (with symbol inspection and memory read)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>This table is not exhaustive, but it illustrates the pattern: different questions have different tools. The debugger is best at the runtime-specific questions.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="logging-as-an-alternative">
+                <h2 id="logging-as-an-alternative">Logging as an alternative</h2>
+                <p>Logging is often the better tool. Consider the following situations.</p>
+
+                <section tabindex="0" aria-labelledby="long-running-observation">
+                    <h3 id="long-running-observation">Long-running observation</h3>
+                    <p>Suppose a server has a bug that only manifests after several hours of uptime. Debugging this under LLDB would mean keeping the debugger attached for hours, which is impractical for a running service.</p>
+                    <p>Logging is the right approach. Add log statements at the interesting points, run the server, and inspect the logs after the bug appears. The logs show the sequence of events that led to the bug, without requiring the debugger to be running at the moment.</p>
+                    <p>With the <code>log</code> crate and <code>env_logger</code>, the level of logging can be adjusted at runtime. You can leave diagnostic messages in the code at <code>debug!</code> or <code>trace!</code> level, and enable them only when needed:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>RUST_LOG=my_crate=debug cargo run
+RUST_LOG=my_crate=trace cargo run
+</code></pre>
+                    <p>This is a form of runtime debugging that requires no debugger at all. It is particularly appropriate for services and for any long-running process.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="high-event-density">
+                    <h3 id="high-event-density">High event density</h3>
+                    <p>A function that is called ten thousand times per second is not a good place to set a breakpoint. The breakpoint would fire continuously, and the program would progress only as fast as you can press <code>continue</code>.</p>
+                    <p>Logging handles this case gracefully. Log messages are written to a buffer and processed asynchronously. The program’s execution is not blocked by each message, and the resulting log contains the sequence of all events.</p>
+                    <p>If the log would be too large, use sampling or a filter. Log every hundredth call, or log only when a condition is true, or log at a lower level so the messages are ignored unless debugging is explicitly enabled.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="timing-sensitive-behavior">
+                    <h3 id="timing-sensitive-behavior">Timing-sensitive behavior</h3>
+                    <p>Stopping a program at a breakpoint changes its timing. In concurrent programs, this can change the interleaving of threads, and the bug may not appear at all under the debugger. This is one of the most frustrating experiences in debugging: the bug is present in a normal run and vanishes as soon as the debugger is attached.</p>
+                    <p>Logging has a much smaller impact on timing. It still adds some overhead, but it does not pause the program, and it does not force a specific interleaving of threads. For concurrency bugs and other timing-sensitive issues, logging is often the only tool that reproduces the bug at all.</p>
+                    <p>A practical workflow:</p>
+                    <ol>
+                        <li>Reproduce the bug with logging.</li>
+                        <li>Identify the timing pattern in the logs.</li>
+                        <li>Once you have a hypothesis about the timing, use the debugger to confirm specific values at specific points.</li>
+                        <li>Return to logging to observe the pattern across many runs.</li>
+                    </ol>
+                    <p>The debugger is a microscope; logging is a telescope. You need both to understand a complex system.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="production-systems">
+                    <h3 id="production-systems">Production systems</h3>
+                    <p>Attaching a debugger to a production service is usually not an option. Even if you have the permissions, the debugger will pause the service, which affects users. And the very act of pausing can change the behavior enough that the bug disappears.</p>
+                    <p>Logging is the tool for production. A well-designed logging system captures the events you care about, at a level of detail that is useful without being overwhelming. When a bug occurs in production, the logs are the evidence you have.</p>
+                    <p>The workflow for production bugs:</p>
+                    <ol>
+                        <li>Observe the symptoms from user reports or monitoring alerts.</li>
+                        <li>Inspect the logs for the relevant time window.</li>
+                        <li>Form a hypothesis based on the logs.</li>
+                        <li>Reproduce the hypothesis in a test or a local environment.</li>
+                        <li>Debug the local reproduction under LLDB if needed.</li>
+                        <li>Fix the bug and add a regression test.</li>
+                        <li>Deploy the fix and verify with logs.</li>
+                    </ol>
+                    <p>This workflow uses the debugger only in step 5, where it is appropriate. The rest of the investigation happens with logs, tests, and static tools.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-good-logging-looks-like">
+                    <h3 id="what-good-logging-looks-like">What good logging looks like</h3>
+                    <p>A good logging system has several properties that make it a better tool than the debugger for the situations listed above:</p>
+                    <ul>
+                        <li><strong>Structured</strong>: each log message has fields that can be filtered and analyzed, such as <code>request_id</code>, <code>user_id</code>, <code>duration_ms</code>.</li>
+                        <li><strong>Correlated</strong>: each message carries an identifier that links it to the request or task that produced it.</li>
+                        <li><strong>Leveled</strong>: each message is at a level (<code>trace</code>, <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>) that can be used to control verbosity.</li>
+                        <li><strong>Cheap</strong>: emitting a log message that is filtered out is fast, so you can leave detailed logging in production without significant overhead.</li>
+                        <li><strong>Rotated and retained</strong>: log files are rotated and retained for a defined period, so you can investigate bugs that occurred recently.</li>
+                    </ul>
+                    <p>With these properties, logging becomes a rich source of evidence. It is not a substitute for the debugger, but in the situations listed above, it is often the only source of evidence available.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="tests-as-an-alternative">
+                <h2 id="tests-as-an-alternative">Tests as an alternative</h2>
+                <p>Tests are the tool for reproducibility. When a bug has been observed but not yet reproduced, the next step is often to write a test that triggers it.</p>
+
+                <section tabindex="0" aria-labelledby="why-tests-are-the-first-reproduction-tool">
+                    <h3 id="why-tests-are-the-first-reproduction-tool">Why tests are the first reproduction tool</h3>
+                    <p>A test is a minimal, deterministic reproduction. It has several advantages over running the full program:</p>
+                    <ul>
+                        <li><strong>Fast</strong>: a test runs in milliseconds or seconds, not minutes.</li>
+                        <li><strong>Deterministic</strong>: a test can control the inputs and environment, eliminating sources of nondeterminism.</li>
+                        <li><strong>Self-documenting</strong>: a test states the expected behavior explicitly, which is itself a form of documentation.</li>
+                        <li><strong>Permanent</strong>: a test remains in the codebase as a regression check, so the bug cannot return unnoticed.</li>
+                        <li><strong>Composable</strong>: tests can be run in any order, in parallel, or in isolation.</li>
+                    </ul>
+                    <p>When a bug can be reproduced in a test, debugging the test is almost always easier than debugging the full application. The test binary is smaller, the startup is faster, and the environment is controlled.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="writing-a-test-before-debugging">
+                    <h3 id="writing-a-test-before-debugging">Writing a test before debugging</h3>
+                    <p>A common and effective workflow is to write a failing test before starting the debugging session:</p>
+                    <ol>
+                        <li>Observe the bug in the running program.</li>
+                        <li>Write a test that asserts the correct behavior. The test fails.</li>
+                        <li>Debug the test under LLDB.</li>
+                        <li>Fix the bug.</li>
+                        <li>The test now passes. Keep it as a regression test.</li>
+                    </ol>
+                    <p>This workflow has several advantages:</p>
+                    <ul>
+                        <li>The debugging session has a clear, specific goal: make the test pass.</li>
+                        <li>The reproduction is minimal, so the debugging session is focused.</li>
+                        <li>The test remains in the codebase, providing long-term value.</li>
+                        <li>If the fix does not actually fix the bug, the test will still fail, which is immediate feedback.</li>
+                    </ul>
+                    <p>This is closely related to Test-Driven Development (TDD), but it is applied to bugs rather than to new features. The principle is the same: write the test first, and let it guide the fix.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tests-for-timing-sensitive-bugs">
+                    <h3 id="tests-for-timing-sensitive-bugs">Tests for timing-sensitive bugs</h3>
+                    <p>Timing-sensitive bugs are harder to reproduce in a test, but not impossible. Techniques include:</p>
+                    <ul>
+                        <li><strong>Deterministic scheduling</strong>: some concurrency libraries provide test utilities that allow deterministic scheduling. For example, Tokio provides <code>tokio::test</code> and tools for controlling the runtime.</li>
+                        <li><strong>Time mock</strong>: if the bug depends on a clock, replace the clock with a mock that advances deterministically.</li>
+                        <li><strong>Stress tests</strong>: run the test many times to increase the chance of reproducing the timing. This is not deterministic, but it can find bugs that appear rarely.</li>
+                        <li><strong>Looms</strong>: a “loom test” runs the code under many possible interleavings, systematically exploring the space. The <code>loom</code> crate provides this for Rust.</li>
+                    </ul>
+                    <p>Once a timing-sensitive bug is reproduced reliably, it can be debugged like any other bug. The difficulty is in the reproduction, not in the debugging itself.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tests-for-unsafe-and-undefined-behavior">
+                    <h3 id="tests-for-unsafe-and-undefined-behavior">Tests for unsafe and undefined behavior</h3>
+                    <p>For unsafe code and undefined behavior, tests can be combined with Miri:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn test_unsafe_operation() {
+    // Exercise the unsafe code
+}
+</code></pre>
+                    <p>Then run the test under Miri:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>cargo +nightly miri test
+</code></pre>
+                    <p>Miri interprets the test at the MIR level and detects undefined behavior that the compiled code might not manifest. If Miri reports a problem, you have direct evidence of a bug, often with a much clearer diagnostic than the debugger can produce.</p>
+                    <p>The workflow:</p>
+                    <ol>
+                        <li>Write a test that exercises the unsafe code.</li>
+                        <li>Run the test under Miri.</li>
+                        <li>Fix the bug that Miri found.</li>
+                        <li>Run the test normally to confirm that the fix works in the compiled code.</li>
+                    </ol>
+                    <p>Miri and tests together are often a better tool for unsafe bugs than LLDB alone.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-tests-are-not-enough">
+                    <h3 id="when-tests-are-not-enough">When tests are not enough</h3>
+                    <p>Tests are not always the right tool either. A test may be:</p>
+                    <ul>
+                        <li><strong>Too slow to run repeatedly</strong>: for example, a test that spins up a database or a network service.</li>
+                        <li><strong>Too complex to set up</strong>: for example, a bug that requires a specific sequence of external events.</li>
+                        <li><strong>Not representative</strong>: the test may pass while the bug is present in production, because the test environment differs in some important way.</li>
+                        <li><strong>Not possible</strong>: some bugs depend on hardware, on network topology, or on user behavior that cannot be reproduced in a test.</li>
+                    </ul>
+                    <p>In these cases, the debugger or logging becomes the primary tool, and the test becomes a supplement.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="static-analysis-as-an-alternative">
+                <h2 id="static-analysis-as-an-alternative">Static analysis as an alternative</h2>
+                <p>Static analysis tools inspect the source code without running it. For certain classes of bugs, they are more effective than the debugger because they find all instances of a problem, not just the ones exercised by a specific execution.</p>
+
+                <section tabindex="0" aria-labelledby="the-rust-compiler-as-a-static-analyzer">
+                    <h3 id="the-rust-compiler-as-a-static-analyzer">The Rust compiler as a static analyzer</h3>
+                    <p>The Rust compiler is one of the most powerful static analyzers in any language. It checks:</p>
+                    <ul>
+                        <li>Types: every value has a well-defined type, and operations are type-correct.</li>
+                        <li>Ownership: every value has a single owner, and ownership is transferred according to the rules.</li>
+                        <li>Borrowing: references are valid and follow the aliasing rules.</li>
+                        <li>Lifetimes: references do not outlive the data they point to.</li>
+                        <li>Trait bounds: types satisfy the traits they are used with.</li>
+                        <li>Const evaluation: constant expressions are evaluated at compile time and checked for validity.</li>
+                    </ul>
+                    <p>When a bug is related to any of these areas, the compiler is the right tool. The error message tells you exactly what is wrong and where. Attempting to debug such a bug at runtime is impossible, because the program does not compile.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="clippy">
+                    <h3 id="clippy">Clippy</h3>
+                    <p>Clippy is the official Rust linter. It analyzes the source for common mistakes, non-idiomatic patterns, and suspicious code that compiles but is likely to be wrong.</p>
+                    <p>Run Clippy with:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo clippy --all-targets --all-features
+</code></pre>
+                    <p>Clippy catches a wide range of issues:</p>
+                    <ul>
+                        <li>Redundant clones and unnecessary allocations.</li>
+                        <li>Inefficient iterator chains.</li>
+                        <li>Unused or shadowed variables.</li>
+                        <li>Comparisons that are always true or false.</li>
+                        <li>Patterns that can be simplified.</li>
+                        <li>Common mistakes in unsafe code.</li>
+                        <li>Non-idiomatic API design.</li>
+                    </ul>
+                    <p>For classes of bugs that Clippy can detect, running Clippy is faster than running the debugger. Clippy finds the bug in the source; the debugger would find the same bug by watching the program behave incorrectly at runtime. Clippy is preferable because it catches the bug before the code is even run.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="rustfmt">
+                    <h3 id="rustfmt">Rustfmt</h3>
+                    <p>Rustfmt formats source code according to a consistent style. It does not find bugs, but it reduces style-based noise in the codebase, which makes other analysis tools and code reviews more effective. A consistent style is a small but real contributor to overall code quality.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="custom-lints">
+                    <h3 id="custom-lints">Custom lints</h3>
+                    <p>For larger projects, custom lints can enforce project-specific rules. For example, a lint might forbid the use of <code>unwrap</code> in production code, or require that every public function has a doc comment, or forbid a particular pattern that has caused bugs in the past.</p>
+                    <p>Custom lints are typically implemented with tools such as Dylint, which allows writing lints in Rust. They are a way to encode lessons from past bugs into rules that the compiler enforces on all future code.</p>
+                    <p>For Rust 2024, custom lints may also enforce edition-specific rules such as the correct usage of <code>unsafe extern</code> or <code>#[unsafe(no_mangle)]</code>.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="miri-as-a-static-runtime-analyzer">
+                    <h3 id="miri-as-a-static-runtime-analyzer">Miri as a static runtime analyzer</h3>
+                    <p>Miri is a hybrid tool: it runs your code (like a runtime), but it does so under an interpreter that checks the abstract semantics of Rust (like a static analyzer). This makes Miri uniquely capable of finding bugs that neither pure static analysis nor normal runtime observation would catch.</p>
+                    <p>Examples of what Miri detects:</p>
+                    <ul>
+                        <li>Accessing memory that has been freed (use-after-free).</li>
+                        <li>Reading uninitialized memory.</li>
+                        <li>Data races on shared memory (in unsafe code or when using raw pointers).</li>
+                        <li>Violations of the aliasing rules for references.</li>
+                        <li>Integer overflow in code paths that would otherwise wrap silently.</li>
+                        <li>Pointer arithmetic that goes out of bounds.</li>
+                    </ul>
+                    <p>Miri is especially valuable for unsafe code, where the debugger can observe the machine state but cannot determine whether the code violates Rust’s abstract rules. Miri provides the rules.</p>
+                    <p>For Rust 2024 projects, Miri supports the current edition and the new unsafe rules. Running tests under Miri is a standard part of the workflow for crates that contain unsafe code.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="sanitizers">
+                    <h3 id="sanitizers">Sanitizers</h3>
+                    <p>Sanitizers are runtime instrumentation tools that detect memory errors and other issues at runtime. They are more expensive than normal execution but far more thorough.</p>
+                    <p>Common sanitizers:</p>
+                    <ul>
+                        <li><strong>AddressSanitizer (ASan)</strong>: detects use-after-free, buffer overflow, and other memory errors.</li>
+                        <li><strong>ThreadSanitizer (TSan)</strong>: detects data races.</li>
+                        <li><strong>MemorySanitizer (MSan)</strong>: detects use of uninitialized memory.</li>
+                        <li><strong>UndefinedBehaviorSanitizer (UBSan)</strong>: detects undefined behavior such as integer overflow and misaligned pointers.</li>
+                    </ul>
+                    <p>For Rust projects, sanitizers are available via the nightly toolchain:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>RUSTFLAGS="-Zsanitizer=address" cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu
+</code></pre>
+                    <p>Sanitizers are best used on test suites, not on production code. They add significant overhead, often two to ten times slowdown, but they find bugs that normal runs miss entirely.</p>
+                    <p>For Rust 2024 code that interacts with C libraries, sanitizers are especially valuable because they instrument both Rust and C code, catching bugs at the boundary that neither side’s tools would find alone.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="performance-profiling-as-an-alternative">
+                <h2 id="performance-profiling-as-an-alternative">Performance and profiling as an alternative</h2>
+                <p>Some bugs are not about correctness but about performance. A program might produce the right answer, but take too long, use too much memory, or make too many system calls. For these bugs, the debugger is not usually the right tool.</p>
+
+                <section tabindex="0" aria-labelledby="profiling-for-cpu">
+                    <h3 id="profiling-for-cpu">Profiling for CPU</h3>
+                    <p>A profiler tells you where the program spends its time. For Rust, common profilers include:</p>
+                    <ul>
+                        <li><strong><code>perf</code></strong> (Linux): a system-level sampling profiler.</li>
+                        <li><strong><code>cargo flamegraph</code></strong>: produces a flame graph of the program’s CPU usage.</li>
+                        <li><strong><code>pprof</code></strong>: a Rust crate for profiling within the application.</li>
+                        <li><strong><code>tracing</code></strong>: for instrumenting specific code paths.</li>
+                    </ul>
+                    <p>A profiler answers: “where does the time go?” The debugger can set breakpoints and inspect state, but it cannot measure aggregate performance across a long run. For performance, profiling is the tool.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="memory-profiling">
+                    <h3 id="memory-profiling">Memory profiling</h3>
+                    <p>A memory profiler tells you where the program allocates memory and how much. For Rust, tools include:</p>
+                    <ul>
+                        <li><strong>Heap profilers</strong>: track allocations and frees to detect leaks and identify hot allocation sites.</li>
+                        <li><strong>Custom allocators</strong>: replace the global allocator with a tracking allocator to record allocation statistics.</li>
+                        <li><strong><code>dhat</code></strong> and similar crates: provide heap profiling from within the program.</li>
+                    </ul>
+                    <p>Memory bugs are not the same as memory correctness bugs. A program can have perfectly correct memory usage that is also inefficient, allocating and freeing too much for a hot path. These bugs are found with profiling, not with the debugger.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="benchmarking">
+                    <h3 id="benchmarking">Benchmarking</h3>
+                    <p>Benchmarks measure the performance of specific operations. For Rust, common approaches include:</p>
+                    <ul>
+                        <li><strong><code>criterion</code></strong>: a statistical benchmarking framework for Rust.</li>
+                        <li><strong><code>iai</code></strong>: instruction-count-based benchmarking.</li>
+                        <li><strong>Simple timing loops</strong>: for quick measurements of individual operations.</li>
+                    </ul>
+                    <p>Benchmarks answer: “did this change make the code faster or slower?” They are the right tool for performance regressions, which the debugger cannot detect.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-profiling-and-debugging-combine">
+                    <h3 id="when-profiling-and-debugging-combine">When profiling and debugging combine</h3>
+                    <p>Profiling and debugging can be used together. A profiler identifies a hot path; the debugger then inspects that path in detail. For example:</p>
+                    <ol>
+                        <li>Use a profiler to identify that a particular function consumes 40% of the CPU.</li>
+                        <li>Set a breakpoint inside that function.</li>
+                        <li>Inspect the arguments and internal state to understand why it is called so often or so expensively.</li>
+                        <li>Optimize the function or reduce the number of calls.</li>
+                        <li>Re-run the profiler to confirm the improvement.</li>
+                    </ol>
+                    <p>This combination is much more effective than either tool alone. The profiler narrows the target; the debugger inspects it.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="git-and-historical-investigation">
+                <h2 id="git-and-historical-investigation">Git and historical investigation</h2>
+                <p>Some bugs are best understood by examining the history of the code, not its current state. Git provides tools for this kind of investigation.</p>
+
+                <section tabindex="0" aria-labelledby="git-blame">
+                    <h3 id="git-blame"><code>git blame</code></h3>
+                    <p><code>git blame</code> shows the last commit that changed each line of a file. When a bug is in a specific line, <code>git blame</code> tells you which commit introduced it, which commit message describes it, and who wrote it.</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>git blame src/parser.rs
+</code></pre>
+                    <p>The commit message and the author often provide context that is not visible in the code itself. If the line was changed as part of a bug fix, the fix may have introduced a new bug elsewhere; <code>git blame</code> can reveal this connection.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="git-log">
+                    <h3 id="git-log"><code>git log</code></h3>
+                    <p><code>git log</code> shows the sequence of commits. For a specific file, it shows the history of that file:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>git log --oneline src/parser.rs
+</code></pre>
+                    <p>This is useful when you want to understand how a file evolved. The sequence of commit messages often reveals the sequence of changes in behavior, which helps contextualize the current bug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="git-bisect">
+                    <h3 id="git-bisect"><code>git bisect</code></h3>
+                    <p><code>git bisect</code> performs a binary search through the commit history to find the commit that introduced a bug. You provide a script that returns “good” or “bad” for a given commit, and Git runs the script against a sequence of commits until it finds the boundary.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>git bisect start
+git bisect bad          # current commit is bad
+git bisect good v1.0    # this old commit was good
+# Git checks out a middle commit; you test and run:
+git bisect good         # or git bisect bad
+# Repeat until the first bad commit is found
+git bisect reset        # return to the original branch
+</code></pre>
+                    <p>If the test can be automated, <code>git bisect run</code> can run the whole search without manual intervention:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>git bisect run cargo test --quiet test_failing_case
+</code></pre>
+                    <p>This is a form of automated experimental investigation. Instead of inspecting the code at every commit manually, you write a test that distinguishes good from bad and let Git find the boundary.</p>
+                    <p><code>git bisect</code> is often the fastest way to find a regression that was introduced in a large codebase with many recent commits. It replaces hours of manual investigation with a few minutes of automated search.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="git-diff">
+                    <h3 id="git-diff"><code>git diff</code></h3>
+                    <p><code>git diff</code> shows the changes between two versions of the code. When a bug appeared after a recent change, comparing the current code against the previous version highlights what changed. This is often much faster than reading the whole file.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>git diff HEAD~1 HEAD -- src/parser.rs
+git diff main feature-branch -- src/handler.rs
+</code></pre>
+                    <p>A common pattern: after the bug is fixed, the fix diff shows exactly what changed. If the diff is small, the fix was targeted. If the diff is large, the fix may be addressing more than the bug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-git-is-not-enough">
+                    <h3 id="when-git-is-not-enough">When Git is not enough</h3>
+                    <p>Git tells you when a change was made, but not why the changed code behaves as it does. For that, you still need the debugger or another runtime tool. Git is a tool for historical investigation; it does not replace tools for static or runtime questions.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="when-the-debugger-is-really-the-right-tool">
+                <h2 id="when-the-debugger-is-really-the-right-tool">When the debugger is really the right tool</h2>
+                <p>After all this discussion of alternatives, it is worth restating the situations where the debugger is the best tool.</p>
+
+                <section tabindex="0" aria-labelledby="a-compiled-program-with-a-runtime-bug">
+                    <h3 id="a-compiled-program-with-a-runtime-bug">A compiled program with a runtime bug</h3>
+                    <p>When the program compiles and the bug appears at runtime, the debugger is usually the fastest way to inspect the state that produces the bug. Static analysis cannot see runtime values; logging can only see what has been logged. The debugger can inspect anything in the current frame.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="control-flow-questions">
+                    <h3 id="control-flow-questions">Control-flow questions</h3>
+                    <p>When the question is “which branch was taken,” “how did execution reach this function,” or “what is the call stack at this moment,” the debugger is the primary tool. Control flow is not visible in logs unless explicitly recorded, and it is not visible in static analysis for specific executions.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="data-questions">
+                    <h3 id="data-questions">Data questions</h3>
+                    <p>When the question is “what value does this variable hold at this point,” the debugger provides the answer directly. Logging can answer it for values that were logged; static analysis cannot answer it at all. The debugger is the tool of choice.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="short-reproductions">
+                    <h3 id="short-reproductions">Short reproductions</h3>
+                    <p>When the bug reproduces in a short-lived program, the debugger is ideal. The program starts, stops at a breakpoint, and the interesting state is inspected. No logging infrastructure is needed; no test framework is needed. The debugger itself is the minimal environment.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-and-ffi-inspection">
+                    <h3 id="unsafe-and-ffi-inspection">Unsafe and FFI inspection</h3>
+                    <p>For unsafe code and FFI, the debugger gives you the machine state that the compiler cannot reason about. Combined with Miri for correctness checking and sanitizers for runtime detection, the debugger completes the toolkit. It is especially valuable when you need to inspect pointers, lengths, and raw memory.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="no-source-available">
+                    <h3 id="no-source-available">No source available</h3>
+                    <p>When debugging a binary for which you do not have source code (a third-party library, a system tool, a legacy binary), the debugger is one of the few tools available. You can still set breakpoints on symbols, inspect memory, and step through assembly. Static analysis and logging are not options for code you cannot modify.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="learning-how-a-program-works">
+                    <h3 id="learning-how-a-program-works">Learning how a program works</h3>
+                    <p>When you want to understand what a program does at runtime, the debugger is one of the best tools available. Breakpoints, stepping, and inspection reveal the actual behavior of the program, which is often different from what the source suggests. This is as true for your own code as for code you did not write.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-tool-selection-matrix">
+                <h2 id="the-tool-selection-matrix">The tool selection matrix</h2>
+                <p>A compact way to summarize this chapter is a matrix. For each kind of question, the matrix lists the tools most likely to help.</p>
+
+                <section tabindex="0" aria-labelledby="the-matrix">
+                    <h3 id="the-matrix">The matrix</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Question Type</th>
+                                <th>First Tool</th>
+                                <th>Second Tool</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Does this compile?</td>
+                                <td>Rust compiler</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td>Is this ownership correct?</td>
+                                <td>Rust compiler</td>
+                                <td>—</td>
+                            </tr>
+                            <tr>
+                                <td>Is this idiomatic?</td>
+                                <td>Clippy</td>
+                                <td>Code review</td>
+                            </tr>
+                            <tr>
+                                <td>What is this value at runtime?</td>
+                                <td>LLDB</td>
+                                <td>Logging</td>
+                            </tr>
+                            <tr>
+                                <td>Which branch was taken?</td>
+                                <td>LLDB</td>
+                                <td>Logging</td>
+                            </tr>
+                            <tr>
+                                <td>How many times did this happen?</td>
+                                <td>Logging</td>
+                                <td>Metrics</td>
+                            </tr>
+                            <tr>
+                                <td>Can I reproduce this?</td>
+                                <td>Tests</td>
+                                <td>Loom / stress tests</td>
+                            </tr>
+                            <tr>
+                                <td>Is this undefined behavior?</td>
+                                <td>Miri</td>
+                                <td>Sanitizers</td>
+                            </tr>
+                            <tr>
+                                <td>Where does time go?</td>
+                                <td>Profiler</td>
+                                <td>Benchmarks</td>
+                            </tr>
+                            <tr>
+                                <td>Where does memory go?</td>
+                                <td>Heap profiler</td>
+                                <td>Custom allocator</td>
+                            </tr>
+                            <tr>
+                                <td>When was this line changed?</td>
+                                <td>git blame</td>
+                                <td>git log</td>
+                            </tr>
+                            <tr>
+                                <td>Which commit broke this?</td>
+                                <td>git bisect</td>
+                                <td>git log</td>
+                            </tr>
+                            <tr>
+                                <td>What happened in production?</td>
+                                <td>Logging</td>
+                                <td>Monitoring / metrics</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>No single tool appears in every row. Each tool has its place, and the skill of an experienced debugger is knowing which tool to reach for based on the question.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-the-matrix">
+                    <h3 id="using-the-matrix">Using the matrix</h3>
+                    <p>When starting a debugging session, ask:</p>
+                    <blockquote>
+                        <p>Which row of the matrix does my question belong to?</p>
+                    </blockquote>
+                    <p>Then start with the first tool in that row. If the tool is not enough, move to the second. If neither is enough, consider whether the question is really a combination of multiple rows, and address each component separately.</p>
+                    <p>A common mistake is to default to the debugger for every problem. The matrix makes the alternatives visible, so that the choice becomes deliberate.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mixing-tools-is-often-the-right-answer">
+                    <h3 id="mixing-tools-is-often-the-right-answer">Mixing tools is often the right answer</h3>
+                    <p>In practice, most substantial investigations use several tools. The matrix is not a rule about which single tool to use, but a starting point for choosing the first tool. The investigation often moves through several rows, each with its own first tool.</p>
+                    <p>A typical sequence for a bug in a production service:</p>
+                    <ol>
+                        <li>Logging identifies the symptoms and the time window.</li>
+                        <li>Tests reproduce the bug locally.</li>
+                        <li>LLDB inspects the runtime state that produces the bug.</li>
+                        <li>Miri or sanitizers confirm the underlying cause if it involves unsafe code.</li>
+                        <li>git bisect finds the commit that introduced the bug.</li>
+                        <li>A regression test is added to prevent the bug from returning.</li>
+                    </ol>
+                    <p>This sequence uses six tools, each appropriate for its step. The debugger is one of them, not the whole answer.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-role-of-experience">
+                <h2 id="the-role-of-experience">The role of experience</h2>
+                <p>Choosing the right tool is a skill that develops with experience. A few principles help.</p>
+
+                <section tabindex="0" aria-labelledby="start-with-the-cheapest-tool">
+                    <h3 id="start-with-the-cheapest-tool">Start with the cheapest tool</h3>
+                    <p>Some tools are cheaper than others: they require less setup, run faster, and produce answers more quickly. In general, start with the cheapest tool that can answer the question:</p>
+                    <ul>
+                        <li>The compiler is very cheap: just run <code>cargo check</code>.</li>
+                        <li>Clippy is cheap: just run <code>cargo clippy</code>.</li>
+                        <li>Static search with <code>rg</code> is cheap: one command, immediate results.</li>
+                        <li>Tests are moderately cheap: if a test already exists, running it is trivial.</li>
+                        <li>Logging requires instrumentation but is cheap to run.</li>
+                        <li>LLDB requires a debug build and a launch but produces detailed evidence.</li>
+                        <li>Miri is slower than the compiled code but faster than manually testing many interleavings.</li>
+                        <li>Profiling and benchmarking require a workload and analysis.</li>
+                    </ul>
+                    <p>Starting with the cheapest tool is efficient. If the question is static, the compiler answers it instantly. Only if the compiler cannot answer does the investigation proceed to more expensive tools.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="prefer-evidence-over-assumption">
+                    <h3 id="prefer-evidence-over-assumption">Prefer evidence over assumption</h3>
+                    <p>Each tool provides evidence of a different kind. The compiler provides evidence about the source; the debugger provides evidence about the runtime; logs provide evidence about the history. When choosing a tool, ask which kind of evidence the question requires, and choose the tool that provides it.</p>
+                    <p>Assumptions fill the gap when no evidence is available. But every assumption is a potential bug. The job of the debugging process is to replace assumptions with evidence.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="be-willing-to-switch">
+                    <h3 id="be-willing-to-switch">Be willing to switch</h3>
+                    <p>No tool is right for every question. A session that starts with the debugger and then switches to logging, or starts with logging and switches to a test, or starts with a test and switches to the compiler, is not failing. It is adapting to what the investigation has revealed.</p>
+                    <p>The worst failure mode is to insist on using the same tool for a question it cannot answer. This wastes time and produces misleading conclusions. Recognizing when to switch is a mark of experience.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="document-the-choice">
+                    <h3 id="document-the-choice">Document the choice</h3>
+                    <p>For complex investigations, document which tool was used for which question. This helps when reviewing the investigation later, and it helps when explaining the investigation to others.</p>
+                    <p>An example entry in a notebook:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>Question: Is the parser returning Err for valid inputs?
+Tool: LLDB
+Reasoning: Need to inspect the runtime state at parse time.
+Result: Yes, the parser returns Err(InvalidUtf8) for inputs that are valid UTF-8.
+Next: Use a unit test to isolate the parser.
+</code></pre>
+                    <p>The entry records not just the tool and result, but also the reasoning behind the tool choice. This is the kind of record that makes a debugging session useful months later.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-tool-selection">
+                <h2 id="rust-2024-notes-on-tool-selection">Rust 2024 notes on tool selection</h2>
+                <p>Rust 2024 changes the source in ways that affect tool selection in specific cases.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks-and-ffi-debugging">
+                    <h3 id="unsafe-extern-blocks-and-ffi-debugging"><code>unsafe extern</code> blocks and FFI debugging</h3>
+                    <p>Because all <code>extern</code> blocks are <code>unsafe extern</code> in Rust 2024, the FFI boundary is more explicit. This makes it easier to decide when LLDB is the right tool: whenever a question involves crossing the FFI boundary, LLDB is likely needed, because neither pure static analysis nor logging can easily follow into foreign code. The new syntax highlights exactly where this boundary is.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-attributes-and-symbol-inspection">
+                    <h3 id="unsafe-attributes-and-symbol-inspection">Unsafe attributes and symbol inspection</h3>
+                    <p>The new <code>#[unsafe(no_mangle)]</code> and <code>#[unsafe(export_name = "...")]</code> syntax changes what symbols appear in the binary. This matters for tool selection because:</p>
+                    <ul>
+                        <li>A symbol exposed with <code>#[unsafe(no_mangle)]</code> appears under its exact source name, making name-based breakpoints reliable.</li>
+                        <li>A symbol exposed with <code>#[unsafe(export_name = "custom_name")]</code> appears under the custom name, requiring the debugger to know the custom name.</li>
+                        <li>When integrating with C code, the FFI boundary is often the place where tool choice matters most—LLDB is the tool that can follow into C, whereas Miri cannot.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-and-tool-selection">
+                    <h3 id="static-mut-and-tool-selection"><code>static mut</code> and tool selection</h3>
+                    <p>The Rust 2024 restriction on <code>static mut</code> references means global state must be accessed through raw pointers or interior-mutability primitives. For tool selection:</p>
+                    <ul>
+                        <li>LLDB remains the primary tool for inspecting global state at runtime.</li>
+                        <li>Miri can detect misuse of the new primitives (<code>UnsafeCell</code>, atomics) at the semantic level.</li>
+                        <li>Sanitizers can detect data races on shared state, complementing the debugger.</li>
+                    </ul>
+                    <p>None of these change the fundamental principle: choose the tool based on the question, not based on the habit.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="async-and-gen-and-tool-selection">
+                    <h3 id="async-and-gen-and-tool-selection">Async and <code>gen</code> and tool selection</h3>
+                    <p>Rust 2024 stabilizes async closures and <code>gen</code> blocks. These features produce state machines similar to <code>async fn</code>. For tool selection:</p>
+                    <ul>
+                        <li>For runtime questions about a specific state machine, LLDB remains the primary tool.</li>
+                        <li>For questions about the state machine’s logic in aggregate (which interleavings are possible, whether a state can be reached), tests with a deterministic scheduler (Tokio’s test utilities, Loom) are often better.</li>
+                        <li>For questions about async state in production, logging and distributed tracing are often the only options.</li>
+                    </ul>
+                    <p>The pattern is the same: choose the tool that matches the question, not the tool that matches the language feature.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="clippy-and-the-2024-edition">
+                    <h3 id="clippy-and-the-2024-edition">Clippy and the 2024 edition</h3>
+                    <p>Clippy supports the Rust 2024 edition and includes lints specific to the new rules. Running <code>cargo clippy</code> on a 2024 edition project will flag any patterns that violate the new semantics, such as missing <code>unsafe</code> blocks inside <code>unsafe fn</code>, or references to <code>static mut</code>. These lints are another static tool in the toolkit, useful before any runtime debugging begins.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch19">
+                <h2 id="summary-ch19">Summary</h2>
+                <p>In this chapter, we surveyed the alternatives to the debugger and the situations where each is the better tool:</p>
+                <ul>
+                    <li><strong>Logging</strong> for long-running observations, high event density, timing-sensitive behavior, and production systems. Logging captures what happened over time; the debugger captures what is happening now.</li>
+                    <li><strong>Tests</strong> for reproducibility. When a bug can be reproduced in a test, debugging the test is almost always easier than debugging the full application. Tests also provide the long-term value of a regression suite.</li>
+                    <li><strong>Static analysis</strong>: the Rust compiler for type, ownership, and lifetime questions; Clippy for idiomatic issues and common mistakes; Miri for undefined behavior; sanitizers for memory and concurrency errors.</li>
+                    <li><strong>Profiling</strong> for performance questions. A profiler answers where time goes; a memory profiler answers where memory goes. Neither is answered by the debugger.</li>
+                    <li><strong>Git</strong> for historical questions: <code>git blame</code> for who changed a line, <code>git log</code> for the evolution of a file, <code>git bisect</code> for finding the commit that introduced a regression, <code>git diff</code> for understanding what changed recently.</li>
+                    <li><strong>When the debugger is really the right tool</strong>: for compiled programs with runtime bugs, for control-flow questions, for data questions, for short reproductions, for unsafe and FFI inspection, when no source is available, and for learning how a program works at runtime.</li>
+                    <li><strong>The tool selection matrix</strong>: a compact reference for which tool to reach for first given a specific kind of question.</li>
+                    <li><strong>The role of experience</strong>: start with the cheapest tool that can answer the question, prefer evidence over assumption, be willing to switch tools mid-investigation, and document the choice of tools in the investigation notebook.</li>
+                    <li><strong>Rust 2024 specifics</strong>: <code>unsafe extern</code>, unsafe attributes, <code>static mut</code> restrictions, async closures, and <code>gen</code> blocks affect the source and the debugger’s view, but do not change the fundamental principle of choosing a tool for the question rather than the language feature.</li>
+                </ul>
+                <p>The unifying theme: no single tool is the answer to every question. Debugging is not the exclusive province of the debugger; it is a discipline that uses all available tools to reduce uncertainty about the program’s behavior. The debugger is one of the most powerful tools, but only when it is the right one.</p>
+                <p>In the next chapter, we turn to a practical concern that affects how easily a session goes: how to manage the debugger’s output, particularly for screen-reader workflows and for sessions where the amount of information is large.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-18.html">← Chapter 18</a>
+            <a class="nav-next" href="./chapter-20.html">Chapter 20 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

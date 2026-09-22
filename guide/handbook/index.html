@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Rust Programming Handbook – Table of Contents</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <h1>The Rust Programming Handbook</h1>
+        <h2>Accessible Edition</h2>
+        <p><strong>An end-to-end guide to mastering Rust fundamentals</strong></p>
+        <p>Francesco Ciulla</p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+        <nav aria-label="Table of Contents" role="navigation">
+            <h2 id="toc-heading">Table of Contents</h2>
+
+            <ul class="toc-list" aria-labelledby="toc-heading">
+                <li><a href="./preface.html">Preface</a></li>
+                <li><a href="./chapter-01.html">Chapter 1: Getting Started with Rust</a></li>
+                <li><a href="./chapter-02.html">Chapter 2: Rust Syntax and Functions</a></li>
+                <li><a href="./chapter-03.html">Chapter 3: Functions in Rust</a></li>
+                <li><a href="./chapter-04.html">Chapter 4: Ownership, Borrowing, and References</a></li>
+                <li><a href="./chapter-05.html">Chapter 5: Composite Types in Rust and the Module System</a></li>
+                <li><a href="./chapter-06.html">Chapter 6: Introduction to Error Handling</a></li>
+                <li><a href="./chapter-07.html">Chapter 7: Polymorphism and Lifetimes</a></li>
+                <li><a href="./chapter-08.html">Chapter 8: Object-Oriented Programming in Rust</a></li>
+                <li><a href="./chapter-09.html">Chapter 9: Thinking Functionally in Rust</a></li>
+                <li><a href="./chapter-10.html">Chapter 10: Testing in Rust</a></li>
+                <li><a href="./chapter-11.html">Chapter 11: Smart Pointers and Memory Management</a></li>
+                <li><a href="./chapter-12.html">Chapter 12: Managing System Resources</a></li>
+                <li><a href="./chapter-13.html">Chapter 13: Concurrency and Parallelism</a></li>
+                <li><a href="./chapter-14.html">Chapter 14: Rust for Web Development: Building Full-Stack Applications</a></li>
+                <li><a href="./chapter-15.html">Chapter 15: System Programming in Rust: Concrete Examples</a></li>
+                <li><a href="./chapter-16.html">Chapter 16: Dockerization and Deployment of Rust Applications</a></li>
+                <li><a href="./appendix-a.html">Appendix A: Common Pitfalls in Rust Programming (Online)</a></li>
+                <li><a href="./appendix-b.html">Appendix B: Answers and Solutions (Online)</a></li>
+                <hr>
+                <li><a href="./appendix-c.html">Appendix C: Question-Code Spiking for Comprehending a New Codebase</a></li>
+            </ul>
+
+            <p class="toc-note">
+                Each chapter and appendix is on its own page, linked from this table of contents.
+            </p>
+        </nav>
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>

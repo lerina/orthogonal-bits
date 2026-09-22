@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 10: Testing in Rust – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch10-heading">
+            <h1 id="ch10-heading">Chapter 10: Testing in Rust</h1>
+
+            <p>Welcome to Chapter 10!</p>
+            <p>After defining data, managing errors, and exploring functional concepts, we now arrive at a crucial practice for any software developer: <strong>testing</strong>. This chapter highlights how Rust makes it easy and enjoyable to write tests, helping you ensure your code works correctly and the quality remains high over time. Rust doesn’t just support testing; it actively encourages it with fantastic built-in tools, making testing a seamless and natural part of your development journey. Think of this chapter as learning how to build a robust safety net for all the awesome Rust code you will write!</p>
+            <p>But before we proceed, let’s start with a question most of you might have now.</p>
+            <p><strong>Why ever bother with testing?</strong></p>
+
+            <section tabindex="0" aria-labelledby="why-bother-with-testing">
+                <h2 id="why-bother-with-testing">Why bother with testing?</h2>
+                <p>You might think, “Okay, testing sounds good, but is it necessary, especially when I’m just starting or working on smaller projects?” That’s a fair question! Investing a bit of time in writing tests, even for simpler projects, pays off handsomely. Here’s why it’s a big deal:</p>
+                <ul>
+                    <li><strong>Catching bugs early</strong>: It’s far less painful (and less expensive) to find and fix a bug when you’ve just written the code than weeks or months later when it’s buried under layers of new features. Tests act like an early warning system.</li>
+                    <li><strong>Confidence to refactor and change</strong>: Code evolves. When you need to refactor (restructure existing code) or add new features, a good set of tests gives you the confidence that you haven’t accidentally broken something else. You can make changes, run your tests, and breathe a little easier if they pass!</li>
+                    <li><strong>Documentation by example</strong>: Tests are, in a way, a form of living documentation. They show exactly how a piece of code is intended to be used and its expected outputs for given inputs. This is invaluable for yourself later, or for anyone else trying to understand your code.</li>
+                    <li><strong>Preventing regressions</strong>: A “regression” is when a previously fixed bug reappears or a new change breaks existing functionality. Once you write a test for a bug, that test helps ensure the bug stays fixed.</li>
+                    <li><strong>Better code design</strong>: Often, thinking about how to test a piece of code encourages you to write it in a more modular, decoupled, and, thus, better-designed way. If something is hard to test, it might indicate that its design could be improved.</li>
+                </ul>
+                <p>So, while it might seem like extra work upfront, testing is a fundamental practice that leads to more reliable, maintainable, and, ultimately, more professional software.</p>
+                <p><strong>Note</strong>: All these benefits connect to an important idea called test coverage. Think of test coverage as a way to see how much of your production code is actually run when you execute your test suite. Even though reaching 100% coverage isn’t always realistic, aiming for a high percentage helps you feel more confident that your code has been carefully checked. It’s a helpful way to spot parts of your application that haven’t been tested yet and might have bugs waiting to be found. We won’t go into detail about specific coverage tools in this chapter, but the concept is straightforward: the more of your code that your tests cover, the stronger and more reliable your safety net becomes.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="types-of-tests-in-rusts-ecosystem">
+                <h2 id="types-of-tests-in-rusts-ecosystem">Types of tests in Rust’s ecosystem</h2>
+                <p>When we talk about testing in Rust, especially using its built-in capabilities, we’re generally focusing on a few key categories. It’s good to know the lingo:</p>
+                <ul>
+                    <li><strong>Unit tests</strong>: These are the most detailed tests. They focus on checking small, individual parts of your code in isolation, usually a single function, a method, or a very specific section of a module. The goal is to make sure that each “unit” works correctly on its own. In Rust, these are often located in a mod tests submodule within the same file as the code they test.</li>
+                    <li><strong>Integration tests</strong>: These tests take a broader view. Instead of testing individual units in isolation, they check how different parts of your library or application work together. They typically test the public API of your crate, simulating how an external user or another part of a larger system would interact with it. Rust has a special tests directory at the root of your project for these.</li>
+                    <li><strong>Documentation tests (doc tests)</strong>: This is a rather neat feature in Rust! Code examples that you write directly within your documentation comments (using /// or //!) can be automatically compiled and run as tests. This is fantastic for ensuring that your examples are always correct and up to date, providing reliable documentation for users of your code.</li>
+                </ul>
+                <p>While other testing forms, such as end-to-end or performance testing, exist, this chapter mainly focuses on Rust’s strong support for unit, integration, and documentation tests with cargo test. These form the backbone of most Rust testing strategies!</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="unit-tests-the-building-blocks">
+                <h2 id="unit-tests-the-building-blocks">Unit tests: The building blocks</h2>
+                <p>Now that we understand why testing is essential, let’s get practical and explore unit tests. These are the first line of defense in ensuring the quality of your code. Think of them as small, focused checks for the individual components, the “units” of your program.</p>
+
+                <section tabindex="0" aria-labelledby="what-are-unit-tests">
+                    <h3 id="what-are-unit-tests">What are unit tests?</h3>
+                    <p>Unit tests are designed to verify the smallest testable parts of your application in isolation. Typically, this means testing a single function or a method on a struct or enum. The goal is to confirm that a specific piece of logic behaves correctly given a known set of inputs, producing the expected outputs or side effects (though pure functions with no side effects are often easiest to unit test!).</p>
+                    <p>Because they are isolated, unit tests have a few great characteristics:</p>
+                    <ul>
+                        <li><strong>Fast</strong>: They usually run very quickly, allowing you to run them frequently during development.</li>
+                        <li><strong>Precise</strong>: When a unit test fails, it generally points to a very specific area of your code, making debugging much easier.</li>
+                        <li><strong>Independent</strong>: Ideally, unit tests don’t rely on external systems, such as databases, networks, or even other parts of your own application, being in a particular state.</li>
+                    </ul>
+                    <p>In Rust, the convention is to place unit tests in the same file as the code they are testing, grouped within a submodule. Let’s see how.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="writing-your-first-unit-test">
+                    <h3 id="writing-your-first-unit-test">Writing your first unit test</h3>
+                    <p>Rust makes writing unit tests quite straightforward. You’ll typically create a submodule named tests within your source file, annotate it with #[cfg(test)] so it’s only compiled during testing, and then write functions within that module marked with the #[test] attribute.</p>
+                    <p>Let’s imagine that we have a utility function that capitalizes the first letter of a string slice and leaves the rest lowercase.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs or your relevant module file
+pub fn capitalize_first_letter(s: &amp;str) -> String {
+    if s.is_empty() {
+        return String::new();
+    }
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(), // Should be covered by is_empty, but good for robustness
+        Some(first_char) => {
+            first_char.to_uppercase().to_string() + chars.as_str().to_lowercase().as_str()
+        }
+    }
+}
+
+// This is where our tests will go
+#[cfg(test)] // Only compile this module when running tests
+mod tests {
+    // Import items from the parent module (where capitalize_first_letter is)
+    use super::*;
+
+    #[test] // Marks this function as a test case
+    fn test_capitalize_basic_string() {
+        let input = "hello";
+        let expected = "Hello";
+        assert_eq!(capitalize_first_letter(input), expected);
+    }
+
+    #[test]
+    fn test_capitalize_already_capitalized() {
+        assert_eq!(capitalize_first_letter("World"), "World");
+    }
+
+    #[test]
+    fn test_capitalize_mixed_case() {
+        assert_eq!(capitalize_first_letter("rUsT"), "Rust");
+    }
+
+    #[test]
+    fn test_capitalize_empty_string() {
+        assert_eq!(capitalize_first_letter(""), "");
+    }
+
+    #[test]
+    fn test_capitalize_single_char_string() {
+        assert_eq!(capitalize_first_letter("a"), "A");
+        assert_eq!(capitalize_first_letter("Z"), "Z");
+    }
+
+    #[test]
+    fn test_capitalize_with_numbers_and_symbols() {
+        assert_eq!(capitalize_first_letter("1st place!"), "1st place!");
+        assert_eq!(capitalize_first_letter("!leadingSymbol"), "!leadingsymbol");
+    }
+}</code></pre>
+                    <p>Let’s break down the key parts of the test setup:</p>
+                    <ul>
+                        <li><strong>pub fn capitalize_first_letter(...)</strong>: This is the function we intend to test. Notice it’s marked pub, so it can be accessed from other modules if this were part of a library.</li>
+                        <li><strong>#[cfg(test)]</strong>: This attribute is a conditional compilation flag. It tells the Rust compiler, “Only compile the following module (mod tests) if we are running tests (e.g., via cargo test).” This ensures your test code doesn’t end up in your final release binary, keeping it lean.</li>
+                        <li><strong>mod tests { ... }</strong>: This declares a new submodule named tests. It’s a strong convention in Rust to put unit tests for a module, foo, in a submodule, foo::tests.</li>
+                        <li><strong>use super::*;</strong>: Inside the tests module, this line imports all items (functions, structs, etc.) from its parent module (which is the module containing capitalize_first_letter). The super keyword refers to the parent module. The * character is a glob import, bringing everything in. This allows us to call capitalize_first_letter directly in our tests.</li>
+                        <li><strong>#[test]</strong>: This attribute, placed above a function, signals to Rust’s test runner that this particular function is a test case. Test functions are typically plain functions that don’t take arguments and don’t return values.</li>
+                        <li><strong>Assertion macros</strong>: Inside the test functions (such as test_capitalize_basic_string), we use macros such as assert_eq!. These macros check whether a certain condition is true. If the condition is false, the macro will cause the test function to panic, which the test runner interprets as a test failure. We’ll look at common assertion macros next.</li>
+                    </ul>
+                    <p><strong>Tip: Better test diffs with pretty_assertions</strong><br>
+                    For much clearer test failures when comparing large structs or multi-line strings, the popular pretty_assertions crate replaces the standard assert_eq! output with a colorful, git-style “diff.” To use it, simply add it as a [dev-dependency] in your Cargo.toml and then import its macro (e.g., use pretty_assertions::assert_eq;) in your test module. It’s a drop-in replacement that can make debugging much faster.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="running-your-tests-with-cargo-test">
+                    <h3 id="running-your-tests-with-cargo-test">Running your tests with cargo test</h3>
+                    <p>Once you’ve written some tests, how do you run them? It’s remarkably simple with Cargo, Rust’s build system and package manager. Just open your terminal in the root directory of your Rust project and execute the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test</code></pre>
+                    <p>Cargo will then do the following:</p>
+                    <ol>
+                        <li>Compile your main code.</li>
+                        <li>Compile your test code (including modules marked #[cfg(test)] and functions marked #[test]).</li>
+                        <li>Run each test function.</li>
+                        <li>Report the results, telling you how many tests ran, how many passed, how many failed, how many were ignored, and so on.</li>
+                    </ol>
+                    <p>You’ll get a comforting green “ok” if all tests pass. If any test fails (due to a panicking assertion), Cargo will print details about the failure, including the filepath, line number, and any message provided to the assertion macro. This makes it easy to pinpoint what went wrong.</p>
+                    <p>Go ahead and create a new library project using cargo new string_utils --lib, replace the contents of src/lib.rs with the capitalize_first_letter function and its tests from previously, and then run cargo test. You should see all tests passing! For fun, try introducing a bug in capitalize_first_letter (e.g., make it always return an empty string) and run cargo test again to observe a test failure.</p>
+                    <p>The test failure should look like this:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>running 6 tests
+test test_capitalize_already_capitalized ... ok
+test test_capitalize_empty_string ... ok
+test test_capitalize_mixed_case ... ok
+test test_capitalize_single_char_string ... ok
+test test_capitalize_with_numbers_and_symbols ... ok
+test test_capitalize_basic_string ... FAILED
+
+failures:
+
+---- test_capitalize_basic_string stdout ----
+thread 'main' panicked at src/lib.rs:21:9:
+assertion failed: `left == right`
+  left: `""`,
+ right: `"Hello"`
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+failures:
+    test_capitalize_basic_string
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="common-assertion-macros">
+                    <h3 id="common-assertion-macros">Common assertion macros</h3>
+                    <p>The core of most tests involves checking that some condition holds true or that an actual value matches an expected value. Rust’s standard library provides a few essential macros for this, which all cause a panic (and thus a test failure) if their condition isn’t met.</p>
+                    <ul>
+                        <li><strong>assert!(expression, ...optional_message_args...)</strong>: This is the most basic assertion. It checks whether the given Boolean expression evaluates to true. If it’s false, the test panics.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn is_string_long_enough() {
+    let my_string = "Rustacean";
+    assert!(my_string.len() > 5, "String '{}' should be longer than 5 chars", my_string);
+}</code></pre>
+                        </li>
+                        <li><strong>assert_eq!(left, right, ...optional_message_args...)</strong>: This macro checks whether the left and right expressions are equal (using the == operator, so the types must implement PartialEq). If they are not equal, it panics, helpfully printing both the left and right values. This is probably the most common assertion you’ll use.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn values_should_be_equal() {
+    let calculated_value = 2 + 2;
+    let expected_value = 4;
+    assert_eq!(calculated_value, expected_value, "Checking simple addition");
+}</code></pre>
+                        </li>
+                        <li><strong>assert_ne!(left, right, ...optional_message_args...)</strong>: The opposite of assert_eq!. It checks that left and right are not equal (using the != operator, requiring PartialEq). It panics if they are equal.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn values_should_not_be_equal() {
+    let value_a = "apple";
+    let value_b = "orange";
+    assert_ne!(value_a, value_b, "Different fruits should not be equal");
+}</code></pre>
+                        </li>
+                    </ul>
+                    <p>All these assertion macros can take additional arguments after the main condition/values. These extra arguments are passed to the format! macro to create a custom panic message if the assertion fails. Providing clear, contextual failure messages can be a huge help when a test breaks, especially if it’s not immediately obvious why from the code itself.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="testing-result-and-option-types">
+                    <h3 id="testing-result-and-option-types">Testing Result and Option types</h3>
+                    <p>Many Rust functions, especially those performing operations that might fail or not find a value, return Result&lt;T, E&gt; or Option&lt;T&gt;. Testing these types involves checking for the correct variant (Ok, Err, Some, or None) and often inspecting the contained value or error.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// A function that might fail if input is empty
+fn create_greeting(name: &amp;str) -> Result&lt;String, String&gt; {
+    if name.trim().is_empty() {
+        Err("Name cannot be empty".to_string())
+    } else {
+        Ok(format!("Hello, {}!", name))
+    }
+}
+
+// A function that returns an Option
+fn find_even_number(numbers: &amp;[i32]) -> Option&lt;i32&gt; {
+    for &amp;num in numbers {
+        if num % 2 == 0 {
+            return Some(num); // Return the first even number found
+        }
+    }
+    None // No even number found
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_greeting_success() {
+        let result = create_greeting("Rustacean");
+        assert!(result.is_ok(), "Greeting should be Ok for valid name");
+        // Once we know it's Ok, it's generally safe to unwrap in a test
+        assert_eq!(result.unwrap(), "Hello, Rustacean!");
+    }
+
+    #[test]
+    fn test_create_greeting_failure_empty_name() {
+        let result = create_greeting("");
+        assert!(result.is_err(), "Greeting should be Err for empty name");
+        // We can also check the specific error message
+        assert_eq!(result.unwrap_err(), "Name cannot be empty");
+    }
+
+    #[test]
+    fn test_create_greeting_failure_whitespace_name() {
+        let result = create_greeting(" ");
+        assert!(result.is_err(), "Greeting should be Err for whitespace-only name");
+    }
+
+    #[test]
+    fn test_find_even_number_some_found() {
+        let numbers = [1, 3, 4, 5, 7];
+        let result = find_even_number(&amp;numbers);
+        assert!(result.is_some(), "Should find an even number");
+        assert_eq!(result.unwrap(), 4);
+    }
+
+    #[test]
+    fn test_find_even_number_none_found() {
+        let numbers = [1, 3, 5, 7, 9];
+        let result = find_even_number(&amp;numbers);
+        assert!(result.is_none(), "Should return None if no even number is present");
+    }
+
+    #[test]
+    fn test_find_even_number_empty_slice() {
+        let numbers: [i32; 0] = []; // Empty slice
+        let result = find_even_number(&amp;numbers);
+        assert!(result.is_none(), "Should return None for an empty slice");
+    }
+
+    // Using assert!(matches!(...)) for more precise checks (Rust 1.42+)
+    #[test]
+    fn test_greeting_with_matches_macro() {
+        let result_ok = create_greeting("Pat");
+        assert!(matches!(result_ok, Ok(ref s) if s == "Hello, Pat!"),
+            "Expected Ok(\"Hello, Pat!\"), got {:?}", result_ok);
+        let result_err = create_greeting(" ");
+        assert!(matches!(result_err, Err(ref s) if s == "Name cannot be empty"),
+            "Expected specific error, got {:?}", result_err);
+    }
+}</code></pre>
+                    <p>For Result&lt;T, E&gt;, the is_ok() and is_err() methods are very useful for asserting the outcome. If you’ve checked that Result is Ok, it’s generally considered safe to call .unwrap() within a test to get the value for further assertions. Similarly, .unwrap_err() can be used to get the error value after checking is_err().</p>
+                    <p>For Option&lt;T&gt;, is_some() and is_none() serve the same purpose, with .unwrap() being used to get the value from a Some. The matches!(expression, pattern) macro (stable since Rust 1.42) is a powerful tool. It allows you to assert that an expression matches a given pattern without needing to unwrap or write a full match statement. You can even include guards in the pattern (such as Ok(ref s) if s == "Hello, Pat!"). This is often cleaner than multiple is_ok/unwrap/assert_eq chains.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="testing-for-panics">
+                    <h3 id="testing-for-panics">Testing for panics</h3>
+                    <p>Sometimes, the correct behavior of your code is to panic, for example, when an unrecoverable error occurs due to invalid input that signifies a programming error, or an internal state becomes inconsistent. Rust allows you to explicitly test for these panic conditions. You do this by adding the #[should_panic] attribute to your test function.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>pub struct ScoreKeeper {
+    scores: Vec&lt;u32&gt;,
+    max_scores: usize,
+}
+
+impl ScoreKeeper {
+    pub fn new(max_scores: usize) -> Self {
+        if max_scores == 0 {
+            panic!("Cannot create a ScoreKeeper with zero capacity!");
+        }
+        ScoreKeeper { scores: Vec::with_capacity(max_scores), max_scores }
+    }
+    pub fn add_score(&amp;mut self, score: u32) {
+        if self.scores.len() >= self.max_scores {
+            panic!("Cannot add score: ScoreKeeper is full!");
+        }
+        self.scores.push(score);
+    }
+    pub fn get_scores(&amp;self) -> &amp;[u32] {
+        &amp;self.scores
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_add_scores_within_limit() {
+        let mut keeper = ScoreKeeper::new(2);
+        keeper.add_score(100);
+        keeper.add_score(95);
+        assert_eq!(keeper.get_scores(), &amp;[100, 95]);
+    }
+
+    #[test]
+    #[should_panic] // This test will pass if the code inside it panics
+    fn adding_score_to_full_keeper_panics() {
+        let mut keeper = ScoreKeeper::new(1);
+        keeper.add_score(80);
+        keeper.add_score(70); // This line should cause a panic
+    }
+
+    #[test]
+    #[should_panic(expected = "ScoreKeeper is full")] // Checks if panic message contains this text
+    fn adding_to_full_keeper_panics_with_specific_message() {
+        let mut keeper = ScoreKeeper::new(1);
+        keeper.add_score(88);
+        keeper.add_score(99); // Panics here
+    }
+
+    #[test]
+    #[should_panic(expected = "zero capacity")] // Checks the constructor panic
+    fn new_score_keeper_with_zero_capacity_panics() {
+        ScoreKeeper::new(0); // This should panic
+    }
+}</code></pre>
+                    <p>If you annotate a test function with #[should_panic], the test will pass if the code inside the function panics. If the code doesn’t panic, the test will fail. You can make this more precise by providing an expected string to the attribute: #[should_panic(expected = "substring of the panic message")]. In this case, the test only passes if the code panics and the panic message produced by the panic! macro contains the specified substring. This is useful to ensure you’re panicking for the correct reason, not just random panic.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="controlling-test-execution">
+                    <h3 id="controlling-test-execution">Controlling test execution</h3>
+                    <p>cargo test is quite versatile. By default, it runs all your tests (unit, integration, and doc tests) in parallel to speed things up. It also captures any output printed by passing tests, so you typically only see output from failing tests, which helps keep the test results clean. Here are some common command-line options to customize test execution:</p>
+                    <ul>
+                        <li><strong>Running specific tests</strong>:
+                            <ul>
+                                <li><code>cargo test test_function_name</code>: Runs only the test function with that exact name.</li>
+                                <li><code>cargo test module_name</code>: Runs all tests within a specific module (e.g., <code>cargo test tests</code> would run all unit tests if your module is named tests).</li>
+                                <li><code>cargo test substring</code>: Runs all tests whose names contain a substring. For instance, <code>cargo test capitalize</code> would run all tests such as test_capitalize_basic_string and test_capitalize_empty_string, from our earlier example.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Showing output</strong>: <code>cargo test -- --show-output</code> will display the output (e.g., from println!) for all tests, even passing ones. The <code>--</code> characters are used to separate arguments for cargo test itself from arguments for the test binary it compiles and runs.</li>
+                        <li><strong>Running tests sequentially</strong>: <code>cargo test -- --test-threads=1</code> tells the test runner to use only one thread, effectively running your tests one after another. This can be useful if your tests might interfere with each other (though ideally they shouldn’t!) or if you’re trying to debug an issue where parallel execution complicates things.</li>
+                        <li><strong>Ignoring tests</strong>: Sometimes, you might have tests that are very slow or require a specific setup that’s not always available. You can mark such tests with the #[ignore] attribute.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+#[ignore]
+fn very_resource_intensive_and_slow_test() {
+    // ... some very slow operations ...
+    assert!(true);
+}</code></pre>
+                            By default, cargo test will skip ignored tests. To run only the ignored tests, you can use <code>cargo test -- --ignored</code>. To run all tests, including ignored ones, use <code>cargo test -- --include-ignored</code>. These options give you fine-grained control over your testing workflow, allowing you to focus on specific areas or manage different types of tests effectively.
+                        </li>
+                    </ul>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="integration-tests-checking-how-parts-fit-together">
+                <h2 id="integration-tests-checking-how-parts-fit-together">Integration tests: Checking how parts fit together</h2>
+                <p>While unit tests are really great for making sure each part of your code works well on its own, remember that software is often more than just separate pieces. Components need to work together, modules need to communicate smoothly, and your library’s public interface should do exactly what users expect. Everything should come together seamlessly for the best experience. This is where integration tests come into play. They verify that different parts of your project correctly “integrate” and work together.</p>
+
+                <section tabindex="0" aria-labelledby="purpose-of-integration-tests">
+                    <h3 id="purpose-of-integration-tests">Purpose of integration tests</h3>
+                    <p>So, what is an integration test’s main job, and how does it differ from a unit test?</p>
+                    <ul>
+                        <li><strong>Focus on interactions</strong>: Integration tests check the connections between components, mostly testing the public API functions, structs, and methods marked pub for external use.</li>
+                        <li><strong>External perspective</strong>: Unlike unit tests, which can access private functions and internal details within a module, integration tests use your crate like any other external crate. They can only call public API functions. This makes them excellent for ensuring your library’s interface is correct and usable.</li>
+                        <li><strong>Broader scope</strong>: They naturally cover more code than a single unit test. A successful integration test implies that several components are working together correctly.</li>
+                        <li><strong>Catching different bugs</strong>: Integration tests can catch bugs that unit tests might miss, such as issues arising from incorrect assumptions about how different modules interact, problems with data flow between components, or misunderstandings about how an API is meant to be used.</li>
+                    </ul>
+                    <p>You can think of it this way: unit tests ensure each actor knows their lines, while integration tests ensure the actors perform the scene together correctly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="setting-up-integration-tests">
+                    <h3 id="setting-up-integration-tests">Setting up integration tests</h3>
+                    <p>Rust has a very clear convention for where integration tests live, and Cargo knows exactly how to find and run them:</p>
+                    <ol>
+                        <li><strong>Create a tests directory</strong>: At the root of your project (alongside your src directory and Cargo.toml file), create a new directory named tests.</li>
+                        <li><strong>Add .rs files</strong>: Each Rust source file (e.g., my_feature_test.rs) you place directly inside this tests directory will be compiled by Cargo as a separate, individual crate. This is a key point: each test file is its own little program that links against your main library crate.</li>
+                        <li><strong>Import your crate</strong>: Because each test file is a separate crate, you need to import the library you want to test using <code>use your_crate_name;</code>. The your_crate_name is the name specified in your Cargo.toml file under [package].</li>
+                        <li><strong>Write test functions</strong>: Inside these files, you write functions annotated with #[test] just like you do for unit tests. You don’t need an enclosing mod tests {} or #[cfg(test)] because Cargo already knows these are tests due to their location.</li>
+                    </ol>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x400?text=Integration+Test+Directory+Structure" alt="Example directory structure for integration tests showing tests directory, common module, and separate integration test files" />
+                        <figcaption>Figure 10.1: Example of the directory structure and code for integration tests in VS Code (Placeholder)</figcaption>
+                    </figure>
+                    <p>Let’s consider a small library that provides some simple text manipulation utilities.</p>
+
+                    <section tabindex="0" aria-labelledby="our-library-code-src-lib-rs">
+                        <h4 id="our-library-code-src-lib-rs">Our library code (src/lib.rs)</h4>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs
+// Assume our crate name in Cargo.toml is "text_analyzer"
+pub mod analysis {
+    pub fn count_words(text: &amp;str) -> usize {
+        if text.is_empty() {
+            return 0;
+        }
+        text.split_whitespace().count()
+    }
+    pub fn contains_profanity(text: &amp;str, banned_words: &amp;[&amp;str]) -> bool {
+        let lower_text = text.to_lowercase();
+        for word in banned_words {
+            if lower_text.contains(word) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+pub struct TextStats {
+    pub word_count: usize,
+    pub character_count: usize,
+}
+
+pub fn gather_stats(text: &amp;str) -> TextStats {
+    TextStats {
+        word_count: analysis::count_words(text), // Uses the module
+        character_count: text.chars().count(),
+    }
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="integration-test-file-tests-analyzer_integration-rs">
+                        <h4 id="integration-test-file-tests-analyzer_integration-rs">Integration test file (tests/analyzer_integration.rs)</h4>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// tests/analyzer_integration.rs
+// Import the crate we want to test.
+// The name "text_analyzer" must match the `name` field in Cargo.toml
+use text_analyzer;
+
+#[test]
+fn test_word_count_integration() {
+    let sample_text = "This is a sample sentence.";
+    // Call the public function from our library's public module
+    let count = text_analyzer::analysis::count_words(sample_text);
+    assert_eq!(count, 5, "Word count should be 5");
+}
+
+#[test]
+fn test_profanity_checker_integration() {
+    let sample_text_clean = "A lovely day for a walk.";
+    let sample_text_profane = "This is a darn naughty sentence.";
+    let banned = ["darn", "naughty"];
+    assert!(!text_analyzer::analysis::contains_profanity(sample_text_clean, &amp;banned),
+        "Clean text should not contain profanity");
+    assert!(text_analyzer::analysis::contains_profanity(sample_text_profane, &amp;banned),
+        "Profane text should be detected");
+}
+
+#[test]
+fn test_gather_stats_integration() {
+    let sample_text = "Hello world!"; // 2 words, 12 chars
+    let stats = text_analyzer::gather_stats(sample_text);
+    assert_eq!(stats.word_count, 2);
+    assert_eq!(stats.character_count, 12);
+    // We can also access public fields of structs returned by public functions
+}
+
+#[test]
+fn test_empty_string_stats() {
+    let stats = text_analyzer::gather_stats("");
+    assert_eq!(stats.word_count, 0);
+    assert_eq!(stats.character_count, 0);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="helper-functions-in-integration-tests">
+                        <h4 id="helper-functions-in-integration-tests">Helper functions in integration tests</h4>
+                        <p>Sometimes, your integration tests might require common setup routines, data, or utility functions that you want to share across multiple test functions or even multiple test files within the tests directory. If you have helper functions that are only used within a single integration test file (e.g., tests/analyzer_integration.rs), you can simply define them as regular (non-#[test]) functions within that same file. However, if you want to share helper code between different integration test files (e.g., between tests/analyzer_integration.rs and tests/advanced_analysis.rs), you can’t just put it in another .rs file directly in the tests directory, because Cargo will try to compile that helper file as a separate test crate. The common way to handle this is to create a submodule within the tests directory, as follows:</p>
+                        <ol>
+                            <li>Create a subdirectory: tests/common/.</li>
+                            <li>Inside this subdirectory, create a mod.rs file: tests/common/mod.rs.</li>
+                            <li>Put your shared helper functions (marked pub) inside tests/common/mod.rs.</li>
+                        </ol>
+                        <p><strong>Example shared helper (tests/common/mod.rs)</strong></p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// tests/common/mod.rs
+pub fn create_sample_long_text() -> String {
+    "This is a very long string that we might want to use in multiple integration tests for various analysis purposes. It contains several words and punctuation marks like commas, and even exclamation points!".to_string()
+}
+
+pub fn common_banned_words_list() -> Vec&lt;&amp;'static str&gt; {
+    vec!["heck", "darn", "gosh"]
+}</code></pre>
+                        <p>Now, you can use these helpers in your actual integration test files.</p>
+                        <p><strong>Using shared helpers (tests/analyzer_integration.rs)</strong></p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// tests/analyzer_integration.rs
+// Declare the 'common' module. Rust will look for tests/common.rs or tests/common/mod.rs
+mod common;
+use text_analyzer; // Your main library crate
+
+#[test]
+fn test_long_text_word_count() {
+    let long_text = common::create_sample_long_text();
+    let count = text_analyzer::analysis::count_words(&amp;long_text);
+    // You'd assert a specific count here, e.g., based on manual counting
+    assert!(count > 10, "Expected more than 10 words in the long sample text");
+}
+
+#[test]
+fn test_profanity_with_common_list() {
+    let text_with_profanity = "Oh heck, this is not good.";
+    let banned_list = common::common_banned_words_list();
+    assert!(text_analyzer::analysis::contains_profanity(text_with_profanity, &amp;banned_list));
+}</code></pre>
+                        <p>By placing shared code into tests/common/mod.rs (or tests/common.rs), you create a regular module that other integration test files can then use via mod common; and common::your_helper_function(). This is an efficient way to prevent duplicating setup code or utility logic across your integration tests. Remember that for functions in this common module to be accessible from other test files, they must be made visible. You can do this by marking them as pub, which makes them fully public. However, a more idiomatic and precise choice is often to use pub(crate). This makes the helper functions visible to all other code within the same crate, and since Cargo compiles all your integration tests as part of a single test crate, pub(crate) is enough to share helpers among them while keeping them properly internal to your test suite.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="documentation-tests-keeping-examples-correct">
+                <h2 id="documentation-tests-keeping-examples-correct">Documentation tests: Keeping examples correct</h2>
+                <p>One of Rust’s rather unique and incredibly useful features is its built-in support for documentation tests. These aren’t just about checking your code’s logic in isolation or how parts integrate; they are about ensuring that the code examples you provide in your documentation are actually correct and stay correct as your code evolves.</p>
+
+                <section tabindex="0" aria-labelledby="what-are-documentation-tests">
+                    <h3 id="what-are-documentation-tests">What are documentation tests?</h3>
+                    <p>Simply put, documentation tests (often called “doc tests”) are code examples embedded directly within your comments (specifically, your documentation comments) that cargo test can automatically extract, compile, and run. Why is this so valuable?</p>
+                    <ul>
+                        <li><strong>Accuracy</strong>: It guarantees that your documented examples actually work. There’s nothing more frustrating for a user of your library than trying an example from the documentation only to find that it’s outdated or incorrect. Doc tests prevent this.</li>
+                        <li><strong>Living documentation</strong>: Because the examples are tested, they evolve with your code. If you change a function in a way that breaks an example, the doc test will fail, prompting you to update the documentation.</li>
+                        <li><strong>Usability</strong>: They provide clear, runnable demonstrations of how to use your library’s API, directly alongside the API’s description.</li>
+                        <li><strong>Encourages good examples</strong>: Knowing your examples will be tested encourages you to write clear, concise, and correct examples in the first place.</li>
+                    </ul>
+                    <p>Rust’s commitment to documentation tests reflects its broader philosophy of providing tools that help developers write high-quality, reliable software. It’s a small feature with a big impact on the ecosystem.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="writing-documentation-tests">
+                    <h3 id="writing-documentation-tests">Writing documentation tests</h3>
+                    <p>Writing a documentation test is as simple as including a Rust code block within your doc comments. Doc comments are those that start with /// (for items such as functions, structs, enums, or modules) or //! (for documenting the enclosing item, often a module or crate itself). Inside these comments, you create a fenced code block using triple backticks. If you specify rust after the opening backticks (or leave it blank, as rust is the default), cargo test (or specifically cargo test --doc) will treat it as a testable example.</p>
+                    <p>Let’s create a small utility function and document it with a testable example.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs or your relevant module file
+// Let's assume our crate name in Cargo.toml is "string_formatter"
+
+/// Formats a name and an age into a greeting string.
+///
+/// This function takes a name (a string slice) and an age (an unsigned 32-bit integer)
+/// and returns a nicely formatted greeting.
+///
+/// # Examples
+///
+/// ```
+/// // This code block will be run as a test!
+/// use string_formatter::format_greeting; // Assuming this is how users would import
+///
+/// let name = "Alice";
+/// let age = 30;
+/// let greeting = format_greeting(name, age);
+/// assert_eq!(greeting, "Hello, Alice! You are 30 years old.");
+/// ```
+///
+/// You can have multiple examples:
+/// ```
+/// use string_formatter::format_greeting;
+///
+/// let greeting_bob = format_greeting("Bob", 42);
+/// assert!(greeting_bob.contains("Bob"));
+/// assert!(greeting_bob.contains("42"));
+/// ```
+pub fn format_greeting(name: &amp;str, age: u32) -> String {
+    format!("Hello, {}! You are {} years old.", name, age)
+}
+
+// To make the `use string_formatter::format_greeting;` line in the doc test work easily
+// when `cargo test --doc` is run from the crate root, `format_greeting` needs to be
+// part of the public API accessible via `string_formatter::format_greeting`.
+// If this code IS `src/lib.rs` of a crate named `string_formatter`, it should work.
+// Alternatively, inside the doc test, you could use `crate::format_greeting`
+// if you don't want to simulate an external user's import path.</code></pre>
+                    <ul>
+                        <li>The comments starting with /// are documentation comments for the format_greeting function.</li>
+                        <li>The # Examples section is a common convention for showing usage.</li>
+                        <li>The code within the ``` (or ```rust) block is the actual documentation test.</li>
+                        <li>Inside this block, we can write any Rust code, including use statements (often needed to bring the item being tested into scope, as a user would) and, crucially, assertion macros such as assert_eq! or assert!.</li>
+                        <li>When you run cargo test (or cargo test --doc to run only doc tests), Cargo will extract this code block, effectively wrap it in an fn main() { ... } function, compile it, and run it. If any assertion fails, or if the code doesn’t compile, the doc test fails.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="controlling-doc-test-behavior">
+                    <h3 id="controlling-doc-test-behavior">Controlling doc test behavior</h3>
+                    <p>Just like regular tests, you can control how doc tests behave using annotations within the code block’s opening fence:</p>
+                    <ul>
+                        <li><strong>Ignore</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>/// ```ignore
+/// // This example will be compiled but not run by `cargo test --doc`
+/// // unless you use `cargo test --doc --ignored`
+/// println!("This is an ignored example.");
+/// ```</code></pre>
+                            Useful for examples that might be slow or require specific external setup.
+                        </li>
+                        <li><strong>should_panic</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>/// ```should_panic
+/// // This test passes if the code inside panics.
+/// // For example, documenting a function that should error on bad input.
+/// // imagine_a_function_that_panics_on_zero(0);
+/// panic!("This example is expected to panic");
+/// ```</code></pre>
+                            This works just like #[should_panic] on a regular test function. You can also add (expected = "substring") if you want to check the panic message.
+                        </li>
+                        <li><strong>no_run</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>/// ```no_run
+/// // This code will be compiled to ensure it's valid Rust,
+/// // but it will not be executed. Useful for examples that
+/// // demonstrate something that shouldn't actually run in a test,
+/// // like starting a web server or modifying files.
+/// // start_web_server();
+/// ```</code></pre>
+                            This is great for illustrating APIs that have side effects that you don’t want to trigger during routine testing.
+                        </li>
+                    </ul>
+                    <p><strong>Important note on paths in doc tests</strong><br>
+                    The way you refer to items from your own crate within a doc test can sometimes be a bit tricky:</p>
+                    <ul>
+                        <li>If you’re writing a doc test for a public item in your library’s root (src/lib.rs), and you want to show how an external user would use it, you’d typically write <code>use your_crate_name::your_item;</code>, as shown previously. cargo test --doc is usually smart enough to make this work.</li>
+                        <li>If the example is very internal or you want to avoid ambiguity, you can sometimes use <code>use crate::your_item;</code> to refer to items from the current crate’s root.</li>
+                        <li>The test runner implicitly adds <code>extern crate self as your_crate_name;</code>, which makes your_crate_name:: available.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="hiding-lines-from-documentation-output-but-not-from-the-test">
+                    <h3 id="hiding-lines-from-documentation-output-but-not-from-the-test">Hiding lines from documentation output but not from the test</h3>
+                    <p>Sometimes you need setup code for an example that isn’t relevant to what you’re trying to show the user. You can prefix such lines with #. These lines will be executed by the test runner but won’t appear in the rendered HTML documentation.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>/// ```
+/// # fn get_important_config() -> String { "config_value".to_string() }
+/// // Users will only see this part in the docs:
+/// let config = get_important_config();
+/// assert_eq!(config, "config_value");
+/// ```</code></pre>
+                    <p>Documentation tests are a powerful way to ensure your examples remain accurate and serve as a first line of defense against documentation rot. They are a strong encouragement to write helpful, working examples for anyone using your code.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-brief-look-at-test-driven-development-tdd">
+                <h2 id="a-brief-look-at-test-driven-development-tdd">A brief look at Test-Driven Development (TDD)</h2>
+                <p>So far, we’ve discussed writing tests for code that might already exist or that you’re designing alongside the tests. There’s also a popular software development methodology called Test-Driven Development (TDD), which flips this on its head: you write your tests before you write the actual implementation code. While a full exploration of TDD is extensive, it’s worth understanding its core principles as it can be a very effective way to develop software, and Rust’s testing framework supports it well.</p>
+
+                <section tabindex="0" aria-labelledby="tdd-cycle">
+                    <h3 id="tdd-cycle">TDD cycle</h3>
+                    <p>TDD operates on a short, iterative cycle, often referred to as red-green-refactor:</p>
+                    <ol>
+                        <li><strong>Red</strong>:
+                            <ul>
+                                <li><strong>Write a test</strong>: Before writing any implementation code for a new feature or piece of functionality, you first write an automated test that defines what that new functionality should do.</li>
+                                <li><strong>Run all tests</strong>: At this point, the new test <em>must</em> fail (hence “red”) because the code it’s trying to test doesn’t exist or isn’t implemented yet. If it passes, your test is likely not testing what you think it is, or the functionality already exists!</li>
+                            </ul>
+                        </li>
+                        <li><strong>Green</strong>:
+                            <ul>
+                                <li><strong>Write the code</strong>: Write the <em>minimum</em> amount of implementation code necessary to make the failing test (and all other existing tests) pass. The goal here is just to get to “green,” not to write perfect or highly optimized code.</li>
+                                <li><strong>Run all tests</strong>: Verify that all tests now pass.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Refactor</strong>:
+                            <ul>
+                                <li><strong>Clean up the code</strong>: Now that you have passing tests acting as a safety net, you can refactor the implementation code you just wrote. This is where you improve its structure, remove duplication, enhance readability, or optimize performance, all while ensuring the tests continue to pass.</li>
+                                <li>You might also refactor the test code itself if it can be made clearer or more efficient.</li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <p>Once this cycle is complete for one small piece of functionality, you pick the next small piece and start the cycle again: write a new failing test, make it pass, then refactor.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tdd-benefits-and-a-micro-example">
+                    <h3 id="tdd-benefits-and-a-micro-example">TDD benefits and a micro example</h3>
+                    <p>Adopting TDD can bring several benefits:</p>
+                    <ul>
+                        <li><strong>Ensures test coverage</strong>: By writing tests first, you guarantee that every piece of new functionality has corresponding tests.</li>
+                        <li><strong>Drives design</strong>: Thinking about how to test a feature often forces you to design it in a more modular, decoupled, and testable way from the outset. The tests define the “contract” the code must fulfill.</li>
+                        <li><strong>Reduces bugs</strong>: Catching issues at the “red” stage or during the “green” stage is much quicker than finding them later.</li>
+                        <li><strong>Provides a safety net for refactoring</strong>: The comprehensive test suite built through TDD gives you high confidence when making changes or improvements to the code base.</li>
+                        <li><strong>Focuses on requirements</strong>: Writing a test first forces you to clearly define what the code should accomplish before you dive into how it will accomplish it.</li>
+                    </ul>
+                    <p>Let’s walk through a tiny TDD example. Suppose we want to implement a function, is_palindrome(s: &amp;str) -> bool, that checks whether a string is a palindrome (reads the same forward and backward, ignoring case and non-alphanumeric characters for simplicity here, though a real TDD cycle might add those requirements incrementally).</p>
+
+                    <ol>
+                        <li><strong>Red: Write a failing test</strong>
+                            <p>First, we add a test case to our #[cfg(test)] mod tests { ... }.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs or where our function will live
+// We haven't written is_palindrome yet, so this will initially fail to compile,
+// or fail at runtime if we provide a stub like `fn is_palindrome(_s: &amp;str) -> bool { todo!() }`
+
+#[cfg(test)]
+mod tests {
+    // Assuming is_palindrome will be in the parent module
+    use super::is_palindrome; // This line might cause an error if is_palindrome doesn't exist yet
+
+    #[test]
+    fn test_empty_string_is_palindrome() {
+        assert!(is_palindrome(""));
+    }
+
+    #[test]
+    fn test_single_char_is_palindrome() {
+        assert!(is_palindrome("a"));
+    }
+
+    #[test]
+    fn test_simple_palindrome() {
+        assert!(is_palindrome("madam"));
+    }
+
+    #[test]
+    fn test_non_palindrome() {
+        assert!(!is_palindrome("hello"));
+    }
+}</code></pre>
+                            <p>If is_palindrome doesn’t exist, this won’t even compile. Let’s add a minimal stub so it compiles but fails the logic.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs
+pub fn is_palindrome(_s: &amp;str) -> bool {
+    false // Simplest thing to make it compile; will fail most tests
+}</code></pre>
+                            <p>Now, running cargo test should show test_empty_string_is_palindrome, test_single_char_is_palindrome, and test_simple_palindrome failing (red).</p>
+                        </li>
+                        <li><strong>Green: Write minimal code to make tests pass</strong>
+                            <p>Let’s implement is_palindrome to satisfy these tests.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs
+pub fn is_palindrome(s: &amp;str) -> bool {
+    if s.is_empty() {
+        return true; // Empty string is a palindrome
+    }
+    let forward_chars: Vec&lt;char&gt; = s.chars().collect();
+    let reversed_chars: Vec&lt;char&gt; = s.chars().rev().collect();
+    forward_chars == reversed_chars
+}</code></pre>
+                            <p>Now, running cargo test should make all current tests pass (green).</p>
+                        </li>
+                        <li><strong>Refactor: Improve the code</strong>
+                            <p>Our current implementation creates two new Vec&lt;char&gt;, which might be a bit inefficient for very long strings. We could refactor it to compare characters from both ends inward without extra allocations.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs - Refactored version
+pub fn is_palindrome(s: &amp;str) -> bool {
+    let mut fwd_iter = s.chars();
+    let mut rev_iter = s.chars().rev();
+    // Loop as long as both iterators can produce an item
+    // and the items are equal
+    while let (Some(f_char), Some(r_char)) = (fwd_iter.next(), rev_iter.next()) {
+        // We only need to compare up to the middle.
+        // If fwd_iter's current position "crosses" rev_iter's, we're done.
+        // The `next_back()` method on DoubleEndedIterator would be more efficient here,
+        // but for a simple `chars().rev()` this approach is okay.
+        // A more robust way is to compare iterators up to half the length,
+        // or check if fwd_iter.size_hint().0 <= rev_iter.size_hint().0
+        if f_char != r_char {
+            return false;
+        }
+        // For simplicity, let's just rely on the loop eventually consuming one iterator
+        // faster if length is odd, leading to one `next()` being None.
+        // This simple loop only works if we consume from both ends until they meet or cross.
+        // A more correct iterative comparison for non-allocating:
+    }
+    // If the loop completed without returning false, it's a palindrome
+    true
+}</code></pre>
+                            <p>The initial refactor attempt was a bit complex to explain simply. A more common and still efficient refactor without extra allocation for simple palindromes (ignoring case/non-alphanumeric for now, as per the TDD step) is as follows:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/lib.rs - A more common refactored version
+pub fn is_palindrome(s: &amp;str) -> bool {
+    let s_cleaned: String = s.chars().collect(); // Simple case: works with original string
+    s_cleaned.chars().eq(s_cleaned.chars().rev())
+}</code></pre>
+                            <p>This refactored version is concise and still passes all the original tests. We could then add new tests for case-insensitivity or ignoring non-alphanumeric characters, starting the red-green-refactor cycle again for those new requirements.</p>
+                        </li>
+                        <li><strong>Next cycle: red (for case-insensitivity)</strong>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn test_case_insensitive_palindrome() {
+    assert!(is_palindrome("Madam"));
+}</code></pre>
+                            <p>This would fail. Then we’d go to green by modifying is_palindrome to handle casing, for example, by converting to lowercase before comparison.</p>
+                        </li>
+                    </ol>
+                    <p>TDD is a discipline. While the micro example is very basic, the cycle helps maintain a focus on requirements and ensures that code is always testable and tested as it’s being written. It might feel slower initially, but many developers find that it leads to higher quality and more confidence in the long run.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tdd-for-an-api-handler">
+                    <h3 id="tdd-for-an-api-handler">TDD for an API handler</h3>
+                    <p>The same TDD principles apply to more complex components, such as API handlers. You can write a test that defines the expected response for a given request before implementing the handler’s logic. Let’s imagine we need a handler that generates a user profile as JSON.</p>
+
+                    <ol>
+                        <li><strong>Red: Write the failing test</strong>
+                            <p>We’ll test the handler function directly. The test will check that for a valid user ID, we get the correct JSON, and for an invalid one, we get an error.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// This code would go in your tests module, e.g., in `src/handlers.rs`
+#[cfg(test)]
+mod tests {
+    use super::*; // Assuming handlers are in the parent module
+
+    // The test needs the User struct to compare against.
+    // In a real project, this would be in a shared `models` module.
+    #[derive(serde::Serialize)] // Needed for serde_json::to_string
+    struct User {
+        id: u32,
+        username: String,
+    }
+
+    // A stub for the handler we are about to write.
+    // This allows the test code to compile but fail.
+    fn get_user_handler(id: u32) -> Result&lt;String, String&gt; {
+        // todo!() would also work here and cause a panic.
+        Err("Not implemented yet".to_string())
+    }
+
+    #[test]
+    fn test_get_user_success() {
+        let expected_user = User { id: 1, username: "Alice".to_string() };
+        let expected_json = serde_json::to_string(&amp;expected_user).unwrap();
+        let result = get_user_handler(1);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), expected_json);
+    }
+
+    #[test]
+    fn test_get_user_not_found() {
+        let result = get_user_handler(999); // An ID that doesn't exist
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "User not found");
+    }
+}</code></pre>
+                            <p>Running cargo test now would show failures (red) because our stub always returns Not implemented yet.</p>
+                        </li>
+                        <li><strong>Green: Write minimal code to make the test pass</strong>
+                            <p>Now we implement the struct and the handler logic in our main source file (e.g., src/handlers.rs) just to satisfy our test cases.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// This code would go in your main source, e.g., in `src/lib.rs` or `src/handlers.rs`
+// We need serde for this example. Add `serde = { version = "1.0", features = ["derive"] }`
+// and `serde_json = "1.0"` to your Cargo.toml.
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct User {
+    id: u32,
+    username: String,
+}
+
+/// A simple handler that simulates fetching a user.
+pub fn get_user_handler(id: u32) -> Result&lt;String, String&gt; {
+    // In a real app, this would be a database lookup.
+    // Here, we hardcode the logic to make the tests pass.
+    match id {
+        1 => {
+            let user = User { id: 1, username: "Alice".to_string() };
+            // serde_json::to_string also returns a Result, so we handle it.
+            serde_json::to_string(&amp;user).map_err(|e| e.to_string())
+        }
+        _ => Err("User not found".to_string()),
+    }
+}</code></pre>
+                            <p>Now, if you update your tests module to import this real implementation, running cargo test will show all tests passing (green).</p>
+                        </li>
+                        <li><strong>Refactor</strong>
+                            <p>With the tests passing, we could now refactor get_user_handler. For instance, instead of hardcoding users in a match statement, we could refactor it to fetch data from a database or another data source, confident that our tests will catch any regressions in the expected output format.</p>
+                        </li>
+                    </ol>
+                    <p>This brief example shows how the TDD cycle can guide the development of API logic, ensuring the contract with the client (the expected JSON response) is met from the very beginning.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="isolating-tests-with-test-doubles-mocks-and-stubs">
+                <h2 id="isolating-tests-with-test-doubles-mocks-and-stubs">Isolating tests with test doubles (mocks and stubs)</h2>
+                <p>We’ve talked a lot about unit tests, focusing on small, isolated pieces of code. But what happens when the function or module you want to test depends on something else, like another complex part of your system, a database, a web service, or even the current time? If your unit test relies on these external factors, it can become unreliable, slow, or difficult to set up. This is where test doubles come in.</p>
+
+                <section tabindex="0" aria-labelledby="the-need-for-isolation">
+                    <h3 id="the-need-for-isolation">The need for isolation</h3>
+                    <p>For unit tests to be truly effective, they should ideally test only the logic of the unit in question, without interference or variability from its dependencies. Here’s why isolation is so important:</p>
+                    <ul>
+                        <li><strong>Reliability and determinism</strong>: Tests that interact with external systems (such as a network service) can fail for reasons unrelated to your code (e.g., network outage). This makes tests “flaky”—sometimes they pass, sometimes they fail, without any changes to your code. Isolated tests are deterministic: given the same input, they always produce the same result.</li>
+                        <li><strong>Speed</strong>: Real dependencies, especially those involving I/O (disk and network), are often slow. Unit tests should run very quickly so you can run them often. Slow tests get skipped, defeating their purpose.</li>
+                        <li><strong>Focus</strong>: If a test fails, you want to know immediately that the bug is in the unit being tested, not in one of its dependencies. Isolation helps pinpoint failures.</li>
+                        <li><strong>Setup simplicity</strong>: It can be complicated to set up real dependencies in a test environment (e.g., initializing a database with specific test data for every test run).</li>
+                    </ul>
+                    <p>To achieve this isolation, we replace real dependencies with controlled, predictable stand-ins called test doubles during our unit tests.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-are-test-doubles-stubs-and-mocks">
+                    <h3 id="what-are-test-doubles-stubs-and-mocks">What are test doubles? Stubs and mocks</h3>
+                    <p>A “test double” is a general term for any object or component that you use in a test to stand in for a real production dependency. There are various kinds of test doubles, but two common ones you’ll hear about are stubs and mocks:</p>
+                    <ul>
+                        <li><strong>Stubs</strong>: These provide canned answers to calls made during the test. They usually don’t have much logic beyond returning predefined values. For example, a stub for a weather service might always return Sunny, 25°C regardless of the input, just to allow the code that uses the weather data to be tested.</li>
+                        <li><strong>Mocks</strong>: These are more sophisticated. Like stubs, they provide canned responses, but they can also be programmed with expectations about how they will be used. For instance, a mock object might verify that its methods are called a certain number of times, in a particular order, or with specific arguments. If these expectations aren’t met, the mock can cause the test to fail.</li>
+                    </ul>
+                    <p>Let’s see how we can create a simple stub manually in Rust.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="manual-stubbing-with-traits">
+                    <h3 id="manual-stubbing-with-traits">Manual stubbing (with traits)</h3>
+                    <p>One common way to create a stub in Rust is to define a trait that represents the dependency, have your production code depend on that trait (using generics or trait objects), and then, in your tests, create a simple struct that implements the trait with stubbed behavior.</p>
+                    <p>Imagine we have a service that sends notifications, and we want to test a piece of code that uses this service without actually sending real notifications.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/lib.rs (or your module)
+
+// The trait defining our dependency
+pub trait Notifier {
+    fn send_alert(&amp;self, user_id: &amp;str, message: &amp;str) -> Result&lt;(), String&gt;;
+}
+
+// The component we want to test
+pub struct EventProcessor&lt;N: Notifier&gt; {
+    notifier_service: N, // Depends on the Notifier trait
+    admin_user_id: String,
+}
+
+impl&lt;N: Notifier&gt; EventProcessor&lt;N&gt; {
+    pub fn new(notifier_service: N, admin_user_id: String) -> Self {
+        EventProcessor { notifier_service, admin_user_id }
+    }
+
+    pub fn process_critical_event(&amp;self, event_details: &amp;str) {
+        println!("Processing critical event: {}", event_details);
+        // Attempt to notify the admin
+        let alert_message = format!("CRITICAL: {}", event_details);
+        match self.notifier_service.send_alert(&amp;self.admin_user_id, &amp;alert_message) {
+            Ok(_) => println!("Admin notified successfully."),
+            Err(e) => println!("Failed to notify admin: {}", e),
+        }
+        // ... other event processing logic ...
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*; // Import Notifier, EventProcessor
+
+    // Our Stub implementation for the Notifier trait
+    struct StubEmailNotifier {
+        // We can add fields to control stub's behavior for different tests
+        should_succeed: bool,
+        expected_user_id: String,
+        expected_message_contains: String,
+        call_count: std::cell::Cell&lt;usize&gt;, // To track calls (simple mock-like behavior)
+    }
+
+    impl Notifier for StubEmailNotifier {
+        fn send_alert(&amp;self, user_id: &amp;str, message: &amp;str) -> Result&lt;(), String&gt; {
+            self.call_count.set(self.call_count.get() + 1); // Increment call count
+            println!("STUB: Attempting to send alert to '{}' with message '{}'", user_id, message);
+            assert_eq!(user_id, self.expected_user_id, "Stub called with wrong user_id");
+            assert!(message.contains(&amp;self.expected_message_contains),
+                "Stub message content mismatch");
+            if self.should_succeed {
+                Ok(())
+            } else {
+                Err("StubNotifier: Simulated failure.".to_string())
+            }
+        }
+    }
+
+    #[test]
+    fn critical_event_notifies_admin_successfully() {
+        let stub_notifier = StubEmailNotifier {
+            should_succeed: true,
+            expected_user_id: "admin_001".to_string(),
+            expected_message_contains: "CRITICAL: System Overload".to_string(),
+            call_count: std::cell::Cell::new(0),
+        };
+        let event_processor = EventProcessor::new(stub_notifier, "admin_001".to_string());
+        event_processor.process_critical_event("System Overload");
+        // Check if the notifier was called (accessing our stub's field)
+        // This makes our stub act a bit like a mock.
+        assert_eq!(event_processor.notifier_service.call_count.get(), 1,
+            "Notifier should have been called once");
+    }
+
+    #[test]
+    fn critical_event_handles_notification_failure() {
+        let stub_notifier = StubEmailNotifier {
+            should_succeed: false, // Simulate failure
+            expected_user_id: "sys_alert_user".to_string(),
+            expected_message_contains: "CRITICAL: Disk Full".to_string(),
+            call_count: std::cell::Cell::new(0),
+        };
+        let event_processor = EventProcessor::new(stub_notifier, "sys_alert_user".to_string());
+        // We aren't asserting a panic here, just that the function runs
+        // and internally would print the failure message.
+        // A more robust test might have process_critical_event return a Result.
+        event_processor.process_critical_event("Disk Full");
+        assert_eq!(event_processor.notifier_service.call_count.get(), 1,
+            "Notifier should have been called once, even on failure path");
+    }
+}</code></pre>
+                    <ul>
+                        <li>We define a Notifier trait that abstracts the notification functionality.</li>
+                        <li>Our EventProcessor is generic over any type, N, that implements Notifier. This is key: it allows us to substitute different implementations.</li>
+                        <li>In the tests module, StubEmailNotifier is a simple struct that implements Notifier. Its send_alert method doesn’t actually send an email; it just prints a message and returns a pre-programmed Ok(()) or Err(...) based on its should_succeed field.</li>
+                        <li>We’ve also added expected_user_id, expected_message_contains, and call_count (using std::cell::Cell for interior mutability since send_alert takes &amp;self) to our stub. This allows the stub to perform some basic checks on how it was called, blurring the lines a bit toward mock behavior. Cell is used here because send_alert takes &amp;self but we want to modify call_count internally; for more complex scenarios, RefCell might be used, or the method could take &amp;mut self if appropriate for the trait.</li>
+                        <li>In the tests, we create an EventProcessor with an instance of our StubEmailNotifier. This allows us to test the logic within process_critical_event (such as how it formats messages or handles errors from the notifier) without any real notification system being involved.</li>
+                    </ul>
+                    <p>This manual approach is fine for simple cases. The “stub” here even has some light “mock” capabilities by checking arguments and counting calls.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mocking-libraries">
+                    <h3 id="mocking-libraries">Mocking libraries</h3>
+                    <p>For more complex scenarios where you need to verify intricate interactions, such as the order of method calls, the number of times a method is called, or asserting specific arguments for multiple calls, creating manual mocks can become quite cumbersome and error-prone. This is where mocking libraries shine. Rust has a growing ecosystem of these, with mockall being one of the most popular and powerful. These libraries typically provide macros or procedural macros that can automatically generate mock implementations for your traits (or even structs, in some cases).</p>
+                    <p>With a library such as mockall, you could define expectations on your mock object in your test setup:</p>
+                    <ul>
+                        <li>“I expect the send_alert method to be called exactly once.”</li>
+                        <li>“I expect it to be called with user_id == "admin_001" and a message containing CRITICAL.”</li>
+                        <li>“When it’s called under these conditions, it should return Ok(()).”</li>
+                    </ul>
+                    <p>If the code under test doesn’t meet these expectations, the mock object will cause the test to fail. Our manual stub was handy but could get complicated if we needed to verify more, such as calling send_alert exactly three times or not at all. Adding more fields would become cumbersome. Mocking libraries such as mockall simplify this by generating mock objects based on traits, which can be programmed with expectations. This allows testing of complex scenarios by replacing real dependencies with controlled substitutes, keeping tests focused, fast, and reliable.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="best-practices-for-writing-good-tests">
+                <h2 id="best-practices-for-writing-good-tests">Best practices for writing good tests</h2>
+                <p>Knowing how to write tests is a skill in itself, and while testing theory is a deep topic, a few key practices will make your Rust tests much more effective and maintainable:</p>
+                <ul>
+                    <li><strong>Keep tests clear and focused</strong>: Each test should verify a single, specific behavior. Give it a descriptive name (such as fails_when_input_is_empty), and use the optional message in assertion macros (assert_eq!(a, b, "...")) to explain why a failure occurred. This makes debugging much faster.</li>
+                    <li><strong>Ensure tests are independent and fast</strong>: Tests should never depend on each other, as cargo test runs them in parallel by default. Keep unit tests quick to encourage frequent running; mark any slow, resource-intensive tests with the #[ignore] attribute and run them separately.</li>
+                    <li><strong>Test the edges, not just the “happy path”</strong>: The most valuable tests often check boundary conditions and error paths. Always test for empty inputs, zero values, what happens when a function should return None or Err, and conditions that should cause a panic! (using #[should_panic]).</li>
+                    <li><strong>Follow the “Arrange, Act, Assert” pattern</strong>: A great way to structure your tests is to first <strong>Arrange</strong> any setup or data needed, then <strong>Act</strong> by calling the function or method you are testing, and finally, <strong>Assert</strong> that the outcome is correct. This makes tests easy to read and understand at a glance.</li>
+                </ul>
+                <p>Adopting these habits will help you build a robust and valuable test suite that truly supports your development process, giving you confidence and helping you catch bugs before they cause bigger problems.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch10">
+                <h2 id="summary-ch10">Summary</h2>
+                <p>And that brings us to the end of Chapter 10! We’ve explored the essential way of testing in Rust, a key part of creating software that is reliable, correct, and easy to maintain! I hope you now see testing not as a chore but as a helpful partner in your development journey!</p>
+                <p>Here is a recap of what we’ve covered:</p>
+                <ul>
+                    <li><strong>The “why” of testing</strong>: We started by reinforcing the critical importance of testing: how it boosts reliability, makes refactoring safer, acts as documentation, and helps catch bugs when they are cheapest to fix.</li>
+                    <li><strong>Types of tests in Rust</strong>: We identified the main types of tests directly supported by Rust’s ecosystem:
+                        <ul>
+                            <li><strong>Unit tests</strong>: Small, focused tests for individual functions or modules, written within mod tests {} in the same file as the code.</li>
+                            <li><strong>Integration tests</strong>: Tests that check how different parts of your library work together, focusing on the public API, and residing in a separate tests directory.</li>
+                            <li><strong>Documentation tests</strong>: Runnable code examples embedded directly in your /// doc comments, ensuring your examples stay correct.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Writing unit tests</strong>: We saw how to define test functions using the #[test] attribute, use assertion macros (assert!, assert_eq!, and assert_ne!) to verify conditions, and specifically test functions returning Result and Option. We also learned how to test for expected panics using #[should_panic].</li>
+                    <li><strong>Running and controlling tests</strong>: The cargo test command is your gateway to running all these tests, and we looked at options for running specific tests, showing output, and handling #[ignore]d tests.</li>
+                    <li><strong>Broader concepts</strong>: We briefly touched upon TDD as a methodology where tests are written before code, and the use of test doubles (stubs and mocks) to isolate the code under test from its dependencies, often using traits for manual stubbing.</li>
+                    <li><strong>Best practices</strong>: Finally, we summarized key best practices for writing effective tests, such as keeping tests focused and independent, writing clear names and failure messages, testing edge cases, and keeping tests fast.</li>
+                </ul>
+                <p>By consistently applying these testing techniques, you’re not just finding bugs; you’re building a safety net that allows you to develop and evolve your Rust projects with much greater confidence and speed. As you write more Rust, make cargo test your frequent companion!</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignment-ch10">
+                <h2 id="questions-and-assignment-ch10">Questions and assignment</h2>
+                <p>Testing concepts are never easy, especially for beginners. Let’s take a moment to review the key ideas from this chapter. The following questions are meant to help you assess your understanding of the essential testing concepts we’ve discussed, from the structure of different test types to the specific tools that Rust offers. If you can answer these confidently, you’re well on your way to writing effective tests for your own Rust projects.</p>
+
+                <section tabindex="0" aria-labelledby="questions-ch10">
+                    <h3 id="questions-ch10">Questions</h3>
+                    <ol>
+                        <li>What are the three main types of tests that cargo test runs by default, and where are unit tests and integration tests typically located in a Rust project?</li>
+                        <li>Explain the purpose of the #[test] attribute and the #[cfg(test)] attribute when writing a unit test module.</li>
+                        <li>What is the difference between assert! and assert_eq!? Provide a simple example of a situation where you would use each.</li>
+                        <li>You have a function that is designed to panic if given invalid input. How would you write a test to verify this panic behavior, and how could you make the test even more specific by checking the panic message?</li>
+                        <li>What is the primary benefit of writing documentation tests in Rust?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignment-ch10">
+                    <h3 id="assignment-ch10">Assignment</h3>
+                    <p>For this assignment, you’ll create a very simple command-line task manager library and test it thoroughly.</p>
+                    <ol>
+                        <li><strong>Project setup</strong>:
+                            <ul>
+                                <li>Create a new library crate: cargo new task_manager --lib</li>
+                            </ul>
+                        </li>
+                        <li><strong>Define structs</strong> (src/lib.rs):
+                            <ul>
+                                <li><code>pub struct Task { pub id: u32, pub description: String, pub completed: bool }</code></li>
+                                <li><code>pub struct TaskManager { tasks: Vec&lt;Task&gt;, next_id: u32 }</code></li>
+                            </ul>
+                        </li>
+                        <li><strong>Implement methods for TaskManager</strong> (src/lib.rs):
+                            <ul>
+                                <li><code>pub fn new() -> Self</code>: Creates an empty TaskManager with next_id starting at 1.</li>
+                                <li><code>pub fn add_task(&amp;mut self, description: String) -> u32</code>: Adds a new task with the given description (initially not completed), assigns it the next_id, increments next_id, and returns the new task’s ID.</li>
+                                <li><code>pub fn mark_complete(&amp;mut self, task_id: u32) -> Option&lt;()&gt;</code>: Marks the task with the given task_id as completed. Returns Some(()) if the task was found and marked, and None otherwise.</li>
+                                <li><code>pub fn get_task(&amp;self, task_id: u32) -> Option&lt;&amp;Task&gt;</code>: Returns an immutable reference to the task with the given ID, or None if not found.</li>
+                                <li><code>pub fn list_pending_tasks(&amp;self) -> Vec&lt;&amp;Task&gt;</code>: Returns a vector of immutable references to all tasks that are not completed.</li>
+                                <li><code>pub fn remove_task(&amp;mut self, task_id: u32) -> Option&lt;Task&gt;</code>: Removes the task with the given ID from the manager and returns it. If not found, returns None.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Testing requirements</strong>:
+                            <p><strong>Unit tests</strong> (in mod tests {} within src/lib.rs):</p>
+                            <ul>
+                                <li>Test that TaskManager::new() ensures an empty task list and next_id is 1.</li>
+                                <li>Test that add_task() does the following:
+                                    <ul>
+                                        <li>Adds a task correctly.</li>
+                                        <li>Assigns sequential IDs.</li>
+                                        <li>New tasks are initially not completed.</li>
+                                    </ul>
+                                </li>
+                                <li>Test mark_complete() doing the following:
+                                    <ul>
+                                        <li>Mark an existing pending task as complete.</li>
+                                        <li>Attempt to mark a non-existent task.</li>
+                                        <li>Attempt to mark an already completed task (should still be Some(()) if found).</li>
+                                    </ul>
+                                </li>
+                                <li>Test get_task() doing the following:
+                                    <ul>
+                                        <li>Get an existing task.</li>
+                                        <li>Get a non-existent task.</li>
+                                    </ul>
+                                </li>
+                                <li>Test list_pending_tasks():
+                                    <ul>
+                                        <li>With no tasks.</li>
+                                        <li>With all tasks pending.</li>
+                                        <li>With some tasks completed and some pending.</li>
+                                        <li>With all tasks completed.</li>
+                                    </ul>
+                                </li>
+                                <li>Test remove_task() doing the following:
+                                    <ul>
+                                        <li>Removing an existing task.</li>
+                                        <li>Trying to remove a non-existent task.</li>
+                                        <li>Ensure next_id is not affected by removal (new tasks should still get unique IDs).</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                            <p><strong>Integration test</strong> (create tests/task_flow_tests.rs):</p>
+                            <ul>
+                                <li>Write a test function that simulates a user workflow:
+                                    <ul>
+                                        <li>Create a new TaskManager.</li>
+                                        <li>Add a couple of tasks.</li>
+                                        <li>List pending tasks and verify them.</li>
+                                        <li>Mark one task as complete.</li>
+                                        <li>List pending tasks again and verify the change.</li>
+                                        <li>Get a specific task by ID and check its details.</li>
+                                        <li>Remove a task.</li>
+                                        <li>Try to get the removed task (should be None).</li>
+                                        <li>Add another new task and verify its ID is what you expect.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                    </ol>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-09.html">← Chapter 9</a>
+            <a class="nav-next" href="./chapter-11.html">Chapter 11 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

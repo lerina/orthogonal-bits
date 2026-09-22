@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preface – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="preface-heading">
+            <h1 id="preface-heading">Preface</h1>
+
+            <section tabindex="0" aria-labelledby="who-this-manual-is-for">
+                <h2 id="who-this-manual-is-for">Who this manual is for</h2>
+                <p>This manual is for Rust programmers who already know how to write and build Rust programs but have not yet made LLDB part of their daily workflow.</p>
+                <p>It is not an LLDB reference manual. It is a guide to using LLDB as an instrument for answering runtime questions about Rust programs.</p>
+                <p>You do not need to know C, C++, assembly, or debugger internals. You do need patience, curiosity, and a willingness to form hypotheses instead of guessing.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="how-to-use-this-manual">
+                <h2 id="how-to-use-this-manual">How to use this manual</h2>
+                <p>Read the early sections in order. They establish the mental model:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Rust source
+→ Cargo
+→ rustc
+→ executable + debug information
+→ LLDB
+→ observation
+→ hypothesis
+→ verification</code></pre>
+                <p>After that, use the later sections as recipes. When a bug appears, choose the recipe that matches the shape of the problem:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>panic
+wrong branch
+state corruption
+async hang
+thread race
+FFI boundary
+unsafe code
+test failure</code></pre>
+            </section>
+
+            <section tabindex="0" aria-labelledby="accessibility-note">
+                <h2 id="accessibility-note">Accessibility note</h2>
+                <p>Many debugger tutorials assume visual scanning of large dumps. This manual favors a screen-reader-friendly style:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>inspect one value at a time
+use full command names when they are clearer
+use help to discover syntax
+prefer small, targeted output
+automate repetitive observation with breakpoint commands</code></pre>
+                <p>The goal is not to avoid output. The goal is to make output meaningful.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./index.html">← Table of Contents</a>
+            <a class="nav-next" href="./chapter-01.html">Chapter 1 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

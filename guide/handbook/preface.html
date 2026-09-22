@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preface – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="preface-heading">
+            <h1 id="preface-heading">Preface</h1>
+
+            <p>If you are holding this book, you are probably curious about Rust. Maybe you heard about it from a colleague who wouldn’t stop talking about how great it is. Maybe you read an article about it online. Or, perhaps you have been following my content for a while and finally decided to see what all the excitement is about. Whatever brought you here, I am glad you made it.</p>
+
+            <p>This book has two main goals. We will master the fundamentals and examine real, practical examples. In my extensive experience as a teacher, I have found that these two things work best when combined. We will not just look at theory in a vacuum. We will use it to build things.</p>
+
+            <p>Rust has incredible potential for the future. I honestly believe it will become the best language for the era of <strong>Artificial Intelligence</strong> (<strong>AI</strong>). When we code with AI, we need the final result to be high-performance, but we also need something that is easy to read and modify. Rust hits that perfect balance between speed and clarity.</p>
+
+            <p>You will also get very familiar with the famous Rust compiler. I like to describe the compiler as an “annoying grandma.” She is grumpy, picky, moves a bit slowly, and is always complaining about what you are doing. It can be frustrating at first! But you have to remember that, just like a grandma, she only complains because she wants the best for you. She wants you to be safe.</p>
+
+            <p>Be prepared for some mind-blowing moments during this learning process. Rust does not just feel different. It <em>is</em> different. This is especially true when discussing memory management. It requires a shift in how you think, but I will save the details of that for the later chapters.</p>
+
+            <p>The journey ahead will be challenging at times, but it will also be rewarding. You are learning about a tool that will make you a better developer, no matter what language you use in the future. So, grab a coffee, open your laptop, and let’s get started. Let’s crush it!</p>
+
+            <section tabindex="0" aria-labelledby="who-this-book-is-for">
+                <h2 id="who-this-book-is-for">Who this book is for</h2>
+                <p>This book is designed for developers familiar with languages such as Java, JavaScript, or Python who are interested in transitioning to Rust. If that describes you, you’ll appreciate the book’s pace and level of detail.</p>
+                <p>Beginners are also welcome, but please note that the learning curve may be steeper. To keep the book focused and manageable (and avoid creating a massive encyclopedia), I have assumed a basic understanding of common programming concepts. If you come across topics, such as web architecture, that aren’t explained in depth, I recommend pausing to research those concepts before continuing.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="what-this-book-covers">
+                <h2 id="what-this-book-covers">What this book covers</h2>
+                <ul>
+                    <li><a href="./chapter-01.html"><em>Chapter 1</em>, <em>Getting Started with Rust</em></a>, introduces the Rust programming language, details the installation process, and guides you through writing your first program using the Cargo toolchain.</li>
+                    <li><a href="./chapter-02.html"><em>Chapter 2</em>, <em>Rust Syntax and Functions</em></a>, explores variable declarations, data types, and control structures, and demonstrates how Rust handles functions and ownership principles.</li>
+                    <li><a href="./chapter-03.html"><em>Chapter 3</em>, <em>Functions in Rust</em></a>, focuses on structuring code effectively by defining functions and organizing them into modules to manage visibility and reusability across your projects.</li>
+                    <li><a href="./chapter-04.html"><em>Chapter 4</em>, <em>Ownership, Borrowing, and References</em></a>, dives into Rust’s revolutionary memory management approach, explaining how these interlinked concepts prevent common errors such as dangling pointers and data races.</li>
+                    <li><a href="./chapter-05.html"><em>Chapter 5</em>, <em>Composite Types in Rust and the Module System</em></a>, covers the use of structs and enums to construct well-organized data structures, including how to handle variants with pattern matching and apply traits.</li>
+                    <li><a href="./chapter-06.html"><em>Chapter 6</em>, <em>Introduction to Error Handling</em></a>, dives into Rust’s error handling mechanisms, explaining how to use Result, Option, and panic handling to build safe and reliable applications.</li>
+                    <li><a href="./chapter-07.html"><em>Chapter 7</em>, <em>Polymorphism and Lifetimes</em></a>, introduces polymorphism in Rust, demonstrating how to use generics for flexible data types, traits to define shared behavior, and validating references with lifetimes.</li>
+                    <li><a href="./chapter-08.html"><em>Chapter 8</em>, <em>Object-Oriented Programming in Rust</em></a>, examines how Rust supports object-oriented principles such as encapsulation and polymorphism using the trait system and structs introduced in the previous chapter.</li>
+                    <li><a href="./chapter-09.html"><em>Chapter 9</em>, <em>Thinking Functionally in Rust</em></a>, emphasizes iterators and closures, exploring how these features enable powerful, concise, and expressive code that leverages Rust’s performance.</li>
+                    <li><a href="./chapter-10.html"><em>Chapter 10</em>, <em>Testing in Rust</em></a>, highlights how Rust makes it easy and enjoyable to write tests, helping you ensure your code works correctly and the quality remains high over time.</li>
+                    <li><a href="./chapter-11.html"><em>Chapter 11</em>, <em>Smart Pointers and Memory Management</em></a>, focuses on tools such as Box, Rc, and Arc, explaining how they are used to manage memory for shared ownership and thread-safe access.</li>
+                    <li><a href="./chapter-12.html"><em>Chapter 12</em>, <em>Managing System Resources</em></a>, details the efficient management of memory and processor resources, discussing low-level handling without a garbage collector.</li>
+                    <li><a href="./chapter-13.html"><em>Chapter 13</em>, <em>Concurrency and Parallelism</em></a>, covers powerful features for concurrent programming, ensuring thread safety and preventing bugs such as data races and deadlocks.</li>
+                    <li><a href="./chapter-14.html"><em>Chapter 14</em>, <em>Rust for Web Development: Building Fullstack Applications</em></a>, demonstrates how to build fullstack applications, seamlessly integrating backend and frontend components using Rust’s ecosystem.</li>
+                    <li><a href="./chapter-15.html"><em>Chapter 15</em>, <em>System Programming in Rust: Concrete Examples</em></a>, provides practical examples of low-level development, such as interacting with file I/O, networking, and hardware.</li>
+                    <li><a href="./chapter-16.html"><em>Chapter 16</em>, <em>Dockerization and Deployment of Rust Applications</em></a>, focuses on the practical aspects of containerizing Rust applications with Docker and implementing CI/CD strategies for reliable deployment.</li>
+                    <li><em>Appendix</em>, <em>Common Pitfalls in Rust Programming</em> (online), addresses typical challenges and mistakes encountered by developers, offering community insights and best practices to avoid them.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="to-get-the-most">
+                <h2 id="to-get-the-most">To get the most out of this book</h2>
+                <p>I have written this book assuming you have some prior coding experience. To smoothly follow the examples and projects, you should be comfortable with the following:</p>
+                <ul>
+                    <li><strong>Programming fundamentals</strong>: You should be familiar with core programming concepts such as variables, loops, conditional statements, and functions. Experience with at least one other language (such as Python, JavaScript, Java, or C++) is highly recommended.</li>
+                    <li><strong>Command-line basics</strong>: Rust relies heavily on the terminal. You should be comfortable navigating folders and running basic commands in a shell (Bash, PowerShell, or Zsh).</li>
+                    <li><strong>System requirements</strong>: You can run the code examples on Windows, macOS, or Linux.</li>
+                    <li><strong>Rust toolchain</strong>: I will guide you through installing Rust using rustup in <a href="./chapter-01.html"><em>Chapter 1</em></a>.</li>
+                    <li><strong>Code editor</strong>: I recommend Visual Studio Code (VS Code) with the rust-analyzer and Even Better TOML extensions for a lightweight, extensible experience. Alternatively, RustRover (by JetBrains) is an excellent dedicated IDE for Rust, offering a more robust environment. But you can follow along with any IDE you want.</li>
+                    <li><strong>Docker</strong>: For the deployment chapters (specifically <a href="./chapter-16.html"><em>Chapter 16</em></a>), you will need Docker installed on your machine.</li>
+                    <li><strong>Internet access</strong>: You will need an active internet connection to download Rust crates (dependencies) via Cargo.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="download-code-files">
+                <h2 id="download-code-files">Download the example code files</h2>
+                <p>The code bundle for the book is hosted on GitHub at <a href="https://github.com/FrancescoXX/rustcrab/tree/main/book-compendium">https://github.com/FrancescoXX/rustcrab/tree/main/book-compendium</a>. We also have other code bundles from our rich catalog of books and videos available at <a href="https://github.com/PacktPublishing">https://github.com/PacktPublishing</a>. Check them out!</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="download-color-images">
+                <h2 id="download-color-images">Download the color images</h2>
+                <p>We also provide a PDF file that has color images of the screenshots/diagrams used in this book. You can download it here: <a href="https://packt.link/gbp/9781836208877">https://packt.link/gbp/9781836208877</a>.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="conventions-used">
+                <h2 id="conventions-used">Conventions used</h2>
+                <p>There are a number of text conventions used throughout this book.</p>
+                <p><strong>CodeInText</strong>: Indicates code words in text, database table names, folder names, filenames, file extensions, pathnames, dummy URLs, user input, and Twitter handles. For example: “The .clone() method on String creates a new allocation on the heap and copies the content ("hello") into it.”</p>
+                <p>A block of code is set as follows:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    {
+        let espresso = String::from("Delicious");
+        println!("{}", espresso);
+    }
+}</code></pre>
+                <p>Any command-line input or output is written as follows:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>docker --version</code></pre>
+                <p><strong>Bold</strong>: Indicates a new term, an important word, or words that you see on the screen. For instance, words in menus or dialog boxes appear in the text like this. For example: “At its core, an <strong>HTTP request</strong> consists of the following:”</p>
+                <p>Warnings or important notes appear like this.</p>
+                <p>Tips and tricks appear like this.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="get-in-touch">
+                <h2 id="get-in-touch">Get in touch</h2>
+                <p>Feedback from our readers is always welcome.</p>
+                <p><strong>General feedback</strong>: If you have questions about any aspect of this book or have any general feedback, please email us at customercare@packt.com and mention the book’s title in the subject of your message.</p>
+                <p><strong>Errata</strong>: Although we have taken every care to ensure the accuracy of our content, mistakes do happen. If you have found a mistake in this book, we would be grateful if you reported this to us. Please visit <a href="http://www.packt.com/submit-errata">http://www.packt.com/submit-errata</a>, click <strong>Submit Errata</strong>, and fill in the form.</p>
+                <p><strong>Piracy</strong>: If you come across any illegal copies of our works in any form on the internet, we would be grateful if you would provide us with the location address or website name. Please contact us at copyright@packt.com with a link to the material.</p>
+                <p><strong>If you are interested in becoming an author</strong>: If there is a topic that you have expertise in and you are interested in either writing or contributing to a book, please visit <a href="http://authors.packt.com/">http://authors.packt.com/</a>.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="share-thoughts">
+                <h2 id="share-thoughts">Share your thoughts</h2>
+                <p>Once you’ve read <em>The Rust Programming Handbook</em>, we’d love to hear your thoughts! Please <a href="https://packt.link/r/1836208871">click here to go straight to the Amazon review page</a> for this book and share your feedback.</p>
+                <p>Your review is important to us and the tech community and will help us make sure we’re delivering excellent quality content.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./index.html">← Table of Contents</a>
+            <a class="nav-next" href="./chapter-01.html">Chapter 1 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 1: Prerequisites and Setup on Debian – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch1-heading">
+            <h1 id="ch1-heading">Chapter 1: Prerequisites and Setup on Debian</h1>
+
+            <p>Before we can debug Rust programs with LLDB, we need a working environment. This chapter sets up everything you need on Debian: LLDB itself, the Rust toolchain, the <code>rust-lldb</code> wrapper, and the debug information that connects compiled machine code back to your Rust source.</p>
+            <p>If you already have Rust and LLDB installed, you can skim this chapter. But even then, the section on debug information is worth reading carefully, because the quality of your debugging session depends heavily on the debug information available in the binary you are running.</p>
+
+            <section tabindex="0" aria-labelledby="install-lldb">
+                <h2 id="install-lldb">Install LLDB</h2>
+                <p>On Debian, install LLDB and a recent Clang toolchain:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>sudo apt update
+sudo apt install -y lldb clang</code></pre>
+                <p>Verify:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>lldb --version</code></pre>
+                <p>You should see something like <code>lldb version 18.1.8</code> (the exact version depends on your Debian release). LLDB is the debugger itself. It lives in the machine world: registers, memory, instructions, and threads. Rust debug information will translate that machine world back into Rust terms.</p>
+                <p>Debian also packages <code>rust-lldb</code> separately. That package contains Rust-specific pretty-printers and a wrapper script for invoking LLDB on Rust binaries[reference:0]. You can install it directly from Debian:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>sudo apt install -y rust-lldb</code></pre>
+                <p>However, if you installed Rust via <code>rustup</code> (as described in the next section), the <code>rust-lldb</code> wrapper is already included in your Cargo bin directory. In that case, you do not need the Debian package. The <code>rustup</code>-provided wrapper is generally preferred because it stays in sync with your Rust toolchain version.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="install-rust-and-cargo">
+                <h2 id="install-rust-and-cargo">Install Rust and Cargo</h2>
+                <p>If Rust is not already installed, the recommended way is to use <code>rustup</code>, the official Rust toolchain installer:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"</code></pre>
+                <p>Verify:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rustc --version
+cargo --version</code></pre>
+                <p><strong>Rust 2024 edition</strong>: The Rust 2024 edition is stable as of Rust 1.85.0 (released February 20, 2025)[reference:1]. Throughout this manual, we use <code>edition = "2024"</code> in all <code>Cargo.toml</code> examples. If you are using an older toolchain, update with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rustup update stable</code></pre>
+                <p>To verify that your toolchain supports Rust 2024, check the version:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rustc --version</code></pre>
+                <p>The output should show <code>1.85.0</code> or newer.</p>
+                <p><strong>Rust 2024 changes relevant to debugging and FFI</strong>: Several changes in the 2024 edition affect how you write code that interacts with the machine world, which is exactly what debugging reveals. The most important ones for this manual are:</p>
+                <ul>
+                    <li><strong><code>unsafe extern</code> blocks are mandatory</strong>: Starting in Rust 2024, all <code>extern</code> blocks must be marked as <code>unsafe</code>. Items within them may be marked as <code>safe</code> or <code>unsafe</code>[reference:2][reference:3]. This matters for FFI debugging: when you see an <code>extern "C"</code> block in a Rust 2024 codebase, it will appear as <code>unsafe extern "C"</code>.</li>
+                    <li><strong>Unsafe attributes</strong>: The <code>export_name</code>, <code>link_section</code>, and <code>no_mangle</code> attributes must now be written as <code>#[unsafe(no_mangle)]</code>, <code>#[unsafe(export_name = "...")]</code>, and <code>#[unsafe(link_section = "...")]</code>[reference:4]. You will encounter these when debugging code that exposes Rust symbols to C or the linker.</li>
+                    <li><strong><code>unsafe_op_in_unsafe_fn</code> warns by default</strong>: In Rust 2024, an <code>unsafe fn</code> no longer implicitly allows unsafe operations in its body. You must write explicit <code>unsafe { ... }</code> blocks inside the function[reference:5]. This makes the unsafe boundaries in your code more visible, which is helpful when debugging unsafe code.</li>
+                    <li><strong>References to <code>static mut</code> are disallowed</strong>: Rust 2024 disallows references to <code>static mut</code> items. Use raw pointers or interior-mutability primitives instead[reference:6]. This affects low-level and FFI code that might previously have used <code>&static mut</code>.</li>
+                </ul>
+                <p>These changes do not alter how LLDB works, but they do alter what the source code looks like when you inspect it during a debugging session. Being aware of them prevents confusion.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="install-debugging-components">
+                <h2 id="install-debugging-components">Install Rust debugging components (recommended)</h2>
+                <p>For a better debugging experience, add two Rustup components:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rustup component add rust-src llvm-tools-preview</code></pre>
+                <p>The <code>rust-src</code> component provides the standard library source code, which lets debuggers and IDEs step into standard-library functions when debug information is available. The <code>llvm-tools-preview</code> component includes LLVM utilities that are useful for inspecting binaries, symbols, and debug information[reference:7].</p>
+                <p>These are optional but strongly recommended, especially if you plan to investigate standard-library behavior or use tools such as <code>llvm-symbolizer</code> to improve symbolication in stack traces.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="verify-rust-lldb">
+                <h2 id="verify-rust-lldb">Verify <code>rust-lldb</code></h2>
+                <p>Rust ships a wrapper called <code>rust-lldb</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb --version</code></pre>
+                <p>If the command is not found, ensure Cargo’s bin directory is on your <code>PATH</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>echo "$PATH"</code></pre>
+                <p>Usually that means:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>export PATH="$HOME/.cargo/bin:$PATH"</code></pre>
+                <p>If you installed <code>rust-lldb</code> via <code>apt</code> instead of <code>rustup</code>, the wrapper may be at <code>/usr/bin/rust-lldb</code>. Both wrappers launch LLDB with Rust-oriented settings and pretty-printers. The <code>rustup</code> wrapper is preferred because it corresponds exactly to your installed Rust version.</p>
+                <p><code>rust-lldb</code> is a wrapper, not a separate debugger. It launches <code>lldb</code> with additional Rust-specific configuration. When you debug Rust, prefer:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb</code></pre>
+                <p>over manually launching:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>lldb</code></pre>
+                <p>The wrapper is what loads the Rust pretty-printers, which format complex Rust values such as <code>String</code>, <code>Vec&lt;T&gt;</code>, and enums in a readable way. Without them, you would see raw memory layouts instead of human-readable values.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="understand-debug-information">
+                <h2 id="understand-debug-information">Understand debug information</h2>
+                <p>Debug information is the bridge between machine code and Rust source.</p>
+                <p>Without debug information, LLDB may still run the program, but it cannot reliably answer:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Which Rust function is this?
+Which source line is this?
+What is this variable?
+What type does it have?</code></pre>
+                <p>Cargo’s default debug profile normally includes debug information:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>The release profile normally does not:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --release</code></pre>
+                <p>If you need a release-like build with debug information:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.release]
+debug = true</code></pre>
+                <p>You can also choose a lighter level:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.release]
+debug = "line-tables-only"</code></pre>
+                <p>That gives line numbers without full variable information.</p>
+
+                <section tabindex="0" aria-labelledby="debuginfo-levels">
+                    <h3 id="debuginfo-levels">Debug information levels</h3>
+                    <p>The <code>debug</code> setting in a Cargo profile controls the <code>-C debuginfo</code> flag passed to <code>rustc</code>. The valid levels are:</p>
+                    <ul>
+                        <li><strong><code>0</code> or <code>false</code> (or <code>"none"</code>)</strong>: No debug information at all.</li>
+                        <li><strong><code>1</code> or <code>"line-tables-only"</code></strong>: Line tables only. Sufficient to generate backtraces that include line numbers, but no variable or type information.</li>
+                        <li><strong><code>2</code> or <code>true</code></strong>: Full debug information, including variable names, types, and source-level information[reference:8][reference:9].</li>
+                    </ul>
+                    <p>The default <code>dev</code> profile uses <code>debug = true</code> (level 2). The default <code>release</code> profile uses <code>debug = false</code> (level 0). For debugging, you almost always want level 2. Level 1 is useful when you need smaller binaries but still want meaningful stack traces.</p>
+                    <p><strong>A note on release builds with debug information</strong>: Adding <code>debug = true</code> to <code>[profile.release]</code> does not disable optimizations. The optimizer may still inline functions, remove variables, and reorder instructions. Debug information tells LLDB what the source looked like, but optimization can make the mapping between source and machine code imperfect. We will discuss the consequences of optimization in a later chapter.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="rust-2024-edition-in-cargo-toml">
+                    <h3 id="rust-2024-edition-in-cargo-toml">Rust 2024 edition in Cargo.toml</h3>
+                    <p>When creating or updating a project for Rust 2024, your <code>Cargo.toml</code> should include:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "my_debugging_project"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]</code></pre>
+                    <p>If you are migrating an existing project, you can use <code>cargo fix --edition</code> to automate most of the changes[reference:10]. After migration, verify that your project compiles:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo check</code></pre>
+                    <p>If your code uses FFI, pay particular attention to the <code>unsafe extern</code> requirement and the new unsafe attribute syntax. The compiler will tell you exactly what needs to change.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="confirm-the-binary">
+                <h2 id="confirm-the-binary">Confirm the binary</h2>
+                <p>Before launching LLDB, confirm which executable you are debugging:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>ls -l target/debug/</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/your_program</code></pre>
+                <p>Debugging the wrong binary is a common source of misleading evidence. This is especially true in workspaces with multiple packages, in projects with both library and binary targets, and in projects where you have built both debug and release artifacts. Always verify that the path you pass to <code>rust-lldb</code> is the executable produced by the build you intended to debug.</p>
+                <p>A useful habit is to check the modification time of the binary:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>ls -lt target/debug/ | head</code></pre>
+                <p>If the binary you are about to debug is older than your most recent source change, you may be looking at stale code. Rebuild first:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>This simple check prevents a surprising number of confusing debugging sessions.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-minimal-verification-program">
+                <h2 id="a-minimal-verification-program">A minimal verification program</h2>
+                <p>To confirm that your entire setup works, create a small Rust program, build it, and load it in LLDB.</p>
+                <p>Create a new project:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new debug_setup_check --bin
+cd debug_setup_check</code></pre>
+                <p>Edit <code>Cargo.toml</code> to use Rust 2024:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "debug_setup_check"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]</code></pre>
+                <p>Edit <code>src/main.rs</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let greeting = String::from("Hello, LLDB!");
+    let length = greeting.len();
+
+    println!("{} (length: {})", greeting, length);
+}</code></pre>
+                <p>Build:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>Confirm the binary exists:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>ls -l target/debug/debug_setup_check</code></pre>
+                <p>Launch LLDB:</p>
+                <pre tabindex="0" region aria-label="Code sample"><code>rust-lldb target/debug/debug_setup_check</code></pre>
+                <p>At the <code>(lldb)</code> prompt, set a breakpoint on <code>main</code> and run:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name main
+(lldb) run</code></pre>
+                <p>Execution stops at the entry of <code>main</code>. Inspect the frame:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame info</code></pre>
+                <p>Step to the next line:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                <p>Inspect the local variable:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable greeting</code></pre>
+                <p>You should see the string value rendered by the Rust pretty-printer. If you see raw internal fields instead of a readable string, the pretty-printers are not loaded. That usually means <code>rust-lldb</code> was not used, or the Debian <code>rust-lldb</code> package and the Rust toolchain version are mismatched.</p>
+                <p>Continue and quit:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) continue
+(lldb) quit</code></pre>
+                <p>If all of that worked, your environment is ready. If something failed, the troubleshooting appendix at the end of this manual covers the most common causes.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch1">
+                <h2 id="summary-ch1">Summary</h2>
+                <p>In this chapter, we set up a complete Rust debugging environment on Debian:</p>
+                <ul>
+                    <li><strong>LLDB</strong> was installed via <code>apt</code>, providing the debugger itself.</li>
+                    <li><strong>Rust and Cargo</strong> were installed via <code>rustup</code>, ensuring we have the Rust 2024 edition and the latest stable toolchain.</li>
+                    <li><strong><code>rust-lldb</code></strong> was verified, giving us Rust-aware debugging with pretty-printers.</li>
+                    <li><strong>Debug information</strong> was explained: the <code>dev</code> profile includes it by default, while the <code>release</code> profile does not unless configured.</li>
+                    <li><strong>Rust 2024 changes</strong> relevant to debugging were reviewed, including <code>unsafe extern</code> blocks and the new unsafe attribute syntax.</li>
+                    <li><strong>A minimal verification program</strong> confirmed that the entire toolchain works end to end.</li>
+                </ul>
+                <p>With this foundation in place, we can now turn to the question that drives everything else: what debugging actually is, and how LLDB fits into the Rust development loop.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./preface.html">← Preface</a>
+            <a class="nav-next" href="./chapter-02.html">Chapter 2 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

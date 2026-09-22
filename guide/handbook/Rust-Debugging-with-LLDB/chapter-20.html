@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 20: Output Discipline and Screen-Reader Workflow – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch20-heading">
+            <h1 id="ch20-heading">Chapter 20: Output Discipline and Screen-Reader Workflow</h1>
+
+            <p>A debugger is an instrument for producing evidence, and evidence is only useful when it can be read. LLDB is capable of producing a very large amount of output: whole structs, nested collections, multi-threaded backtraces, and long histories. Much of that output is useful in small doses, but overwhelming in bulk. For a screen-reader workflow, the problem is sharper still: output that is easy to scan visually can be impossible to parse when spoken aloud.</p>
+            <p>This chapter is about managing the debugger’s output so that the evidence remains readable. The ideas are useful to any user of the debugger, but they are especially important for screen-reader users, and they have been tuned with that audience in mind.</p>
+            <p>The chapter has four main parts: output discipline, the screen-reader workflow, the repeat-on-Enter behavior, and the help and completion system. Each of these is a tool for keeping the conversation with the debugger manageable.</p>
+
+            <section tabindex="0" aria-labelledby="output-discipline">
+                <h2 id="output-discipline">Output discipline</h2>
+                <p>For screen-reader use, avoid unnecessary output.</p>
+                <p>Instead of repeatedly dumping everything:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                <p>ask for one value:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config.path</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config.debug</code></pre>
+                <p>The principle is:</p>
+                <blockquote>
+                    <p><strong>Inspect the smallest useful piece of state.</strong></p>
+                </blockquote>
+                <p>This reduces auditory overload and makes changes easier to detect.</p>
+
+                <section tabindex="0" aria-labelledby="why-output-discipline-matters">
+                    <h3 id="why-output-discipline-matters">Why output discipline matters</h3>
+                    <p>The default behavior of the debugger is to show you everything it can. When you type <code>frame variable</code>, LLDB shows every local and argument in the current frame, formatted by the pretty-printers. When you type <code>bt</code>, LLDB shows every frame in the call stack, up to the runtime entry. When you type <code>thread backtrace all</code>, LLDB shows every thread’s stack.</p>
+                    <p>For a small program with a small frame, this is fine. For a real program with a large frame and many threads, the output can easily exceed what can be held in working memory. For a screen reader, the problem is worse: the output is spoken sequentially, and the listener must hold the content in memory while parsing the next part. A dump of a hundred lines of structured output is effectively unreadable.</p>
+                    <p>Output discipline is the practice of asking for only what you need. It is not a limitation of the debugger; it is a choice about how to use it.</p>
+                    <p>The choice has two effects. First, it reduces the amount of output the user must process, which is important for screen readers and for humans reading terminal output in general. Second, it forces the user to state the question before running the command. Asking for <code>config.path</code> requires knowing that <code>config.path</code> is what you want; asking for <code>frame variable</code> does not. The first approach keeps the investigation focused.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-smallest-useful-piece-of-state">
+                    <h3 id="the-smallest-useful-piece-of-state">The smallest useful piece of state</h3>
+                    <p>“The smallest useful piece of state” is not a precise rule. It depends on the question. A few examples illustrate the range:</p>
+                    <ul>
+                        <li><strong>Inspecting a specific field of a struct</strong>: <code>frame variable config.timeout</code> instead of <code>frame variable config</code>, when only the timeout is of interest.</li>
+                        <li><strong>Inspecting a specific element of a collection</strong>: <code>frame variable items[3]</code> instead of <code>frame variable items</code>, when a specific index is suspect.</li>
+                        <li><strong>Inspecting a specific frame’s locals</strong>: <code>frame select 2</code> followed by <code>frame variable</code>, instead of dumping the whole backtrace first.</li>
+                        <li><strong>Inspecting a specific thread’s stack</strong>: <code>thread select 2</code> followed by <code>bt</code>, instead of <code>thread backtrace all</code>.</li>
+                        <li><strong>Limiting backtrace depth</strong>: <code>bt 5</code> instead of <code>bt</code>, when only the top of the stack is interesting.</li>
+                    </ul>
+                    <p>In each case, the principle is the same: ask for the smallest scope that contains the answer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-dumping-everything-is-appropriate">
+                    <h3 id="when-dumping-everything-is-appropriate">When dumping everything is appropriate</h3>
+                    <p>Output discipline does not mean never asking for large output. There are situations where the full view is what you need:</p>
+                    <ul>
+                        <li><strong>Orientation</strong>: at the start of a session, you may want to see the full set of locals to know what is available.</li>
+                        <li><strong>Overview</strong>: when you have no hypothesis and want to see the shape of the current state.</li>
+                        <li><strong>Thread survey</strong>: when you do not know which thread is relevant and need to scan them.</li>
+                        <li><strong>Field discovery</strong>: when you have forgotten the exact field names of a struct and need a reminder.</li>
+                    </ul>
+                    <p>In these cases, asking for the full output is appropriate. The discipline is to know when you are in one of these cases and to keep the full dumps short.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-auditory-perspective">
+                    <h3 id="the-auditory-perspective">The auditory perspective</h3>
+                    <p>A screen reader delivers output as audio. Several properties of audio make it different from reading text on a screen:</p>
+                    <ul>
+                        <li><strong>It is sequential</strong>: you cannot skim; you must listen in order.</li>
+                        <li><strong>It is not persistent</strong>: the previous line is not visible while you read the next one.</li>
+                        <li><strong>It is slow</strong>: at typical screen-reader rates, reading a thousand characters takes several seconds.</li>
+                        <li><strong>It is hard to scroll back</strong>: going back to re-read a specific line requires re-navigating the buffer, which is often slower than reading forward.</li>
+                    </ul>
+                    <p>Because of these properties, the cost of extra output is much higher with a screen reader than with a visual display. A hundred lines of output that would take a few seconds to scan visually might take a minute or more to hear, and much of it will be forgotten by the time the last line is reached.</p>
+                    <p>Output discipline is not a courtesy; it is a practical necessity for efficient screen-reader debugging.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="applying-output-discipline-to-specific-commands">
+                    <h3 id="applying-output-discipline-to-specific-commands">Applying output discipline to specific commands</h3>
+                    <p>Several LLDB commands produce more output than necessary for a focused inspection. The following table summarizes the common cases and their disciplined alternatives.</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Command</th>
+                                <th>Disciplined Alternative</th>
+                                <th>When to Use</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>frame variable</code></td>
+                                <td><code>frame variable NAME</code> or <code>frame variable NAME.FIELD</code></td>
+                                <td>When you know which value you want</td>
+                            </tr>
+                            <tr>
+                                <td><code>bt</code></td>
+                                <td><code>bt 5</code></td>
+                                <td>When the top of the stack is what matters</td>
+                            </tr>
+                            <tr>
+                                <td><code>thread backtrace all</code></td>
+                                <td><code>thread list</code> then <code>thread select N</code> then <code>bt</code></td>
+                                <td>When one thread is suspected</td>
+                            </tr>
+                            <tr>
+                                <td><code>breakpoint list</code></td>
+                                <td><code>breakpoint list N</code></td>
+                                <td>When checking a specific breakpoint</td>
+                            </tr>
+                            <tr>
+                                <td><code>watchpoint list</code></td>
+                                <td><code>watchpoint list N</code></td>
+                                <td>When checking a specific watchpoint</td>
+                            </tr>
+                            <tr>
+                                <td><code>image lookup --name PATTERN</code></td>
+                                <td>Narrow the pattern or grep the output</td>
+                                <td>When the pattern matches many symbols</td>
+                            </tr>
+                            <tr>
+                                <td><code>help</code></td>
+                                <td><code>help COMMAND</code></td>
+                                <td>When you need help with a specific command</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p>The pattern is the same: use the narrowest form of the command that answers the question.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="recording-and-revisiting-output">
+                    <h3 id="recording-and-revisiting-output">Recording and revisiting output</h3>
+                    <p>Because audio output is not persistent, it is useful to record the important observations as you go. Two approaches are common:</p>
+                    <ul>
+                        <li><strong>Debugging notebook</strong>: write down the key observations in a separate text file as you make them, as described in Chapter 18. This external memory is more reliable than the audio buffer.</li>
+                        <li><strong>Terminal logging</strong>: many terminals can log their session to a file. Running LLDB inside such a terminal captures all output to a file, which can be reviewed later or searched with <code>rg</code>.</li>
+                    </ul>
+                    <p>For a screen-reader workflow, the debugging notebook is often the more practical option, because it captures the conclusions rather than the raw output. The notebook tells you what you learned; the terminal log tells you what you saw.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="screen-reader-workflow">
+                <h2 id="screen-reader-workflow">Screen-reader workflow</h2>
+                <p>Debugger output can be overwhelming. Use output discipline.</p>
+                <p>Instead of:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                <p>which may dump many variables, ask for one:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config</code></pre>
+                <p>Then one field:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config.path</code></pre>
+                <p>Then another:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config.debug</code></pre>
+                <p>The principle:</p>
+                <blockquote>
+                    <p>Inspect the smallest useful piece of state.</p>
+                </blockquote>
+                <p>Other screen-reader-friendly practices:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>use full command names
+use help to discover syntax
+use breakpoint commands to automate repetitive inspection
+avoid dumping entire backtraces unless needed
+use bt 5 to limit output
+use frame select to move deliberately
+use thread select to avoid ambiguity</code></pre>
+                <p>LLDB repeats the previous command on Enter. Use this deliberately, not accidentally.</p>
+                <p>If you need to preserve output, consider redirecting LLDB output to a file or using a terminal with accessible logging.</p>
+
+                <section tabindex="0" aria-labelledby="the-case-for-full-command-names">
+                    <h3 id="the-case-for-full-command-names">The case for full command names</h3>
+                    <p>LLDB provides short forms for many commands. <code>b</code> for <code>breakpoint set</code>, <code>n</code> for <code>next</code>, <code>s</code> for <code>step</code>, and so on. These short forms are convenient when typing, but they can be less clear when heard or when read aloud.</p>
+                    <p>For a screen-reader workflow, full command names are often preferable:</p>
+                    <ul>
+                        <li><strong>They are self-describing</strong>: when the debugger echoes the command back, <code>breakpoint set --name parse_config</code> is clear; <code>b parse_config</code> requires knowing what <code>b</code> stands for.</li>
+                        <li><strong>They are easier to review</strong>: when reading back through a session log, the full command is unambiguous.</li>
+                        <li><strong>They are consistent</strong>: LLDB’s help system documents commands by their full names, so the full form matches what the documentation says.</li>
+                    </ul>
+                    <p>This is not a rigid rule. Some commands (such as <code>next</code>, <code>step</code>, <code>continue</code>) are short enough that the full form and the short form are similar. But for anything with options, the full form is generally clearer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-help-to-discover-syntax">
+                    <h3 id="using-help-to-discover-syntax">Using <code>help</code> to discover syntax</h3>
+                    <p>The <code>help</code> command is the debugger’s built-in documentation. It answers questions about command syntax, options, and behavior.</p>
+                    <p>The general forms:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>help
+help COMMAND
+help CATEGORY
+</code></pre>
+                    <p>For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>help breakpoint set
+help frame variable
+help watchpoint
+help thread
+</code></pre>
+                    <p>The output is structured: a one-line description, a syntax line, the available options, and often a note about related commands or short forms. This structure is helpful for screen-reader use because it is predictable: the same fields always appear in the same order.</p>
+                    <p>When you are unsure about the exact option name or the exact syntax, <code>help</code> is the fastest way to find the answer. It is not necessary to memorize every option; it is only necessary to know that <code>help</code> exists and how to use it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-breakpoint-commands-to-automate">
+                    <h3 id="using-breakpoint-commands-to-automate">Using breakpoint commands to automate</h3>
+                    <p>When a breakpoint fires many times, inspecting it manually each time produces a lot of output and a lot of typing. LLDB supports attaching commands to a breakpoint, so that each time the breakpoint fires, the same set of commands is executed automatically.</p>
+                    <p>The general mechanism:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command add 1
+&gt; frame variable state
+&gt; bt 3
+&gt; DONE
+</code></pre>
+                    <p>The commands between the prompt and <code>DONE</code> are attached to breakpoint 1. Each time the breakpoint fires, these commands are executed, and the output is displayed as if you had typed them.</p>
+                    <p>For a screen-reader workflow, breakpoint commands have two benefits:</p>
+                    <ul>
+                        <li><strong>Less typing</strong>: you write the inspection once and it runs automatically.</li>
+                        <li><strong>Consistent output</strong>: each firing produces the same structure of output, which is easier to compare across firings.</li>
+                    </ul>
+                    <p>Breakpoint commands are described in more detail in the next chapter, but it is worth mentioning here because they are one of the most effective ways to reduce output-related effort.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="avoiding-unnecessary-backtraces">
+                    <h3 id="avoiding-unnecessary-backtraces">Avoiding unnecessary backtraces</h3>
+                    <p>A backtrace is a powerful tool, but it is also one of the largest sources of output. For a small program, <code>bt</code> produces a handful of frames. For a larger program, or a program with deep library stacks, <code>bt</code> can produce dozens of frames, most of which are runtime or library machinery.</p>
+                    <p>A practical approach: start with a limited backtrace, and expand only when needed.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt 5
+</code></pre>
+                    <p>This shows the top five frames, which usually include the current location and a few of its callers. If the interesting frame is not among them, expand to <code>bt 15</code>, and continue expanding only if necessary.</p>
+                    <p>For a screen-reader workflow, this progressive expansion is often the difference between a manageable session and an overwhelming one. Each step adds only the frames you might need, and you can stop as soon as you have identified the frame that matters.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="moving-deliberately-through-frames">
+                    <h3 id="moving-deliberately-through-frames">Moving deliberately through frames</h3>
+                    <p><code>frame select N</code> moves the selection to a specific frame by index. This is useful when you have identified a frame from the backtrace and want to inspect it directly.</p>
+                    <p>The alternative is <code>up</code> and <code>down</code>, which move one frame at a time. Both approaches are valid, but they have different effects on a screen-reader workflow:</p>
+                    <ul>
+                        <li><strong><code>frame select N</code></strong> jumps directly to a specific frame. If you already know the index, this is the fastest way to get there. But you need to remember the index, which requires you to have read the backtrace carefully.</li>
+                        <li><strong><code>up</code> and <code>down</code></strong> move one frame at a time. This is slower in terms of commands, but each movement is small and easy to follow. It is a good choice when you are not sure which frame you want to inspect and need to look at each in turn.</li>
+                    </ul>
+                    <p>A practical pattern: use <code>frame select N</code> to jump to a known frame, and use <code>up</code> or <code>down</code> to move nearby once you are close. This combines the speed of direct navigation with the clarity of step-by-step movement.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="selecting-threads-carefully">
+                    <h3 id="selecting-threads-carefully">Selecting threads carefully</h3>
+                    <p>In a multithreaded program, commands that target threads can produce a lot of output if applied to all threads at once. A more disciplined approach is to select a specific thread before inspecting its stack.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) thread list
+(lldb) thread select 2
+(lldb) bt 5
+</code></pre>
+                    <p>This shows only the selected thread’s stack, and only the top five frames. If the thread is the one you care about, this is often sufficient.</p>
+                    <p>For a screen-reader workflow, the pattern is:</p>
+                    <ol>
+                        <li>List threads to see what is available.</li>
+                        <li>Select the thread that seems most relevant.</li>
+                        <li>Inspect its stack with a limited <code>bt</code>.</li>
+                        <li>If not informative, select a different thread and repeat.</li>
+                    </ol>
+                    <p>This avoids the flood of output that <code>thread backtrace all</code> produces, and it keeps the investigation focused on one thread at a time.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="preserving-output-when-needed">
+                    <h3 id="preserving-output-when-needed">Preserving output when needed</h3>
+                    <p>Sometimes, an output is important enough that you want to keep it. Two techniques are useful:</p>
+                    <ul>
+                        <li><strong>Redirect to a file</strong>: launch LLDB with output redirected to a file, or use a command to save the current output.</li>
+                        <li><strong>Terminal logging</strong>: configure the terminal to log its session. Many terminals support a session-log command or a menu option.</li>
+                        <li><strong>Copy-and-paste to a file</strong>: after inspecting a value, copy it into a text file if it is important for later reference.</li>
+                    </ul>
+                    <p>For a screen-reader workflow, saving output to a file is especially useful because the file can be read at your own pace, searched with <code>rg</code>, and reviewed after the session. Terminal output is transient; a saved file is durable.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="repeat-commands">
+                <h2 id="repeat-commands">Repeat commands</h2>
+                <p>LLDB repeats the previous command when you press Enter on an empty command line.</p>
+                <p>This is useful for commands that naturally produce progressive output, including backtrace inspection. LLDB documents this repeat behavior explicitly.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>bt 5
+</code></pre>
+                <p>followed by Enter can continue paging through a backtrace.</p>
+                <p>Use this carefully.</p>
+                <p>An empty Enter is a command repetition, not merely a blank interaction.</p>
+
+                <section tabindex="0" aria-labelledby="how-repeat-behavior-works">
+                    <h3 id="how-repeat-behavior-works">How repeat behavior works</h3>
+                    <p>The repeat behavior is simple: when you press Enter without typing anything, LLDB treats the input as the previous command. This is a feature inherited from earlier debuggers and is intended to make it easy to run the same command multiple times in a row.</p>
+                    <p>Commands that benefit from this are typically ones that produce output in chunks, such as:</p>
+                    <ul>
+                        <li><code>bt N</code>: the first invocation shows the first <code>N</code> frames; the next invocation shows the next <code>N</code> frames; and so on.</li>
+                        <li><code>disassemble</code> without arguments: shows the next chunk of disassembly.</li>
+                        <li><code>memory read</code> without arguments: shows the next chunk of memory.</li>
+                        <li><code>source list</code> or its equivalent: shows the next chunk of source.</li>
+                    </ul>
+                    <p>In each case, the repeated command advances the display by one step. This is exactly what you want when reviewing a long output.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-risks-of-accidental-repeat">
+                    <h3 id="the-risks-of-accidental-repeat">The risks of accidental repeat</h3>
+                    <p>The repeat behavior is a double-edged tool. A stray Enter can trigger a command you did not intend, and in a session where the previous command had side effects (such as <code>continue</code> or <code>step</code>), an accidental repeat can move the program’s execution in an unwanted direction.</p>
+                    <p>For a screen-reader workflow, the risk is higher because the input buffer is not always visible. A common scenario: you pause to think, press Enter by habit or by accident, and the debugger re-runs the previous command. If the previous command was <code>continue</code>, the program resumes execution, and the current stop is lost.</p>
+                    <p>Mitigations:</p>
+                    <ul>
+                        <li><strong>Be aware of the previous command</strong>: before pressing Enter, recall what you ran last.</li>
+                        <li><strong>Use <code>help</code> as a no-op</strong>: if you need to press Enter but do not want to repeat, type <code>help</code> and press Enter. This executes a harmless command.</li>
+                        <li><strong>Interrupt if needed</strong>: if the program resumes unintentionally, send an interrupt (typically <kbd>Ctrl</kbd>+<kbd>C</kbd>) to stop it again.</li>
+                    </ul>
+                    <p>Once you are aware of the behavior, the risk becomes manageable. The repeat feature is a convenience, not a hazard, once you know when it is active.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="deliberate-use-of-repeat">
+                    <h3 id="deliberate-use-of-repeat">Deliberate use of repeat</h3>
+                    <p>The most productive use of repeat is for paging through output. When a backtrace is longer than the terminal can show, the first <code>bt 5</code> shows the first five frames. A subsequent Enter shows the next five. Another Enter shows the next five, and so on.</p>
+                    <p>For a screen-reader workflow, this progressive paging has two advantages:</p>
+                    <ul>
+                        <li><strong>Small chunks</strong>: each Enter produces a small, digestible output.</li>
+                        <li><strong>Controlled pace</strong>: the user controls when to advance, so each chunk can be fully processed before the next one is spoken.</li>
+                    </ul>
+                    <p>This is often preferable to a single <code>bt</code> that dumps everything at once. The output is the same; the pacing is different, and the pacing is what makes the output usable with a screen reader.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="repeat-in-context">
+                    <h3 id="repeat-in-context">Repeat in context</h3>
+                    <p>Repeat is a small feature, but it changes how you interact with the debugger. Instead of typing <code>bt 5</code> repeatedly, you type it once and press Enter as needed. This is a small saving that adds up over a long session.</p>
+                    <p>The key point is that repeat is a deliberate tool, not an accident waiting to happen. When you know the previous command, repeat is useful. When you do not, <code>help</code> is a safer substitute for a bare Enter.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="help-is-part-of-the-debugger">
+                <h2 id="help-is-part-of-the-debugger">Help is part of the debugger</h2>
+                <p>When uncertain:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>help
+</code></pre>
+                <p>Specific command:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>help breakpoint set
+</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>help frame variable
+</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>help watchpoint
+</code></pre>
+                <p>LLDB's command system is designed to expose detailed command syntax through <code>help</code>.</p>
+                <p>You do not need to memorize LLDB.</p>
+                <p>You need to know how to interrogate LLDB.</p>
+
+                <section tabindex="0" aria-labelledby="the-shape-of-help-output">
+                    <h3 id="the-shape-of-help-output">The shape of <code>help</code> output</h3>
+                    <p>The output of <code>help</code> for a specific command follows a consistent structure. Understanding this structure makes the output easier to scan and easier to hear.</p>
+                    <p>A typical <code>help</code> entry has the following sections:</p>
+                    <ul>
+                        <li><strong>A one-line description</strong>: what the command does.</li>
+                        <li><strong>Syntax</strong>: the general form of the command, with placeholders for arguments and options.</li>
+                        <li><strong>Command options</strong>: the flags and options the command supports, each with a short description.</li>
+                        <li><strong>Examples</strong> (for some commands): sample invocations showing typical usage.</li>
+                        <li><strong>See also</strong> (for some commands): related commands.</li>
+                    </ul>
+                    <p>Because the structure is consistent, you can navigate it predictably. When you hear “Syntax” or “Command options,” you know what section you are in. This is particularly valuable with a screen reader, where the visual cues of formatting are absent.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-help-as-documentation">
+                    <h3 id="using-help-as-documentation">Using <code>help</code> as documentation</h3>
+                    <p>The <code>help</code> system in LLDB is not a lightweight reference; it is the debugger’s documentation. When you are not sure what a command does, or what options it takes, <code>help</code> is the answer.</p>
+                    <p>Some useful <code>help</code> invocations for common tasks:</p>
+                    <ul>
+                        <li><code>help breakpoint set</code>: how to set a breakpoint, including options for names, files, lines, conditions, and more.</li>
+                        <li><code>help breakpoint modify</code>: how to change a breakpoint after it has been set, including condition, enable, and other options.</li>
+                        <li><code>help frame variable</code>: how to inspect locals and arguments in the current frame.</li>
+                        <li><code>help frame select</code>: how to move the frame selection.</li>
+                        <li><code>help thread backtrace</code>: how to inspect thread stacks.</li>
+                        <li><code>help watchpoint set</code>: how to set a watchpoint.</li>
+                        <li><code>help memory read</code>: how to read memory at an address.</li>
+                    </ul>
+                    <p>These are worth bookmarking mentally, or in a text file, because they cover the vast majority of routine queries.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="help-vs-memorization">
+                    <h3 id="help-vs-memorization">Help versus memorization</h3>
+                    <p>A common misconception is that using a debugger requires memorizing commands. In practice, it requires knowing which commands exist and how to look up their syntax when needed. The help system is the tool for the second part.</p>
+                    <p>For a screen-reader workflow, this is especially important. Memorizing a large number of commands is harder when the commands cannot be scanned visually, and the cost of forgetting an option is higher when the output is not visible. Relying on <code>help</code> is a safer and more sustainable strategy than trying to hold everything in memory.</p>
+                    <p>The skill is not memorization; it is knowing how to ask. With LLDB, asking is done with <code>help</code>.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-help-command-as-a-pause">
+                    <h3 id="the-help-command-as-a-pause">The <code>help</code> command as a pause</h3>
+                    <p>One small but useful side effect of <code>help</code> is that it is harmless. Running <code>help</code> with no arguments or with a specific command does not change the program’s state; it just prints information. This makes <code>help</code> a safe way to “do nothing” in a session.</p>
+                    <p>This is useful in two situations:</p>
+                    <ul>
+                        <li><strong>When you need a moment to think</strong>: instead of leaving the prompt idle (which risks an accidental Enter), run <code>help</code> and read the output while you decide what to do next.</li>
+                        <li><strong>When you want to break a repeat chain</strong>: if you have been pressing Enter to page through output, running <code>help</code> resets the “previous command” to <code>help</code>, so that a subsequent Enter will not repeat the paging.</li>
+                    </ul>
+                    <p>This is a small usability trick that fits well with a screen-reader workflow, where a stray Enter is both easy to trigger and costly to recover from.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="command-completion">
+                <h2 id="command-completion">Command completion</h2>
+                <p>LLDB supports command completion.</p>
+                <p>Start typing:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint
+</code></pre>
+                <p>and use completion to discover available subcommands.</p>
+                <p>This is useful for screen-reader users because it lets the debugger itself expose the command hierarchy.</p>
+                <p>Think:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint
+    set
+    list
+    delete
+    modify
+</code></pre>
+                <p>rather than memorizing every command independently.</p>
+
+                <section tabindex="0" aria-labelledby="how-completion-works">
+                    <h3 id="how-completion-works">How completion works</h3>
+                    <p>Command completion is triggered by pressing Tab. When you press Tab after a partial command, LLDB displays the possible completions. If there is a single completion, it fills it in directly. If there are multiple, it lists them or extends the input to the longest common prefix.</p>
+                    <p>For example, typing <code>break</code> and pressing Tab may complete to <code>breakpoint</code>, because <code>breakpoint</code> is the only command that begins with those characters. Typing <code>breakpoint s</code> and pressing Tab may complete to <code>breakpoint set</code>.</p>
+                    <p>The behavior depends on your LLDB configuration and your terminal’s tab handling. In most cases, completion works as you would expect from a modern command line.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-command-tree">
+                    <h3 id="the-command-tree">The command tree</h3>
+                    <p>LLDB’s commands form a tree. The first word is a category, the second word is an operation within that category, and further words are sub-operations. Completion navigates this tree:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint
+    set
+        --name
+        --file
+        --line
+        --condition
+    modify
+        --condition
+        --enable
+        --disable
+    list
+    delete
+    command
+        add
+        delete
+
+frame
+    info
+    variable
+    select
+
+thread
+    list
+    select
+    backtrace
+
+watchpoint
+    set
+        variable
+        expression
+    list
+    delete
+
+memory
+    read
+    write
+    region
+</code></pre>
+                    <p>Knowing the tree structure is more useful than memorizing individual commands, because it lets you infer where commands live. If you need to inspect a frame, you know to start with <code>frame</code>; if you need to inspect threads, you know to start with <code>thread</code>. Completion helps you discover the specific sub-command once you are in the right category.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="completion-as-a-learning-tool">
+                    <h3 id="completion-as-a-learning-tool">Completion as a learning tool</h3>
+                    <p>For a screen-reader workflow, completion is more than a typing shortcut. It is a way for the debugger to teach you its own vocabulary. Each time you type a partial command and press Tab, the debugger tells you what the available completions are. This is like a help system that responds to your current position in the command.</p>
+                    <p>Some practical implications:</p>
+                    <ul>
+                        <li><strong>Explore the tree as needed</strong>: if you know you need to do something with breakpoints but are not sure which operation, type <code>breakpoint</code> and press Tab to see the options.</li>
+                        <li><strong>Discover options</strong>: after <code>breakpoint set</code>, pressing Tab may show the available options (<code>--name</code>, <code>--file</code>, <code>--line</code>, and so on).</li>
+                        <li><strong>Confirm exact spellings</strong>: if you are unsure whether an option is <code>--condition</code> or <code>--cond</code>, completion will tell you.</li>
+                    </ul>
+                    <p>This turns the debugger into a self-documenting environment. You do not need to have read the documentation ahead of time; you can discover the commands as you need them.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="completion-and-help-together">
+                    <h3 id="completion-and-help-together">Completion and <code>help</code> together</h3>
+                    <p>Completion and <code>help</code> are complementary. Completion tells you what commands exist; <code>help</code> tells you what they do. Using them together:</p>
+                    <ol>
+                        <li>Type a partial command and press Tab to see the completions.</li>
+                        <li>Type the completed command and press Enter to run it.</li>
+                        <li>If the command fails or you are unsure about the syntax, use <code>help COMMAND</code> to read the documentation.</li>
+                    </ol>
+                    <p>This workflow lets you learn the debugger incrementally. You do not need to know everything before you start; you need to know how to ask the debugger for what you need.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="completion-and-screen-readers">
+                    <h3 id="completion-and-screen-readers">Completion and screen readers</h3>
+                    <p>For a screen-reader workflow, the challenge with completion is that the list of options is only visible for a moment and may not be reliably read by the screen reader. Some terminals handle completion output well; others do not.</p>
+                    <p>Practical approaches:</p>
+                    <ul>
+                        <li><strong>Use completion to disambiguate</strong>: when you have typed enough of a command that only one completion is possible, Tab will fill it in, and the filled-in text is spoken as part of the command line.</li>
+                        <li><strong>Use <code>help</code> for discovering options</strong>: when you need the full list, <code>help COMMAND</code> is a more reliable way to read the options than Tab completion, because the help output is designed to be read sequentially.</li>
+                        <li><strong>Combine both</strong>: use completion to get to the command, and use <code>help</code> to learn its options.</li>
+                    </ul>
+                    <p>With this combination, the debugger remains navigable without visual scanning.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="putting-it-all-together">
+                <h2 id="putting-it-all-together">Putting it all together</h2>
+                <p>The practices in this chapter are small individually, but together they change the character of a session. A session that uses output discipline, help, and completion is smoother and less tiring than one that does not.</p>
+
+                <section tabindex="0" aria-labelledby="a-worked-sequence">
+                    <h3 id="a-worked-sequence">A worked sequence</h3>
+                    <p>A short sequence illustrating the practices:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 42
+(lldb) run
+(lldb) frame variable
+(lldb) frame variable config.timeout
+(lldb) frame variable config.debug
+(lldb) bt 5
+(lldb) frame select 1
+(lldb) frame variable input
+(lldb) help frame variable
+(lldb) breakpoint list 1
+(lldb) breakpoint modify 1 --condition 'item.id == 42'
+(lldb) continue
+(lldb) frame variable item.id
+(lldb) bt 3
+(lldb) continue
+</code></pre>
+                    <p>At each step:</p>
+                    <ul>
+                        <li>A source-line breakpoint was set, and the program was run to it.</li>
+                        <li>Instead of dumping the whole frame, individual fields were inspected.</li>
+                        <li>The backtrace was limited to five frames, then later to three.</li>
+                        <li>A frame was selected to inspect the caller’s state.</li>
+                        <li><code>help</code> was used to remind the user of the syntax for <code>frame variable</code>.</li>
+                        <li>The breakpoint was listed and then modified to add a condition.</li>
+                        <li>After continuing, the conditional breakpoint fired only for the interesting case.</li>
+                    </ul>
+                    <p>The sequence is short and focused. Each command has a clear purpose, and each produces a small amount of output. The user’s working memory is never overloaded, and the investigation proceeds smoothly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="checklists">
+                    <h3 id="checklists">Checklists</h3>
+                    <p>Two short checklists summarize the practices of this chapter.</p>
+                    <p><strong>Output discipline checklist:</strong></p>
+                    <ul>
+                        <li>Inspect one value at a time, not the whole frame, when the question is specific.</li>
+                        <li>Limit backtraces with <code>bt N</code>.</li>
+                        <li>Select a specific frame before inspecting its locals.</li>
+                        <li>Select a specific thread before inspecting its stack.</li>
+                        <li>List one breakpoint or watchpoint at a time when checking a specific one.</li>
+                        <li>Record important observations in a notebook rather than relying on terminal scrollback.</li>
+                    </ul>
+                    <p><strong>Screen-reader workflow checklist:</strong></p>
+                    <ul>
+                        <li>Use full command names when the short forms would be ambiguous.</li>
+                        <li>Use <code>help COMMAND</code> to discover or confirm syntax.</li>
+                        <li>Use breakpoint commands to automate repetitive inspections.</li>
+                        <li>Use <code>bt 5</code> to keep backtraces short.</li>
+                        <li>Use <code>frame select</code> to move deliberately rather than stepping blindly.</li>
+                        <li>Use <code>thread select</code> to focus on one thread at a time.</li>
+                        <li>Press Enter deliberately, knowing that it repeats the previous command.</li>
+                        <li>Save important output to a file or a notebook for later review.</li>
+                    </ul>
+                    <p>These checklists are not rules; they are habits. Adopting them takes some practice, but the payoff is a debugging session that is less tiring, more focused, and easier to return to.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-goal-of-output-discipline">
+                    <h3 id="the-goal-of-output-discipline">The goal of output discipline</h3>
+                    <p>The goal is not to minimize output for its own sake. The goal is to make the output that is produced meaningful. A small amount of well-chosen output is more useful than a large amount of unfiltered output, because the small amount is easier to hold in memory and to compare with expectations.</p>
+                    <p>For a screen-reader workflow, this is the difference between a session that can be conducted in real time and one that must be conducted in a series of slow, interrupted passes. The practices in this chapter make the first possible.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-output-and-workflow">
+                <h2 id="rust-2024-notes-on-output-and-workflow">Rust 2024 notes on output and workflow</h2>
+                <p>The Rust 2024 edition does not change the debugger’s output format or the commands available. The practices in this chapter apply equally to Rust 2024 projects and earlier editions.</p>
+                <p>A few small interactions with the edition are worth noting:</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-blocks-in-source-output">
+                    <h3 id="unsafe-blocks-in-source-output">Unsafe blocks in source output</h3>
+                    <p>Because Rust 2024 requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies, the source displayed by the debugger for unsafe functions now shows more structure. When inspecting a frame inside an unsafe function, the source location may point to the opening of an <code>unsafe</code> block, which is a natural place to break and inspect. This does not change the output of the debugger, but it does change the meaning of the source line that is shown.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks-in-symbols">
+                    <h3 id="unsafe-extern-blocks-in-symbols"><code>unsafe extern</code> blocks in symbols</h3>
+                    <p>Functions declared inside <code>unsafe extern</code> blocks appear under their foreign symbol names. When listing breakpoints or inspecting backtraces, the names shown for these functions are the external symbols, not Rust source names. This is the same as in earlier editions, but the source shows the block explicitly as <code>unsafe extern</code>, which makes it easier to recognize.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-in-inspection">
+                    <h3 id="static-mut-in-inspection"><code>static mut</code> in inspection</h3>
+                    <p>Rust 2024 disallows references to <code>static mut</code>. When inspecting global state, the debugger shows raw pointers or interior-mutability wrappers instead of bare references. For output discipline, this means that the value of the global is accessed through the wrapper, which is one extra level of nesting. The disciplined approach is the same: inspect the specific field of the wrapper that contains the value, rather than dumping the wrapper.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="help-and-completion-in-2024">
+                    <h3 id="help-and-completion-in-2024">Help and completion in 2024</h3>
+                    <p>The <code>help</code> system and command completion are unchanged in Rust 2024. The commands and their syntax are the same. The workflow described in this chapter applies without modification.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch20">
+                <h2 id="summary-ch20">Summary</h2>
+                <p>In this chapter, we covered how to keep the debugger’s output manageable:</p>
+                <ul>
+                    <li><strong>Output discipline</strong>: inspect the smallest useful piece of state. Ask for a specific field, a specific element, a specific frame, or a specific thread, rather than the whole structure. Use <code>bt N</code> to limit backtraces and <code>frame select</code> to move deliberately.</li>
+                    <li><strong>Why output discipline matters</strong>: audio output is sequential, non-persistent, slow, and hard to scroll back. The cost of extra output is much higher with a screen reader than with a visual display.</li>
+                    <li><strong>Screen-reader practices</strong>: use full command names where clearer, use <code>help</code> to discover syntax, use breakpoint commands to automate repetitive inspections, use <code>bt 5</code> to limit output, use <code>frame select</code> and <code>thread select</code> to move deliberately, and record important observations in a notebook or a file.</li>
+                    <li><strong>Repeat commands</strong>: pressing Enter on an empty line repeats the previous command. This is useful for paging through backtraces but risky if a stray Enter triggers an unintended command. Use <code>help</code> as a no-op when you need a pause.</li>
+                    <li><strong>Help is part of the debugger</strong>: the <code>help</code> command is a full documentation system. Learning to use it is more valuable than memorizing commands.</li>
+                    <li><strong>Command completion</strong>: tab completion navigates LLDB’s command tree. Combined with <code>help</code>, it makes the debugger a self-documenting environment.</li>
+                    <li><strong>Rust 2024 specifics</strong>: the edition does not change the debugger’s output format or commands, but the new syntax for <code>unsafe</code> blocks and <code>unsafe extern</code> blocks changes the source that appears in the debugger’s view.</li>
+                </ul>
+                <p>The unifying principle: the debugger is a conversation, and the quality of the conversation depends on both sides. By asking precise questions and processing small answers, the programmer keeps the conversation useful. The practices in this chapter are what make that possible with a screen reader, and they improve the experience for any user of the debugger.</p>
+                <p>In the next chapter, we look at breakpoint commands and automated observation: how to make the debugger do repetitive work for you, so that the conversation focuses on analysis rather than on typing.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-19.html">← Chapter 19</a>
+            <a class="nav-next" href="./chapter-21.html">Chapter 21 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

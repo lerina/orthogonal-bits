@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 7: Breakpoints – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch7-heading">
+            <h1 id="ch7-heading">Chapter 7: Breakpoints</h1>
+
+            <p>A breakpoint is a request to the debugger:</p>
+            <blockquote>
+                <p>Stop execution here.</p>
+            </blockquote>
+            <p>Everything else in a debugging session is built on top of this simple idea. You stop the program at a location you have chosen, inspect its state, and decide what to do next. Without breakpoints, you would be reduced to watching a program run to completion, with no way to interrupt it in the middle.</p>
+            <p>In this chapter, we will look at how breakpoints work in Rust with LLDB. We will cover the two main ways to set a breakpoint, how to see what breakpoints exist, and how to remove them. We will also look at what happens when a breakpoint fails to resolve, and how to place breakpoints strategically so that each debugging session is efficient.</p>
+
+            <section tabindex="0" aria-labelledby="two-ways-to-place-a-breakpoint">
+                <h2 id="two-ways-to-place-a-breakpoint">Two ways to place a breakpoint</h2>
+                <p>LLDB supports many ways to set a breakpoint, but two of them account for almost every case you will encounter in Rust:</p>
+                <ul>
+                    <li><strong>By function name</strong>: <code>breakpoint set --name parse_config</code></li>
+                    <li><strong>By source file and line</strong>: <code>breakpoint set --file src/main.rs --line 42</code></li>
+                </ul>
+                <p>Each has strengths and weaknesses. Learning when to use each is one of the earliest and most useful skills in Rust debugging.</p>
+
+                <section tabindex="0" aria-labelledby="function-name-breakpoints">
+                    <h3 id="function-name-breakpoints">Function name breakpoints</h3>
+                    <p>A function name breakpoint stops execution at the entry of a named function:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name parse_config</code></pre>
+                    <p>When the program enters <code>parse_config</code>, LLDB pauses. This is usually the easiest way to investigate a function: you see what it receives before it does anything.</p>
+                    <p>Advantages:</p>
+                    <ul>
+                        <li>You do not need to know the file or line.</li>
+                        <li>It works from anywhere, as long as the function exists in the compiled binary.</li>
+                        <li>Arguments are immediately visible at the breakpoint.</li>
+                    </ul>
+                    <p>Disadvantages:</p>
+                    <ul>
+                        <li>Ambiguous when several functions share the same name across modules or generic instantiations.</li>
+                        <li>May fail to resolve when the function was inlined or when its mangled name does not match the source name.</li>
+                        <li>Cannot distinguish between multiple call sites of the same function.</li>
+                    </ul>
+                    <p>For a Rust function that is not generic, is not inlined, and has a unique name, this works reliably. For a method, a generic function, or an inlined helper, it may not resolve at all, or may resolve to several locations at once.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="source-line-breakpoints">
+                    <h3 id="source-line-breakpoints">Source-line breakpoints</h3>
+                    <p>A source-line breakpoint stops execution at a specific line in a specific file:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 8</code></pre>
+                    <p>This is often the more predictable option in Rust, because it does not depend on how the compiler named or instantiated the function. It targets a specific line of source, which is usually exactly what you want.</p>
+                    <p>Advantages:</p>
+                    <ul>
+                        <li>Works inside closures, iterator chains, and generic functions where a name-based breakpoint would be ambiguous.</li>
+                        <li>Unaffected by name mangling.</li>
+                        <li>Targets a specific statement or expression.</li>
+                        <li>Can be placed inside inlined functions, because LLDB can still map the line to a machine instruction.</li>
+                    </ul>
+                    <p>Disadvantages:</p>
+                    <ul>
+                        <li>You need to know the line number in advance.</li>
+                        <li>If the file has been reorganized since you last read it, the line may have shifted.</li>
+                        <li>Cannot be used before you know which file to look in.</li>
+                    </ul>
+                    <p>For source-line breakpoints, the file path is relative to the working directory of the process when LLDB loaded the binary. In a Cargo project, this is usually the crate root, so <code>src/main.rs</code> is the right form.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="choosing-between-the-two">
+                    <h3 id="choosing-between-the-two">Choosing between the two</h3>
+                    <p>A useful rule:</p>
+                    <ul>
+                        <li>Use a <strong>function name breakpoint</strong> when you want to see what a function receives, and the name is unique and unambiguous.</li>
+                        <li>Use a <strong>source-line breakpoint</strong> when you want a specific line, when the function name is ambiguous, or when the function might be inlined.</li>
+                    </ul>
+                    <p>In practice, many sessions start with a name breakpoint on the function you suspect, and then add source-line breakpoints inside it once you have confirmed the entry point.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="set-your-first-breakpoint">
+                <h2 id="set-your-first-breakpoint">Set your first breakpoint</h2>
+                <p>At the LLDB prompt, set a breakpoint on a function:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name add</code></pre>
+                <p>LLDB responds with something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Breakpoint 1: where = first_session`first_session::add, address = 0x...</code></pre>
+                <p>Read this line carefully:</p>
+                <ul>
+                    <li><strong>Breakpoint 1</strong>: The breakpoint has been assigned ID 1. Every breakpoint gets a unique numeric ID, which you use to refer to it later.</li>
+                    <li><strong>where = first_session`first_session::add</strong>: The symbol where the breakpoint resolved, in demangled form. The crate name (<code>first_session</code>) is shown, followed by the module path (<code>first_session</code>) and the function name (<code>add</code>).</li>
+                    <li><strong>address = 0x...</strong>: The machine address at which execution will pause. You rarely need this, but it confirms that the breakpoint is not pending.</li>
+                </ul>
+                <p>Short form:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) b add</code></pre>
+                <p>Both forms are equivalent. Use whichever you find easier to type and remember.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="break-at-a-rust-source-line">
+                <h2 id="break-at-a-rust-source-line">Break at a Rust source line</h2>
+                <p>To break at a specific line:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 8</code></pre>
+                <p>Short form:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set -f src/main.rs -l 8</code></pre>
+                <p>Use this when you already know the suspicious location. It is especially useful in the following cases:</p>
+                <ul>
+                    <li>You are inside a closure and want to stop at one specific line inside it. Closures have compiler-generated names that are difficult to reference by hand.</li>
+                    <li>You are inside an iterator chain and want to stop at one specific method call. The intermediate types have names that are unstable across compiler versions.</li>
+                    <li>You want to stop at a line inside a generic function without having to reason about monomorphized instantiations.</li>
+                    <li>You want to stop at a line inside an inlined function, which has no separate symbol in the binary.</li>
+                </ul>
+                <p>The trade-off is that you have to look up the line number first. For small files, this is trivial. For large files, the <code>rg</code> command or your editor’s line-number display is faster than counting lines by hand.</p>
+                <p>If you do not know the exact line and want to break at the beginning of a function body, consider using a name breakpoint and then stepping forward. Alternatively, most editors will show you line numbers, and you can set a source-line breakpoint once you see the exact number.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="list-breakpoints">
+                <h2 id="list-breakpoints">List breakpoints</h2>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint list</code></pre>
+                <p>This answers:</p>
+                <ul>
+                    <li>What breakpoints exist?</li>
+                    <li>Are they enabled?</li>
+                    <li>Did LLDB resolve them?</li>
+                    <li>Where are they located?</li>
+                </ul>
+                <p>The distinction between a breakpoint being created and having a resolved location is important.</p>
+                <p>A breakpoint can exist before LLDB can resolve it to executable code.</p>
+                <p>A sample output might look like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Current breakpoints:
+1: name = 'add', locations = 1, resolved = 1, hit count = 0
+  1.1: where = first_session`first_session::add, address = 0x..., resolved, hit count = 0
+
+2: file = 'src/main.rs', line = 20, locations = 1, resolved = 1, hit count = 0
+  2.1: where = first_session`first_session::main, address = 0x..., resolved, hit count = 0</code></pre>
+                <p>Read this carefully:</p>
+                <ul>
+                    <li><strong>Breakpoint 1: name = 'add', locations = 1, resolved = 1</strong>: Breakpoint 1 is a name-based breakpoint. It resolved to one location.</li>
+                    <li><strong>1.1</strong>: This is the specific location. A breakpoint with multiple locations would show 1.1, 1.2, and so on.</li>
+                    <li><strong>resolved</strong>: The breakpoint has been matched to a real address. An unresolved breakpoint would say <code>pending</code>.</li>
+                    <li><strong>hit count = 0</strong>: The breakpoint has not fired yet. After it fires once, the hit count becomes 1.</li>
+                </ul>
+                <p>To see just one breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint list 1</code></pre>
+                <p>For a screen-reader workflow, listing breakpoints one at a time is often more manageable than listing them all, especially in a session where many breakpoints have accumulated.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="pending-breakpoints">
+                <h2 id="pending-breakpoints">Pending breakpoints</h2>
+                <p>If a breakpoint does not resolve, LLDB shows it as <em>pending</em>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>1: name = 'parse_config', locations = 0 (pending)</code></pre>
+                <p>A pending breakpoint is not an error. It means LLDB has recorded the request but has not found a matching symbol in the currently loaded binaries.</p>
+                <p>There are several reasons a breakpoint might be pending:</p>
+                <ul>
+                    <li><strong>The function does not exist</strong>: You may have misspelled the name, or the function may have been renamed during development.</li>
+                    <li><strong>The function was inlined</strong>: The compiler replaced the call with the function body, so no separate symbol exists.</li>
+                    <li><strong>The name does not match the compiled symbol</strong>: Rust name mangling can produce symbol names that do not exactly match the source name, especially for generic functions and methods.</li>
+                    <li><strong>The binary has not been loaded yet</strong>: If a dynamic library is loaded at runtime, symbols from it may not be known until the library loads.</li>
+                </ul>
+                <p>The most useful response is to use <code>image lookup</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) image lookup --name parse_config</code></pre>
+                <p>This searches the loaded binaries for symbols that might match. If it finds one, you can see the exact mangled name and source location. If it finds nothing, the symbol is genuinely absent from the binary, and you need to either rebuild (if it should be there) or use a source-line breakpoint (if it was inlined).</p>
+                <p>Pending breakpoints are sometimes useful. If you know that a symbol will be loaded later, you can set the breakpoint now, and it will resolve when the symbol appears. This is common when debugging dynamically loaded plug-ins or shared libraries.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="delete-a-breakpoint">
+                <h2 id="delete-a-breakpoint">Delete a breakpoint</h2>
+                <p>Delete one breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint delete 1</code></pre>
+                <p>Delete all breakpoints:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint delete</code></pre>
+                <p>Be careful with the second form. It removes the entire breakpoint set.</p>
+                <p>For a screen-reader workflow, the safer pattern is always to list first, then delete by ID:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint list
+(lldb) breakpoint delete 3</code></pre>
+                <p>This avoids the risk of accidentally removing breakpoints you still want. It also produces less output than re-creating a set of breakpoints after a mass deletion.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="disable-and-enable">
+                <h2 id="disable-and-enable">Disable and enable</h2>
+                <p>Sometimes you want to keep a breakpoint but stop it from firing, without deleting it.</p>
+                <p>Disable a breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint disable 1</code></pre>
+                <p>Re-enable a breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint enable 1</code></pre>
+                <p>Disable all breakpoints:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint disable</code></pre>
+                <p>Re-enable all breakpoints:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint enable</code></pre>
+                <p>Disabled breakpoints remain in the list, showing <code>disabled</code> status. This is useful when you want to temporarily remove a breakpoint from the active set without losing its configuration, especially when the breakpoint is a conditional or has commands attached.</p>
+                <p>A common use case: you have a breakpoint at a function that fires very frequently during the initial setup of the program, but you only care about its calls later in the session. Disable it at startup, and enable it once the relevant phase begins.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="break-on-a-method">
+                <h2 id="break-on-a-method">Break on a method</h2>
+                <p>Rust methods may have more complicated symbol names after compilation. Start with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name method_name</code></pre>
+                <p>If that is ambiguous or unresolved, investigate the symbols. Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) image lookup --symbol method_name</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) image lookup --name method_name</code></pre>
+                <p>The exact symbol representation can depend on compilation and mangling.</p>
+                <p>For example, a method:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>impl Config {
+    fn load(&amp;self) -> Result&lt;Config, Error&gt; { ... }
+}</code></pre>
+                <p>might appear in the symbol table as something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>_ZN7my_crate6Config4load17h...</code></pre>
+                <p>The <code>image lookup</code> output will show the demangled form, which helps you confirm you have found the right method.</p>
+                <p>The practical rule is:</p>
+                <blockquote>
+                    <p>Start with the human Rust name. If LLDB cannot resolve it, inspect the executable’s symbols.</p>
+                </blockquote>
+                <p>In many cases, a source-line breakpoint at the first line of the method body is the most reliable approach. This is especially true when the method is inside a generic implementation, where the same name may exist for multiple concrete types.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="break-on-a-source-location-first">
+                <h2 id="break-on-a-source-location-first">Break on a source location first</h2>
+                <p>When function-name matching becomes complicated, use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/parser.rs --line 42</code></pre>
+                <p>This avoids symbol-name ambiguity.</p>
+                <p>For source debugging, file-and-line breakpoints are often the most predictable starting point.</p>
+                <p>A source-line breakpoint is unaffected by name mangling, unaffected by monomorphization, and unaffected by whether the function is generic, a method, a closure, or an inlined helper. It simply maps one source location to whatever machine instructions correspond to that line.</p>
+                <p>When a name-based breakpoint is unresolved and you are unsure why, a source-line breakpoint is almost always the fastest fallback. It tells you at once whether the issue is with name matching or with the code itself.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="breakpoints-in-libraries">
+                <h2 id="breakpoints-in-libraries">Breakpoints in libraries</h2>
+                <p>You can set breakpoints in library crates, provided their debug information is available.</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name serde_json::from_str</code></pre>
+                <p>For a fully qualified name like this, the crate prefix narrows the match. If the crate is compiled with debug information, the breakpoint will resolve.</p>
+                <p>When you break inside a library, the frame belongs to that library, not to your code. Use <code>bt</code> to see how you reached the library frame. The first frame belonging to your own crate is usually the one that called into the library, and that is where the value entering the library is most visible.</p>
+                <p>A common pattern for library debugging:</p>
+                <ol>
+                    <li>Set a breakpoint at the call site in your own code.</li>
+                    <li>Inspect the arguments you are passing.</li>
+                    <li>If the arguments look correct, use <code>step</code> to enter the library.</li>
+                    <li>Watch what the library does with them.</li>
+                </ol>
+                <p>This keeps the observation focused on your inputs and the library's response, without trying to understand the entire library internals.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="breakpoints-in-the-standard-library">
+                <h2 id="breakpoints-in-the-standard-library">Breakpoints in the standard library</h2>
+                <p>With the <code>rust-src</code> component installed, you can often step into the standard library and inspect its behavior. For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name std::vec::Vec&lt;T&gt;::push</code></pre>
+                <p>Whether this works depends on how the standard library was compiled and whether debug information is available for the specific instantiation. Standard-library code is often inlined into your own functions, so a name-based breakpoint may not resolve.</p>
+                <p>In practice, most Rust developers do not break inside the standard library directly. Instead, they break at their own code and observe what they pass to or receive from the standard library. This keeps the investigation focused and avoids stepping through code that is correct by construction.</p>
+                <p>If you do need to inspect standard library behavior, the most reliable approach is often to copy the relevant function into your own code temporarily, or to reproduce the situation in a small test program, where you have full control over the code.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="where-to-place-breakpoints">
+                <h2 id="where-to-place-breakpoints">Where to place breakpoints</h2>
+                <p>Now that we know how to set breakpoints, the question becomes: where should we set them?</p>
+                <p>Inefficient breakpoints produce long, tedious debugging sessions. Efficient breakpoints produce short ones. A few rules of thumb:</p>
+
+                <section tabindex="0" aria-labelledby="start-at-the-boundary">
+                    <h3 id="start-at-the-boundary">Start at the boundary</h3>
+                    <p>Boundaries are the interfaces between components. They are places where data enters or leaves a function, module, or service. Boundaries are excellent breakpoint locations because you can see exactly what crosses the boundary.</p>
+                    <p>Examples of boundaries:</p>
+                    <ul>
+                        <li>A public API function that receives user input.</li>
+                        <li>A function that parses a string into a domain object.</li>
+                        <li>A function that calls a database or network service.</li>
+                        <li>A function that formats a result for the user.</li>
+                    </ul>
+                    <p>Set breakpoints at boundaries when you suspect data is being corrupted somewhere along the path. This gives you observations at both ends of each layer.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="start-near-the-symptom">
+                    <h3 id="start-near-the-symptom">Start near the symptom</h3>
+                    <p>If you know that something goes wrong at a particular place, start there. Set a breakpoint at the location where the wrong behavior becomes visible. Then work backward.</p>
+                    <p>The wrong output is the first observation. From there, trace back: what produced this output? What did that producer receive? And so on, until you find the first wrong state.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="start-near-the-cause">
+                    <h3 id="start-near-the-cause">Start near the cause</h3>
+                    <p>If you have a hypothesis about where the cause lies, start near that hypothesis. Set a breakpoint at the function you believe is responsible, inspect its inputs and outputs, and see whether your hypothesis holds.</p>
+                    <p>If the hypothesis is confirmed, you have found the bug. If it is refuted, you have learned something, and your next hypothesis will be sharper.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="avoid-breaking-everywhere">
+                    <h3 id="avoid-breaking-everywhere">Avoid breaking everywhere</h3>
+                    <p>One of the most common mistakes in a debugging session is to set too many breakpoints at once. Twenty breakpoints fire twenty times, and the session becomes a blur of stops.</p>
+                    <p>Start with one breakpoint. Run. Inspect. Continue. Then decide whether you need another breakpoint, and where.</p>
+                    <p>This discipline keeps the session focused and makes each observation meaningful. If you catch yourself adding breakpoints faster than you are inspecting them, stop and reconsider whether you are making progress or simply producing more output.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-breakpoints">
+                <h2 id="rust-2024-notes-on-breakpoints">Rust 2024 notes on breakpoints</h2>
+                <p>The Rust 2024 edition introduces some changes that affect which breakpoint techniques are best in certain cases.</p>
+
+                <section tabindex="0" aria-labelledby="no_mangle-and-extern-c">
+                    <h3 id="no_mangle-and-extern-c"><code>#[unsafe(no_mangle)]</code> and <code>extern "C"</code></h3>
+                    <p>In Rust 2024, the attribute is written <code>#[unsafe(no_mangle)]</code>. A function marked this way appears in the symbol table under its exact source name, without mangling. A name-based breakpoint on such a function resolves reliably. This is useful when debugging FFI, where you can set a breakpoint on the C-visible symbol name directly.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[unsafe(no_mangle)]
+pub extern "C" fn process_buffer(ptr: *mut u8, len: usize) -&gt; i32 { ... }</code></pre>
+                    <p>A breakpoint on <code>process_buffer</code> will resolve cleanly, because the symbol name has not been changed by the compiler.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks">
+                    <h3 id="unsafe-extern-blocks"><code>unsafe extern</code> blocks</h3>
+                    <p>In Rust 2024, all <code>extern</code> blocks must be written as <code>unsafe extern</code>. The symbols declared inside come from an external library. When you set a breakpoint on a symbol from an <code>unsafe extern</code> block, the name is the external library's symbol name, not a Rust mangled name. Use <code>image lookup</code> if the name does not resolve directly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-op-in-unsafe-fn">
+                    <h3 id="unsafe-op-in-unsafe-fn"><code>unsafe_op_in_unsafe_fn</code></h3>
+                    <p>Rust 2024 warns when unsafe operations appear inside an <code>unsafe fn</code> without an explicit <code>unsafe { ... }</code> block. This is a source-level change, but it affects debugging in an interesting way: the explicit <code>unsafe { ... }</code> blocks give you natural breakpoint locations. A breakpoint at the opening of an <code>unsafe</code> block stops execution just before the unsafe operation begins, which is often exactly what you want when investigating unsafe code.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-restrictions">
+                    <h3 id="static-mut-restrictions"><code>static mut</code> restrictions</h3>
+                    <p>Rust 2024 disallows references to <code>static mut</code>. If you are debugging code that previously used <code>&amp;static mut</code>, you will now see raw pointers or interior-mutability primitives instead. This does not affect how breakpoints work, but it does affect what you see when you inspect global state at a breakpoint.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-practical-sequence">
+                <h2 id="a-practical-sequence">A practical sequence</h2>
+                <p>Putting it together, here is a practical sequence for setting breakpoints in a Rust program:</p>
+                <ol>
+                    <li>Start with a single function-name breakpoint on the function you suspect, or a source-line breakpoint at the location you know is wrong.</li>
+                    <li>Run the program.</li>
+                    <li>Inspect the frame and locals at the first stop.</li>
+                    <li>Continue.</li>
+                    <li>If the first breakpoint was not informative, adjust it: use <code>image lookup</code> for name-based breakpoints that did not resolve, or move to a source-line breakpoint.</li>
+                    <li>If a breakpoint fires too often, disable it and re-enable it later, or make it conditional (covered in a later chapter).</li>
+                    <li>When you have located the origin of the bug, delete the temporary breakpoints so the list stays clean.</li>
+                </ol>
+                <p>The goal is to keep the breakpoint list small and meaningful throughout the session. A clean breakpoint list is easier to reason about than a large one, and it makes the flow of the session easier to follow.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch7">
+                <h2 id="summary-ch7">Summary</h2>
+                <p>In this chapter, we covered breakpoints in LLDB for Rust:</p>
+                <ul>
+                    <li><strong>Two ways to set a breakpoint</strong>: by function name (<code>--name</code>) and by source line (<code>--file</code> and <code>--line</code>). Each has strengths and weaknesses.</li>
+                    <li><strong>What the breakpoint output tells you</strong>: the ID, the resolved symbol, and the machine address.</li>
+                    <li><strong>Listing breakpoints</strong> with <code>breakpoint list</code>, and the distinction between resolved and pending breakpoints.</li>
+                    <li><strong>Pending breakpoints</strong>: why they occur and how to investigate them with <code>image lookup</code>.</li>
+                    <li><strong>Deleting, disabling, and re-enabling</strong> breakpoints, and the safe pattern of listing before deleting.</li>
+                    <li><strong>Breaking on methods, in libraries, and in the standard library</strong>, with guidance on when source-line breakpoints are more reliable than name-based ones.</li>
+                    <li><strong>Where to place breakpoints</strong>: start at a boundary, start near the symptom, start near the cause, and avoid breaking everywhere.</li>
+                    <li><strong>Rust 2024 notes</strong>: how <code>#[unsafe(no_mangle)]</code>, <code>unsafe extern</code> blocks, <code>unsafe_op_in_unsafe_fn</code>, and <code>static mut</code> restrictions affect breakpoint strategies.</li>
+                </ul>
+                <p>With breakpoints in hand, we can move on to the next layer: stepping through execution, reading frames and backtraces, and understanding the call stack.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-06.html">← Chapter 6</a>
+            <a class="nav-next" href="./chapter-08.html">Chapter 8 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 5: First Debugging Session – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch5-heading">
+            <h1 id="ch5-heading">Chapter 5: First Debugging Session</h1>
+
+            <p>Reading about a debugger is not the same as using one. In this chapter, we will walk through a complete first debugging session, step by step. The goal is not to teach every command. It is to give you the shape of a debugging session so that later, when you are debugging your own code, you know what to expect.</p>
+            <p>We will use a very small Rust program. Complexity would only obscure the flow. The point of this chapter is the sequence itself: build, launch, break, run, inspect, step, inspect, continue, quit.</p>
+
+            <section tabindex="0" aria-labelledby="the-program">
+                <h2 id="the-program">The program</h2>
+                <p>Create a new Rust project. From your terminal:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new first_session --bin
+cd first_session</code></pre>
+                <p>Edit <code>Cargo.toml</code> to use the Rust 2024 edition:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "first_session"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]</code></pre>
+                <p>Replace the contents of <code>src/main.rs</code> with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn main() {
+    let x = 10;
+    let y = 20;
+    let result = add(x, y);
+
+    println!("{result}");
+}</code></pre>
+                <p>This program is deliberately simple. It has a <code>main</code> function, a helper function called <code>add</code>, two local variables, and a function call. That is enough structure to demonstrate breakpoints, stepping, and variable inspection.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="build-the-program">
+                <h2 id="build-the-program">Build the program</h2>
+                <p>Build it:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>Cargo produces an executable at <code>target/debug/first_session</code>. Confirm that the file exists:</p>
+                <pre tabindex="0" region aria-label="Code sample"><code>ls -l target/debug/first_session</code></pre>
+                <p>If Cargo reports any errors, fix them before continuing. A debugger session on a broken build is wasted effort.</p>
+                <p>Before launching the debugger, confirm that the binary is newer than your source changes. If it is not, run <code>cargo build</code> again. Working with a stale binary is a common source of confusing debugging sessions.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="launch-with-rust-lldb">
+                <h2 id="launch-with-rust-lldb">Launch with rust-lldb</h2>
+                <p>Launch the debugger with the Rust wrapper:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/first_session</code></pre>
+                <p>You should reach the LLDB prompt:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb)</code></pre>
+                <p>You have now entered the debugger. Nothing has run yet. The program has been loaded, but execution has not begun.</p>
+                <p>If you see a wall of startup output instead of the prompt, do not worry. LLDB sometimes prints version information and configuration messages. Scroll past them to the prompt.</p>
+                <p>If the command fails with “command not found,” the Cargo bin directory is probably not on your <code>PATH</code>. See Chapter 1 for setup instructions.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="set-a-breakpoint-on-main">
+                <h2 id="set-a-breakpoint-on-main">Set a breakpoint on main</h2>
+                <p>At the LLDB prompt, set a breakpoint at the entry of <code>main</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name main</code></pre>
+                <p>LLDB will respond with something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Breakpoint 1: where = first_session`first_session::main, address = 0x...</code></pre>
+                <p>This tells you three things:</p>
+                <ul>
+                    <li><strong>Breakpoint 1</strong>: The breakpoint has been assigned an ID. You will use this ID later if you want to modify or delete it.</li>
+                    <li><strong>where</strong>: The address and symbol where the breakpoint resolved. Note that the symbol is displayed in demangled form (<code>first_session::main</code>), which means the Rust demangler is active.</li>
+                    <li><strong>address</strong>: The exact machine address where the breakpoint will fire. You rarely need this, but it is useful for advanced diagnosis.</li>
+                </ul>
+                <p>The word <em>resolved</em> matters. A breakpoint can exist without yet being resolved to a concrete address. When it is resolved, LLDB has found a matching instruction. When it is <em>pending</em>, LLDB is still looking for it, or it does not exist.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="run-the-program">
+                <h2 id="run-the-program">Run the program</h2>
+                <p>Start the program:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) run</code></pre>
+                <p>The program begins executing and immediately hits the breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Process 12345 stopped
+* thread #1, name = 'first_session', stop reason = breakpoint 1.1
+    frame #0: first_session`first_session::main at src/main.rs:6</code></pre>
+                <p>Let’s read that output carefully:</p>
+                <ul>
+                    <li><strong>Process 12345 stopped</strong>: The debugger has paused the program. The number is the process ID, which varies by run.</li>
+                    <li><strong>thread #1, name = 'first_session'</strong>: The currently selected thread is thread 1, and its name is the program name. In a single-threaded program, this is the only thread.</li>
+                    <li><strong>stop reason = breakpoint 1.1</strong>: The stop was caused by breakpoint 1, location 1. A single breakpoint can have multiple locations if it resolved to multiple addresses.</li>
+                    <li><strong>frame #0: first_session`first_session::main at src/main.rs:6</strong>: The top of the call stack is <code>main</code>, at line 6 of <code>src/main.rs</code>. That is the first line of the <code>main</code> function body.</li>
+                </ul>
+                <p>This is the moment where the debugger starts being useful. The program is paused at a specific point, and we can inspect its state.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspect-the-frame">
+                <h2 id="inspect-the-frame">Inspect the frame</h2>
+                <p>Ask LLDB where you are:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame info</code></pre>
+                <p>You should see:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: first_session`first_session::main at src/main.rs:6</code></pre>
+                <p>This confirms that you are in <code>main</code>, at line 6. The frame number (#0) tells you that this is the top of the call stack. There are no caller frames above it, because the program is stopped at the very entry of <code>main</code>.</p>
+                <p>For a screen-reader workflow, this single line is often all you need to establish your location.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="step-to-the-next-line">
+                <h2 id="step-to-the-next-line">Step to the next line</h2>
+                <p>Use the <code>next</code> command to execute the current line:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                <p>LLDB reports the new position:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: first_session`first_session::main at src/main.rs:7</code></pre>
+                <p>You are now at line 7, which is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let y = 20;</code></pre>
+                <p>The <code>next</code> command executed the statement <code>let x = 10;</code> and stopped at the next line. Because <code>x</code> was created at line 6, it is now available as a local variable in the current frame.</p>
+                <p>Step again:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                <p>You are now at line 8:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = add(x, y);</code></pre>
+                <p>Two local variables exist at this point: <code>x</code> and <code>y</code>.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspect-local-variables">
+                <h2 id="inspect-local-variables">Inspect local variables</h2>
+                <p>Inspect all local variables in the current frame:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable</code></pre>
+                <p>You should see something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(int) x = 10
+(int) y = 20</code></pre>
+                <p>This is the first moment in the session where the debugger tells you something the compiler could not: the runtime value of a local variable at a specific point in the program.</p>
+                <p>For a cleaner output, ask for one variable at a time:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable x</code></pre>
+                <p>This returns just the value of <code>x</code>. In longer functions with many locals, this focused approach reduces output significantly.</p>
+                <p>One important observation: the pretty-printer has formatted the value as <code>(int) x = 10</code>. The type shown is <code>int</code>, which is the C-level type that corresponds to Rust’s <code>i32</code>. LLDB is showing the machine-level type, which happens to have the same layout as the Rust type in this case.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="step-into-the-function">
+                <h2 id="step-into-the-function">Step into the function</h2>
+                <p>Use the <code>step</code> command to enter the function call:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) step</code></pre>
+                <p>LLDB reports:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: first_session`first_session::add at src/main.rs:2</code></pre>
+                <p>You are now inside <code>add</code>, at line 2, which is:</p>
+                <pre tabindex="0" region aria-label="Code sample"><code>a + b</code></pre>
+                <p>This demonstrates the key difference between <code>next</code> and <code>step</code>. <code>next</code> executed <code>let result = add(x, y);</code> without entering <code>add</code>. <code>step</code> entered the function and paused at its first executable line.</p>
+                <p>The frame number is still #0 because this is the top of the stack. The previous frame (<code>main</code>) is still there, but it is now frame #1.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspect-the-function-arguments">
+                <h2 id="inspect-the-function-arguments">Inspect the function arguments</h2>
+                <p>Inspect the arguments of <code>add</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable a b</code></pre>
+                <p>You should see:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(int) a = 10
+(int) b = 20</code></pre>
+                <p>Function arguments are part of the current frame. This is one of the most useful debugging behaviors: when you stop at the entry of a function, you can immediately see what it received.</p>
+                <p>Ask the fundamental question:</p>
+                <blockquote>
+                    <p>What entered this function, and does it look correct?</p>
+                </blockquote>
+                <p>In this case, <code>a</code> and <code>b</code> are both correct. In a real bug, the answer might be different, and that would be the first concrete piece of evidence.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="read-the-backtrace">
+                <h2 id="read-the-backtrace">Read the backtrace</h2>
+                <p>Ask LLDB how you got here:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                <p>The output should look like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>* frame #0: first_session`first_session::add at src/main.rs:2
+  frame #1: first_session`first_session::main at src/main.rs:8
+  frame #2: first_session`std::rt::lang_start_internal at ...
+  frame #3: first_session`std::rt::lang_start at ...
+  frame #4: first_session`main at ...
+  frame #5: first_session`__libc_start_main at ...</code></pre>
+                <p>Read this from the top:</p>
+                <ul>
+                    <li><strong>frame #0</strong>: You are currently in <code>add</code>, at line 2 of <code>src/main.rs</code>.</li>
+                    <li><strong>frame #1</strong>: <code>add</code> was called from <code>main</code>, at line 8.</li>
+                    <li><strong>frame #2 and beyond</strong>: The frames below <code>main</code> are Rust runtime and C library startup frames. These are the machinery that started your program.</li>
+                </ul>
+                <p>This is what a backtrace looks like in a real Rust program. The first two frames are yours. The remaining frames belong to the runtime. When you investigate a bug, focus on the frames belonging to your crate.</p>
+                <p>If the backtrace is very long, you can limit it:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt 3</code></pre>
+                <p>This shows only the first three frames. Useful for a screen-reader workflow, where smaller output is easier to process.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="finish-and-return">
+                <h2 id="finish-and-return">Finish and return</h2>
+                <p>Run until the current function returns:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) finish</code></pre>
+                <p>LLDB reports:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: first_session`first_session::main at src/main.rs:10</code></pre>
+                <p>You are back in <code>main</code>, at line 10, which is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>println!("{result}");</code></pre>
+                <p>The <code>finish</code> command ran <code>add</code> to completion and returned to the caller. The value <code>result</code> is now available. Inspect it:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>(lldb) frame variable result</code></pre>
+                <p>You should see:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>(int) result = 30</code></pre>
+                <p>The function returned 30, and the caller received it correctly.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="continue-to-the-end">
+                <h2 id="continue-to-the-end">Continue to the end</h2>
+                <p>Resume execution:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) continue</code></pre>
+                <p>The program runs to completion. You should see the program’s output:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>30
+Process 12345 exited with status = 0 (0x00000000)</code></pre>
+                <p>The number 30 is the program’s output. The exit status 0 tells you that the program finished normally.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="quit-the-debugger">
+                <h2 id="quit-the-debugger">Quit the debugger</h2>
+                <p>Exit LLDB:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>(lldb) quit</code></pre>
+                <p>You are back at your shell prompt.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-shape-of-the-session">
+                <h2 id="the-shape-of-the-session">The shape of the session</h2>
+                <p>The exact commands in a debugging session vary, but the shape is consistent:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>break
+run
+inspect
+step
+inspect
+continue
+quit</code></pre>
+                <p>In our session, that sequence was:</p>
+                <ul>
+                    <li><strong>break</strong>: <code>breakpoint set --name main</code></li>
+                    <li><strong>run</strong>: <code>run</code></li>
+                    <li><strong>inspect</strong>: <code>frame info</code>, <code>frame variable</code></li>
+                    <li><strong>step</strong>: <code>next</code>, <code>step</code>, <code>finish</code></li>
+                    <li><strong>inspect</strong>: <code>frame variable</code>, <code>bt</code></li>
+                    <li><strong>continue</strong>: <code>continue</code></li>
+                    <li><strong>quit</strong>: <code>quit</code></li>
+                </ul>
+                <p>Once you have this shape internalized, debugging any Rust program becomes a matter of adapting it to the problem at hand: choose a better breakpoint, inspect a different variable, trace a longer path.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-slightly-larger-session">
+                <h2 id="a-slightly-larger-session">A slightly larger session</h2>
+                <p>The session above is minimal. A slightly more realistic one might add:</p>
+                <ul>
+                    <li>A second breakpoint inside a loop, to watch a value change across iterations.</li>
+                    <li>Inspection of a <code>String</code> or <code>Vec</code>, to see how the pretty-printers render them.</li>
+                    <li>A breakpoint at a line that is never reached, to confirm that a branch is not taken.</li>
+                    <li>A conditional breakpoint, to stop only when a value satisfies a condition.</li>
+                </ul>
+                <p>We will explore all of these in later chapters. For now, the goal is to have completed one full cycle: break, run, inspect, step, inspect, continue, quit.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="what-to-do-if-something-goes-wrong">
+                <h2 id="what-to-do-if-something-goes-wrong">What to do if something goes wrong</h2>
+                <p>Even in this very simple session, a few things can go wrong. Here is how to interpret them.</p>
+
+                <section tabindex="0" aria-labelledby="the-breakpoint-does-not-resolve">
+                    <h3 id="the-breakpoint-does-not-resolve">The breakpoint does not resolve</h3>
+                    <p>If LLDB reports something like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Breakpoint 1: no locations (pending).</code></pre>
+                    <p>the breakpoint did not find a matching address. Common causes:</p>
+                    <ul>
+                        <li>The function name is misspelled. Double-check it against your source.</li>
+                        <li>The function was inlined and no longer exists as a separate symbol. Use a source-line breakpoint instead.</li>
+                        <li>The name is mangled in an unexpected way. Use <code>image lookup --name main</code> to see what symbols actually exist.</li>
+                    </ul>
+                    <p>The most reliable workaround is to break by file and line:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 6</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-variable-is-not-available">
+                    <h3 id="a-variable-is-not-available">A variable is not available</h3>
+                    <p>If LLDB says:</p>
+                    <pre tabindex="0" aria-labelledby="Code sample" role="region"><code>error: no variable named 'result' in this frame</code></pre>
+                    <p>check that you are in the frame where <code>result</code> exists. Use <code>bt</code> and <code>frame select</code> to move to the correct frame.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="stepping-seems-to-jump-around">
+                    <h3 id="stepping-seems-to-jump-around">Stepping seems to jump around</h3>
+                    <p>If a <code>next</code> or <code>step</code> command moves execution in a way that does not match the visual order of the source, you may be debugging a build with optimizations enabled. Confirm which binary you are debugging:</p>
+                    <pre tabindex="0" aria-labelledby="Code sample" role="region"><code>ls -l target/debug/first_session</code></pre>
+                    <p>If you are debugging a release binary, switch to the debug build. We will cover optimization in detail in a later chapter.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-loop-is-the-lesson">
+                <h2 id="the-loop-is-the-lesson">The loop is the lesson</h2>
+                <p>What makes a debugging session work is not any individual command. It is the loop: stop, look, act. The commands are the vocabulary. The loop is the grammar.</p>
+                <p>In our session, we did the following:</p>
+                <ol>
+                    <li>Stopped at a known location (<code>main</code>).</li>
+                    <li>Looked at the current state (<code>frame info</code>).</li>
+                    <li>Moved forward one step (<code>next</code>).</li>
+                    <li>Looked at what changed (<code>frame variable</code>).</li>
+                    <li>Moved deeper (<code>step</code>) into a function call.</li>
+                    <li>Looked at the arguments (<code>frame variable a b</code>).</li>
+                    <li>Traced the call path (<code>bt</code>).</li>
+                    <li>Returned to the caller (<code>finish</code>).</li>
+                    <li>Looked at the result (<code>frame variable result</code>).</li>
+                    <li>Ran to the end (<code>continue</code>).</li>
+                </ol>
+                <p>This is what every debugging session looks like, regardless of how complex the program is. The loop scales. What changes is the choice of breakpoints and the set of values you inspect.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch5">
+                <h2 id="summary-ch5">Summary</h2>
+                <p>In this chapter, we ran a complete first debugging session on a small Rust program. We covered:</p>
+                <ul>
+                    <li><strong>Building the program</strong> with Cargo and confirming the artifact.</li>
+                    <li><strong>Launching the debugger</strong> with <code>rust-lldb</code>, which gives us Rust-aware output.</li>
+                    <li><strong>Setting a breakpoint</strong> on <code>main</code> and confirming that it resolved.</li>
+                    <li><strong>Running the program</strong> and reading the stop output.</li>
+                    <li><strong>Inspecting the frame</strong> to know where we are.</li>
+                    <li><strong>Stepping through</strong> the program with <code>next</code>, <code>step</code>, and <code>finish</code>.</li>
+                    <li><strong>Inspecting local variables</strong> and function arguments.</li>
+                    <li><strong>Reading a backtrace</strong> and separating application frames from runtime frames.</li>
+                    <li><strong>Continuing to the end</strong> and confirming the program’s output and exit status.</li>
+                    <li><strong>Quitting the debugger</strong> cleanly.</li>
+                </ul>
+                <p>We also reviewed the shape of a debugging session, and what to do when a breakpoint does not resolve, a variable is not available, or stepping seems to jump around.</p>
+                <p>In the next chapter, we will look at the essential commands in more detail, so that you have a solid vocabulary for the sessions that follow.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-04.html">← Chapter 4</a>
+            <a class="nav-next" href="./chapter-06.html">Chapter 6 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

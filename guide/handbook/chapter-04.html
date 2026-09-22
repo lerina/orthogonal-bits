@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 4: Ownership, Borrowing, and References – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch4-heading">
+            <h1 id="ch4-heading">Chapter 4: Ownership, Borrowing, and References</h1>
+
+            <p>Welcome to <em>Chapter 4</em>. In this chapter, you’ll learn about some of Rust’s most important concepts: <strong>ownership</strong>, <strong>borrowing</strong>, and <strong>references</strong>. These fundamental ideas are not just features; they form the foundation of Rust’s commitment to memory safety and efficiency!</p>
+            <p>One of the things that makes Rust different from other programming languages, and one of the reasons why I find it fascinating, is its unique approach to handling memory. Instead of relying on a garbage collector or manual memory management, Rust enforces a set of rules at compile time. This helps you avoid common issues such as null pointer dereferences, buffer overflows, double-free memory issues, dangling references, and data races.</p>
+            <p>Initially, this model might feel unfamiliar, especially if you come from languages such as Java, Python, or C++. However, this approach is what gives Rust its impressive combination of safety and performance. While these concepts can take a little time to get used to, rest assured that the effort is worthwhile, as mastering them is the key to writing the incredibly safe and efficient code that Rust is famous for. In this chapter, we will explore these concepts thoughtfully through practical, beginner-friendly examples.</p>
+            <p>You’ll see how they function in real code, giving you the confidence to apply them to your own projects. Let’s embark on this exciting journey together!</p>
+            <p>Let’s get started!</p>
+
+            <section tabindex="0" aria-labelledby="objective-ch4">
+                <h2 id="objective-ch4">Objective</h2>
+                <p>These principles govern memory management in Rust programs, guaranteeing that resources are utilized safely and efficiently without the need for a garbage collector. Whether you come from a background in languages with manual memory management, such as C or C++, or from languages that use garbage collection, such as Java or Python, these concepts may initially seem unfamiliar. However, grasping these ideas will unlock your full Rust developer potential.</p>
+                <p>This chapter aims to offer a comprehensive understanding of Rust’s unique ownership system. We will explore the mechanics of borrowing and references; no worries, there will be practical examples that illustrate how these concepts work together to ensure safe memory management.</p>
+                <p>By the end of this chapter, you will have a solid foundation in these critical Rust features, enabling you to write more efficient and safe code as you continue your Rust journey.</p>
+                <p>Practical examples will demonstrate how these concepts ensure safe memory management. By the end of the chapter, you will be equipped to write efficient and safe Rust code, thanks to a solid understanding of these key features.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="what-is-ownership">
+                <h2 id="what-is-ownership">What is ownership?</h2>
+                <p>Ownership is a defining feature of Rust and a fundamental aspect of its memory management and safety approach. Unlike many traditional programming languages, Rust does not solely rely on garbage collection or manual memory management. Instead, it uses a unique concept called <strong>ownership</strong> to handle resource allocation and deallocation efficiently and safely.</p>
+                <p>At its core, ownership establishes clear rules about how and when memory is allocated, used, and freed. Every value in Rust has a single owner responsible for its life cycle, from creation to cleanup. This ownership model helps prevent common memory-related issues, such as memory leaks, double-free errors, dangling pointers, and data races, by ensuring that each piece of data has exactly one responsible owner at any given time.</p>
+                <p>Understanding ownership is essential for writing effective Rust code, as it significantly influences data structure, function interactions, and system design. By clearly defining boundaries and responsibilities for data management, ownership equips developers with a powerful tool to create robust, safe, and efficient software.</p>
+
+                <section tabindex="0" aria-labelledby="understanding-ownership">
+                    <h3 id="understanding-ownership">Understanding ownership</h3>
+                    <p>Understanding ownership in Rust is fundamental to managing data effectively. A few key principles govern ownership in Rust:</p>
+                    <ul>
+                        <li><strong>Each value has a single owner</strong>: In Rust, every piece of data has exactly one owner at any given moment. This owner is typically a variable (like a pet has a specific owner). Once assigned to that variable, the variable has full control over that data until ownership is transferred or the variable goes out of scope. Take the following example:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>let name = String::from("Mario");
+// `name` is now the owner of the data "Mario"</code></pre>
+                        </li>
+                        <li><strong>Only one owner at a time</strong>: Rust’s ownership model ensures that no two variables can own the same data simultaneously. If you assign one variable to another (for types that manage memory, such as a string), Rust <em>moves</em> the ownership rather than creating a shallow copy. This is a critical safety feature that prevents a dangerous bug called a “double free,” where two variables might try to deallocate the same memory, leading to corruption. By enforcing a single owner, Rust always knows exactly which variable is responsible for cleaning up the data, eliminating this confusion and guaranteeing memory safety. Here is an example:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>let pasta = String::from("Carbonara");
+let dinner = pasta; // ownership moves from `pasta` to `dinner`
+// println!("{}", pasta); // Error! `pasta` no longer owns the data
+println!("{}", dinner); // "Carbonara"</code></pre>
+                            After the ownership moves to dinner, the pasta variable can no longer access the data.
+                        </li>
+                        <li><strong>When the owner goes out of scope, the value is dropped</strong>: When the owner variable reaches the end of its scope (such as the end of a function), Rust automatically cleans up the associated data and frees the memory. You don’t have to manually call any kind of free() or delete() function, Rust handles this automatically at compile time, ensuring memory safety and reducing bugs. The following is an example:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    {
+        let espresso = String::from("Delicious");
+        println!("{}", espresso); // "Delicious"
+    } // `espresso` goes out of scope here; Rust automatically drops its value
+    // println!("{}", espresso); // Error! `espresso` doesn't exist anymore
+}</code></pre>
+                            The automatic dropping of values helps prevent memory leaks and makes your programs safer and easier to reason about.
+                        </li>
+                    </ul>
+                    <p>These rules ensure that memory is managed automatically, avoiding common issues such as double-free errors or dangling pointers and data races, which are often seen in languages such as C and C++.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="ways-variables-interact">
+                    <h3 id="ways-variables-interact">Ways variables interact: Move, copy, and clone</h3>
+                    <p>We’ve established that every value in Rust has a single owner. This naturally leads to an important question: what happens when you assign one variable to another, such as let y = x;?</p>
+                    <p>This would create a simple copy in many languages, but Rust is more precise. Depending on the data type, Rust handles this interaction in one of three ways: <strong>move</strong>, <strong>copy</strong>, or <strong>clone</strong>.</p>
+
+                    <section tabindex="0" aria-labelledby="moving-ownership">
+                        <h4 id="moving-ownership">The default behavior: Moving ownership</h4>
+                        <p>For complex types that manage resources on the heap, such as String (which owns its text data), Vec&lt;T&gt; (which owns its elements), and Box&lt;T&gt; (which owns the data it points to), Rust’s default behavior upon assignment is to <strong>move</strong> ownership.</p>
+                        <p>A “move” is not a deep copy of the data. Instead, it’s a very fast, shallow copy of the pointer, length, and capacity information that resides on the stack. The large block of data on the heap is not touched at all. Crucially, after the move, Rust invalidates the original variable to ensure there is still only one owner. This compile-time check is how Rust guarantees that only one variable is responsible for freeing the memory, thus preventing “double-free” errors.</p>
+                        <p>Let’s visualize this with a string:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // s1 is on the stack and owns the "hello" data on the heap.
+    let s1 = String::from("hello");
+    // The `let s2 = s1;` line performs a move.
+    // The pointer, length, and capacity from s1 are copied to s2.
+    // Ownership of the heap data is transferred to s2.
+    let s2 = s1;
+    // After the move, s1 is no longer considered valid by the compiler.
+    // Uncommenting the line below would cause a compile-time error.
+    // println!("This will not compile: {}", s1);
+    println!("s2 holds the value: {}", s2);
+}</code></pre>
+                        <p>Let’s visualize the move:</p>
+                        <ul>
+                            <li><strong>Initial state</strong>: s1 owns the string data on the heap.
+                                <figure>
+                                    <img src="" alt="A String variable s1 on the stack, pointing to its heap-allocated data" />
+                                    <figcaption>Figure 4.1: A String variable s1 on the stack, pointing to its heap-allocated data</figcaption>
+                                </figure>
+                            </li>
+                            <li><strong>Final state (after let s2 = s1;)</strong>: Ownership has moved to s2. The s1 is invalidated.
+                                <figure>
+                                    <img src="" alt="After let s2 = s1;, ownership of the heap data has moved to s2, and s1 is invalidated" />
+                                    <figcaption>Figure 4.2: After let s2 = s1;, ownership of the heap data has moved to s2, and s1 is invalidated</figcaption>
+                                </figure>
+                            </li>
+                        </ul>
+                        <p>This move-by-default behavior for owned types is a cornerstone of Rust’s safety and performance.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="automatic-copying">
+                        <h4 id="automatic-copying">The exception: Automatic copying with the Copy trait</h4>
+                        <p>You might have noticed that simple code such as let x = 5; let y = x; <em>doesn’t</em> invalidate x. You can still use both x and y afterward. Why doesn’t ownership move here?</p>
+                        <p>This is because simple scalar types such as integers (i32), floating-point numbers (f64), Booleans (bool), and characters (char) implement a special trait called Copy. The Copy trait is a marker that tells Rust that it’s okay to make a simple, bit-for-bit copy of a value instead of moving it.</p>
+                        <p>This exception exists for types that are stored entirely on the stack and have no special resource management needs (such as a pointer to heap memory that needs to be freed). For these types, making a cheap, full copy of the data is no different from the shallow copy that happens during a move, so Rust allows the original variable to remain valid.</p>
+                        <p>Types with the Copy trait include:</p>
+                        <ul>
+                            <li>All integer types (u8, i32, usize, etc.).</li>
+                            <li>All floating-point types (f32, f64).</li>
+                            <li>The Boolean type (bool).</li>
+                            <li>The character type (char).</li>
+                            <li>Tuples, if they <em>only</em> contain types that are also Copy. For example, (i32, bool) is Copy, but (i32, String) is not.</li>
+                        </ul>
+                        <p>Types that own resources, such as String, Vec&lt;T&gt;, and Box&lt;T&gt;, <em>do not</em> and <em>cannot</em> implement the Copy trait, because that would lead to multiple owners of the same resource, breaking Rust’s safety guarantees.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // `x` is an i32, which implements the `Copy` trait.
+    let x = 5;
+    // Because `x`'s type is `Copy`, a bit-for-bit copy of the value 5
+    // is made and assigned to `y`. `x` is not moved or invalidated.
+    let y = x;
+    println!("x = {}, y = {}", x, y); // Both x and y are valid and can be used.
+
+    // Let's look at a non-Copy type for contrast.
+    let s1 = String::from("hello");
+    // `String` does not implement `Copy`, so this is a move.
+    let s2 = s1;
+    // The line below would cause a compile-time error because s1 was moved.
+    // println!("s1 = {}, s2 = {}", s1, s2);
+    // error[E0382]: borrow of moved value: `s1`
+}</code></pre>
+                        <p>In summary, for types that implement Copy, assignment creates a copy, and the original variable remains valid. For all other types, assignment performs a move, and the original variable is invalidated. This distinction is a key part of Rust’s predictable and safe memory management.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="clone-trait">
+                        <h4 id="clone-trait">Explicit duplication: The Clone trait</h4>
+                        <p>So, what do you do when you have an owned type that isn’t Copy (such as String or Vec&lt;T&gt;), but you genuinely need to create a duplicate of it? For this, Rust provides the Clone trait.</p>
+                        <p>The Clone trait provides a method called .clone(), which is used to create an explicit, and often “deep,” copy of a value. Unlike Copy, which is an implicit, bit-for-bit copy, clone() is a method you must call yourself. This makes the act of duplicating potentially expensive data a very deliberate one.</p>
+                        <p>For a type such as String, calling .clone() will allocate new memory on the heap and copy the character data from the original string into the new allocation. This can be a relatively expensive operation in terms of performance and memory, especially for large strings or vectors.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // `s1` is a String, which does not implement the `Copy` trait.
+    let s1 = String::from("hello");
+    // To create an independent duplicate of `s1`, we must explicitly call .clone().
+    // This performs a deep copy of the string data on the heap.
+    let s2 = s1.clone();
+    // Because we cloned `s1`, the original variable `s1` is still valid and retains ownership
+    // of its own data. `s2` is a brand new String that owns its own copy of the data.
+    println!("s1 = {}, s2 = {}", s1, s2);
+    // We can modify one without affecting the other.
+    // let mut s3 = s1.clone();
+    // s3.push_str(", world!");
+    // println!("s1 = {}, s3 = {}", s1, s3);
+}</code></pre>
+                        <p>The following is an explanation of using .clone():</p>
+                        <ul>
+                            <li><strong>Explicit call</strong>: We must call s1.clone() to create s2. A let s2 = s1; assignment would have been a move.</li>
+                            <li><strong>Deep copy</strong>: The .clone() method on String creates a new allocation on the heap and copies the content ("hello") into it. s1 and s2 are now completely independent variables pointing to different memory locations.</li>
+                            <li><strong>Ownership</strong>: s1 retains ownership of its original data, and s2 becomes the owner of the new, duplicated data. Both are valid and can be used after the clone.</li>
+                            <li><strong>Performance</strong>: Remember that cloning can be costly. The idiomatic Rust approach is to prefer moving or borrowing whenever possible and to use .clone() only when you truly need a separate, owned copy of the data.</li>
+                        </ul>
+                        <p>It’s also worth noting that any type that implements Copy must also implement Clone. For Copy types, the implementation of .clone() is trivial and just performs the same cheap, bit-for-bit copy that happens implicitly on assignment.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="key-rules-ownership">
+                    <h3 id="key-rules-ownership">Key rules of ownership in Rust</h3>
+
+                    <section tabindex="0" aria-labelledby="single-owner">
+                        <h4 id="single-owner">Each value has a single owner</h4>
+                        <p>In Rust, each value has a unique owner responsible for the value’s life cycle, including its access and cleanup. This exclusive ownership prevents ambiguous or conflicting references to the same data, thus avoiding the memory errors found in other languages.</p>
+                        <p>The following is an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let book_title = String::from("The Rust Programming Guide");
+    println!("{}", book_title); // book_title is valid here
+    {
+        let another_title = String::from("Rust and Beyond");
+        println!("{}", another_title); // another_title is valid here
+    } // another_title goes out of scope and is dropped here
+} // book_title goes out of scope and is dropped here</code></pre>
+                        <p>In this example, both book_title and another_title have their own scope and owner. When the scope ends, the values are dropped, and the memory is automatically freed.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="ownership-transfer">
+                        <h4 id="ownership-transfer">Ownership can be transferred (moved)</h4>
+                        <p>Ownership can be transferred from one variable to another. This process is called “moving.” When a value is moved, the original owner no longer owns the value, and it becomes invalid. The new owner now controls the value’s life cycle.</p>
+                        <p>Take the following example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let original_owner = String::from("Rustacean");
+    let new_owner = original_owner; // Ownership moves to new_owner
+    // println!("{}", original_owner); // Error: original_owner is invalid
+    println!("{}", new_owner); // new_owner is now the owner
+}</code></pre>
+                        <p>In this example, the ownership of the "Rustacean" string is moved from original_owner to new_owner. After the move, original_owner is no longer valid, and attempting to use it will result in a compile-time error.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="owner-responsible-cleanup">
+                        <h4 id="owner-responsible-cleanup">The owner is responsible for cleaning up the value</h4>
+                        <p>When the owner of a value goes out of scope, Rust automatically drops the value and frees the memory. This rule eliminates common issues such as memory leaks and ensures that memory is managed efficiently. The concept of “dropping” a value means that when a value’s owner goes out of scope, the value is automatically cleaned up (similar to dealloc in C), preventing memory from being wasted.</p>
+                        <p>Here is an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    {
+        let temp_owner = String::from("Temporary");
+        println!("{}", temp_owner); // temp_owner is valid here
+    } // temp_owner is dropped here, and the memory is freed
+    // println!("{}", temp_owner); // Error: temp_owner is invalid
+}</code></pre>
+                        <p>In this example, temp_owner is created and dropped within a block. Once the block ends, temp_owner is no longer valid, and the memory is freed.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="moving-ownership-detail">
+                <h2 id="moving-ownership-detail">Moving ownership</h2>
+                <p>In Rust, the concept of ownership extends beyond just the initial creation and destruction of variables; it also governs how values are transferred between different parts of a program. When a value is assigned from one variable to another, Rust performs a “move,” which transfers ownership from the original variable to the new one. After a move, the original variable is no longer valid, preventing any further use and ensuring that no two variables can inadvertently share ownership of the same data.</p>
+                <figure>
+                    <img src="" alt="A String’s memory layout: stack-allocated metadata (ptr, len, cap) pointing to its heap-allocated data" />
+                    <figcaption>Figure 4.3: A String’s memory layout: stack-allocated metadata (ptr, len, cap) pointing to its heap-allocated data</figcaption>
+                </figure>
+                <p>Moving ownership occurs when you transfer the ownership of a value from one variable to another. This happens in several scenarios, such as when you assign a value to another variable or when you pass it as an argument to a function. Once ownership is moved, the original variable becomes invalid, and attempting to use it results in a compile-time error. This is a key feature of Rust’s safety guarantees.</p>
+                <p>The following is an example of a basic move:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let first_owner = String::from("Hello, Rust!");
+    let second_owner = first_owner;
+    // The line below would cause a compile-time error
+    // println!("{}", first_owner);
+    println!("{}", second_owner); // This works because second_owner now owns the value
+}</code></pre>
+                <p>In this example, the "Hello, Rust!" string is initially owned by first_owner. When ownership is moved to second_owner, the first_owner is no longer valid. If you try to use first_owner after the move, Rust will throw a compile-time error, enforcing the ownership rules.</p>
+
+                <section tabindex="0" aria-labelledby="why-move-ownership">
+                    <h3 id="why-move-ownership">Why move ownership?</h3>
+                    <p>Rust’s move semantics ensure that data is not accidentally accessed or modified in unsafe ways. By enforcing strict ownership rules, Rust prevents common programming errors such as use-after-frees, double frees, and data races, which are prevalent in languages such as C and C++.</p>
+                    <p>Moving ownership is particularly useful when dealing with large data structures that you don’t want to copy. For instance, consider a function that processes a large collection of data, such as a vector containing millions of numbers. If the function takes ownership of the vector, the operation is extremely fast. Only the small amount of data on the stack (a pointer to the heap data, its length, and capacity) is moved. The large block of data on the heap is not touched at all.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// A function that takes ownership of a large vector (a "move").
+// This is very fast because only the pointer, length, and capacity are moved.
+fn process_large_data_by_move(data: Vec&lt;i32&gt;) {
+    // Imagine some processing happens here.
+    println!("Processing data by move. First element: {}, Length: {}", data[0], data.len());
+    // `data` is dropped here, and its heap memory is freed.
+}
+
+// A function that takes a clone of a large vector.
+// This is much slower because it must allocate new memory and copy all elements.
+fn process_large_data_by_clone(data: &amp;Vec&lt;i32&gt;) {
+    let data_clone = data.clone();
+    println!("Processing data by clone. First element: {}, Length: {}", data_clone[0], data_clone.len());
+    // `data_clone` is dropped here, and its heap memory is freed.
+}
+
+fn main() {
+    // Create a large vector with one million integers.
+    let large_vector: Vec&lt;i32&gt; = (0..1_000_000).collect();
+    // Create another one for the clone example.
+    let another_large_vector: Vec&lt;i32&gt; = (0..1_000_000).collect();
+
+    println!("--- Demonstrating a move ---");
+    // Ownership of `large_vector` is moved to the function. This is a cheap operation.
+    process_large_data_by_move(large_vector);
+    // `large_vector` is no longer valid here and cannot be used.
+    // println!("Can we use large_vector again? No."); // This would be a compile error.
+
+    println!("\n--- Demonstrating a clone ---");
+    // We pass a reference and clone it inside the function.
+    // This is an expensive operation, as it copies 1,000,000 integers.
+    process_large_data_by_clone(&amp;another_large_vector);
+    // `another_large_vector` is still valid here because it was only borrowed.
+    println!("We can still use another_large_vector again. Length: {}", another_large_vector.len());
+}</code></pre>
+                    <p>In contrast, if we needed to keep the original vector and pass a copy to the function, we would have to use .clone(), as shown in the process_large_data_by_clone example. This would trigger a new heap allocation and a deep copy of all one million integers, a significantly more expensive operation in both time and memory. By choosing to move the data when the original is no longer needed, we transfer responsibility for it efficiently and safely, avoiding these costly duplications.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="moving-in-function-calls">
+                    <h3 id="moving-in-function-calls">Moving in function calls</h3>
+                    <p>When you pass a value to a function, ownership of that value is typically moved to the function. This means that the value is no longer accessible in the original scope once the function call is made.</p>
+                    <p>The following is an example of moving in functions:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let data = String::from("Important data");
+    process_data(data);
+    // This line would cause a compile-time error
+    // println!("{}", data);
+}
+
+fn process_data(input: String) {
+    println!("Processing: {}", input);
+}</code></pre>
+                    <p>In this example, the ownership of data is moved to the process_data function when it is called. After the function call, data is no longer accessible in the main function.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="advantages-of-moving">
+                    <h3 id="advantages-of-moving">Advantages of moving ownership</h3>
+                    <p>The concept of moving ownership is fundamental to how Rust achieves its guarantees of safety and efficiency.</p>
+                    <p>The primary <em>safety</em> advantage of a move is that it <em>invalidates the original variable</em>. Once ownership of a value has been moved, the Rust compiler statically prevents the original variable from being used again. This compile-time check makes it impossible to accidentally access data through an old handle, which is a direct and powerful prevention against “use-after-free” bugs. Furthermore, because only one variable is considered the valid owner at any given time, only that variable will be responsible for cleaning up the data when it goes out of scope, which completely eliminates the risk of “double-free” errors.</p>
+                    <p>The <strong>efficiency</strong> advantage is most apparent with large data structures. A move operation for heap-allocated data (such as a large Vec&lt;T&gt; or String) only involves copying a few bytes of stack data (the pointer, length, and capacity), not the potentially megabytes or gigabytes of data on the heap. This makes transferring ownership of large amounts of data an extremely fast operation, avoiding the significant performance cost of deep copying.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="ownership-and-functions-detail">
+                <h2 id="ownership-and-functions-detail">Ownership and functions</h2>
+                <p>Ownership in Rust extends to how values are passed to functions. When a value is passed to a function, ownership of that value can be transferred (moved) to the function, or the function can borrow the value, either immutably or mutably, depending on the function’s requirements. Understanding how ownership works with functions is crucial to writing safe and efficient Rust code.</p>
+
+                <section tabindex="0" aria-labelledby="ownership-transfer-in-function-calls">
+                    <h3 id="ownership-transfer-in-function-calls">Ownership transfer in function calls</h3>
+                    <p>When you pass a value to a function by value, the function takes ownership of that value (this is the default behavior). This means that the original variable in the calling function loses ownership and becomes invalid. After the function finishes execution, the value is dropped unless it is returned.</p>
+                    <p>The following is an example of ownership transfer:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let my_string = String::from("Hello, world!");
+    take_ownership(my_string);
+    // This line would cause a compile-time error
+    // println!("{}", my_string);
+}
+
+fn take_ownership(s: String) {
+    println!("Taking ownership: {}", s);
+}</code></pre>
+                    <p>In this example, the take_ownership function takes ownership of my_string. After the function call, my_string is no longer valid in the main function because its ownership has been transferred to the take_ownership function.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="returning-ownership">
+                    <h3 id="returning-ownership">Returning ownership</h3>
+                    <p>Sometimes, you might want a function to take ownership of a value, do some processing, and then return ownership to the caller. Rust allows you to return ownership from a function to the calling context.</p>
+                    <p>The following is an example of returning ownership:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let my_string = String::from("Hello, Rust!");
+    let my_string = return_ownership(my_string);
+    println!("{}", my_string); // Now this is valid
+}
+
+fn return_ownership(s: String) -> String {
+    s
+}</code></pre>
+                    <p>In this example, ownership of my_string is transferred to return_ownership, but then it is returned to the caller. This way, my_string remains valid after the function call, because ownership was returned to it.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="borrowing-and-references">
+                <h2 id="borrowing-and-references">Borrowing and references</h2>
+                <p>Borrowing is one of Rust’s most powerful and unique features, enabling data management that is both safe and highly efficient. While Rust’s ownership model guarantees each value has a single owner, there are many cases where you need a function or another part of your program to temporarily access data without permanently taking ownership. This is where borrowing becomes crucial. It allows you to provide access to data without the performance cost of copying it, which is especially important for large data structures such as vectors or strings.</p>
+                <p>When you borrow a value, you create a reference to it. A reference, indicated by the &amp; symbol, is a type that acts like a pointer, storing the memory address where the data resides, but with a crucial difference: it is governed by Rust’s strict compile-time borrow checker. This means that while a reference allows you to access data without taking full responsibility for it, the compiler guarantees that the reference will always be valid and will not lead to dangerous situations such as data races.</p>
+                <p>Rust has some clear borrowing rules: at any one time, you can have either one mutable reference (&amp;mut T) or many immutable references (&amp;T), but not both. These guidelines are really important because they help avoid a lot of common bugs, such as data races, dangling pointers, and unsafe memory access, and all of this is checked during compilation to keep your code safe.</p>
+                <p>Borrowing, therefore, offers the best of both worlds: it guarantees memory safety through the borrow checker’s rules and boosts performance by avoiding unnecessary data duplication and movement. It enables different parts of your program to safely share access to the same data while clearly indicating how that data is used throughout your code base. A thorough understanding of borrowing and references will greatly affect your ability to write safe, concurrent, and efficient Rust applications, making it a key concept in mastering Rust’s ownership model.</p>
+
+                <section tabindex="0" aria-labelledby="immutable-borrowing-detail">
+                    <h3 id="immutable-borrowing-detail">Immutable borrowing</h3>
+                    <p>Immutable borrowing allows you to create read-only references to data. This means that while you can access the data, you cannot modify it. Multiple immutable references to the same data can exist simultaneously, allowing various parts of your code to read the data concurrently.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let book = String::from("Rust Programming");
+    let len = calculate_length(&amp;book); // Borrow book immutably
+    println!("The length of '{}' is {}.", book, len);
+    // book is still valid here
+}
+
+fn calculate_length(s: &amp;String) -> usize {
+    s.len()
+}</code></pre>
+                    <p>In this example, calculate_length borrows book immutably. The &amp; symbol denotes that a reference is being passed. The original book variable remains valid and unchanged after the function call, allowing it to be used elsewhere in the code.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mutable-borrowing-detail">
+                    <h3 id="mutable-borrowing-detail">Mutable borrowing</h3>
+                    <p>Mutable borrowing lets you create a single, read-write reference to data, enabling you to modify the value it references. However, this power comes with a critical rule that Rust’s compiler strictly enforces: you can have <strong>exactly one</strong> mutable reference to a piece of data in any particular scope. This restriction is not arbitrary; it is the fundamental mechanism by which Rust prevents <strong>data races</strong> at compile time. A data race occurs when multiple references try to read and write to the same memory location simultaneously, leading to unpredictable and often disastrous bugs!</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut article = String::from("Rust is awesome");
+    update_article(&amp;mut article); // Borrow article mutably
+    println!("Updated article: {}", article);
+    // article is still valid here
+}
+
+fn update_article(s: &amp;mut String) {
+    s.push_str(" for system programming!");
+}</code></pre>
+                    <p>Here, update_article borrows article mutably using &amp;mut, allowing it to modify the original string. After the modification, the article variable is still valid in the main function.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="borrowing-rules">
+                    <h3 id="borrowing-rules">Borrowing rules</h3>
+                    <p>Rust enforces several rules for borrowing to ensure safety and prevent data races:</p>
+                    <ul>
+                        <li>You can have either one mutable reference or multiple immutable references, but not both simultaneously.</li>
+                        <li>References must always be valid.</li>
+                    </ul>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut note = String::from("Rust is fast");
+    let r1 = &amp;note; // Immutable borrow
+    let r2 = &amp;note; // Immutable borrow
+    // let r3 = &amp;mut note; // Error: cannot borrow as mutable because it is also borrowed as immutable
+    println!("Note: {}, {}", r1, r2);
+    let r3 = &amp;mut note; // Mutable borrow is allowed here because no immutable borrows are active
+    r3.push_str(" and safe");
+    println!("Updated note: {}", r3);
+}</code></pre>
+                    <p>In this example, Rust prevents mutable borrowing while immutable references are active. The compiler is smart enough to see where the last use of the immutable references (r1 and r2) occurs. After that point, their “borrow” is considered over, and a new mutable borrow is allowed.</p>
+                    <p>This leads us to the second fundamental rule of borrowing: <em>all references must be valid</em>. This means that a reference must never point to memory that has been deallocated or has gone out of scope. In other languages, this dangerous bug is known as a “dangling reference” or “dangling pointer” and is a common source of crashes and security vulnerabilities.</p>
+                    <p>Rust’s compiler prevents this entire class of bugs at compile time through its analysis of <strong>lifetimes</strong>. The compiler ensures that the data a reference points to will live at least as long as the reference itself. If there’s any possibility that a reference could outlive its data, the program will simply refuse to compile.</p>
+                    <p>Consider this example, which Rust will correctly reject:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function attempts to return a reference to data that will be deallocated.
+// Rust's compiler will prevent this with a lifetime error.
+fn get_dangling_reference() -> &amp;String {
+    let s = String::from("hello");
+    &amp;s // We are trying to return a reference to `s`.
+} // But `s` goes out of scope and is dropped here, so the memory is freed.
+  // The returned reference would be "dangling" – pointing to invalid memory.
+
+fn main() {
+    // let reference_to_nothing = get_dangling_reference();
+    // If the code above were allowed to compile, `reference_to_nothing`
+    // would be a dangling reference, and using it would be undefined behavior.
+}</code></pre>
+                    <p>Together, these two rules—(1) you can have either one mutable reference or any number of immutable references, and (2) all references must always be valid—form the core of Rust’s <strong>borrow checker</strong>. This is the static analysis tool that allows Rust to guarantee memory safety without needing a garbage collector.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="borrowing-in-functions-detail">
+                    <h3 id="borrowing-in-functions-detail">Borrowing in functions</h3>
+                    <p>In Rust, functions can borrow variables immutably or mutably depending on the required access. This allows functions to use or modify data without taking ownership, preserving the original variable’s validity outside the function:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let framework = String::from("Actix");
+    display_framework(&amp;framework); // Borrow framework immutably
+    println!("Framework: {}", framework); // framework is still valid here
+}
+
+fn display_framework(s: &amp;String) {
+    println!("Using framework: {}", s);
+}</code></pre>
+                    <p>In this example, display_framework borrows framework immutably, allowing it to be used elsewhere in the main function after the function call.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut title = String::from("Rust Basics");
+    modify_title(&amp;mut title); // Borrow title mutably
+    println!("Modified title: {}", title); // title is still valid here
+}
+
+fn modify_title(s: &amp;mut String) {
+    s.push_str(" - Advanced Topics");
+}</code></pre>
+                    <p>Here, modify_title borrows title mutably, allowing it to modify the original string.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="practical-example-library">
+                    <h3 id="practical-example-library">Practical example: Managing a library</h3>
+                    <p>Let’s consider a more complex example of managing a library of books. We want to be able to add new books and print the list of books without transferring ownership:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Library {
+    books: Vec&lt;String&gt;,
+}
+
+impl Library {
+    fn new() -> Library {
+        Library { books: Vec::new() }
+    }
+    fn add_book(&amp;mut self, book: String) {
+        self.books.push(book);
+    }
+    fn print_books(&amp;self) {
+        for book in &amp;self.books {
+            println!("{}", book);
+        }
+    }
+}
+
+fn main() {
+    let mut library = Library::new();
+    library.add_book(String::from("Rust Programming"));
+    library.add_book(String::from("Advanced Rust"));
+    library.print_books(); // Immutable borrow to print books
+}</code></pre>
+                    <p>In this example, the Library struct has methods to add and print books. The add_book method mutably borrows self to modify the list of books, while the print_books method immutably borrows self to read the list of books.</p>
+                    <p>In Rust, borrowing and references are key tools for safe and efficient data handling. Immutable borrowing allows multiple read-only references to a value, keeping data unchanged across different parts of the program. Mutable borrowing allows data modification but grants exclusive access, meaning no other references, either mutable or immutable, can exist during a mutable borrow. This strict rule helps Rust prevent data races before runtime.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="common-patterns">
+                <h2 id="common-patterns">Common patterns and idioms in Rust: Ownership, borrowing, and references</h2>
+                <p>Now that we have learned the basics, in this section, we will explore some practical examples and common patterns related to ownership, borrowing, and references in Rust. These patterns will help you to write safe and efficient code, taking advantage of all of Rust’s powerful memory management features!</p>
+
+                <section tabindex="0" aria-labelledby="borrowing-read-only">
+                    <h3 id="borrowing-read-only">Borrowing for read-only access</h3>
+                    <p>Immutable data borrowing enables different parts of your code to read the same data simultaneously without the risk of modification. Here is an example of borrowing a reference to a struct:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Book {
+    title: String,
+    author: String,
+}
+
+fn print_book_title(book: &amp;Book) {
+    println!("The book title is: {}", book.title);
+}
+
+fn main() {
+    let my_book = Book {
+        title: String::from("Rust Programming"),
+        author: String::from("John Doe"),
+    };
+    print_book_title(&amp;my_book); // Borrowing the struct immutably
+    println!("The book author is: {}", my_book.author); // The original data is still accessible
+}</code></pre>
+                    <p>In this example, the print_book_title function borrows the Book struct immutably. This allows the function to read the book’s title without taking ownership, ensuring that the original data remains accessible in the main function.</p>
+                    <p>The following are the key points:</p>
+                    <ul>
+                        <li>Multiple immutable references can coexist.</li>
+                        <li>Data remains accessible and unmodified after borrowing.</li>
+                        <li>There’s no risk of data races as no mutation occurs.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mutable-borrowing-modification">
+                    <h3 id="mutable-borrowing-modification">Mutable borrowing for modification</h3>
+                    <p>Mutable borrowing allows functions to modify data while the caller retains ownership. Rust’s strict rules ensure that only one mutable reference exists at a time, which prevents data races.</p>
+
+                    <section tabindex="0" aria-labelledby="example-mutable-borrowing">
+                        <h4 id="example-mutable-borrowing">Example: Mutable borrowing in a function</h4>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Account {
+    balance: f64,
+}
+
+fn deposit(account: &amp;mut Account, amount: f64) {
+    account.balance += amount;
+    println!("Deposited ${:.2}, new balance is ${:.2}", amount, account.balance);
+}
+
+fn main() {
+    let mut my_account = Account { balance: 1000.0 };
+    deposit(&amp;mut my_account, 200.0); // Mutably borrowing the struct
+    println!("Final balance is ${:.2}", my_account.balance); // The original data is modified
+}</code></pre>
+                        <p>In this example, the deposit function mutably borrows the Account struct, allowing it to modify the balance. The main function retains ownership of the struct, but the balance is updated.</p>
+                        <p>The following are the key points:</p>
+                        <ul>
+                            <li>Only one mutable reference can exist at a time.</li>
+                            <li>Mutable borrowing allows data modification while retaining ownership.</li>
+                            <li>This pattern is crucial for functions that need to modify data.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="returning-references">
+                    <h3 id="returning-references">Returning references with borrowing</h3>
+                    <p>Returning references from functions while maintaining ownership of the caller is a powerful pattern. This allows you to give controlled access to parts of your data without transferring ownership or needing to copy data.</p>
+
+                    <section tabindex="0" aria-labelledby="example-longest-string">
+                        <h4 id="example-longest-string">Example: Returning a reference to the longest string</h4>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -> &amp;'a str {
+    // Lifetime annotation '&lt;'a&gt;' ensures that the returned reference
+    // lives at least as long as the shortest of the input references.
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+
+fn main() {
+    let string1 = String::from("Rust");
+    let result;
+    {
+        let string2 = String::from("Programming");
+        result = longest(&amp;string1, &amp;string2);
+        println!("The longest string is {}", result); // 'result' is valid here because
+        // it borrows either 'string1' or 'string2',
+        // and both are still in scope.
+    } // 'string2' goes out of scope and is dropped here.
+    println!("The longest string is {}", result); // This is fine because 'result' borrows from 'string1'
+    // which is still valid.
+    println!("String 1 is {}", string1); // 'string1' is still valid
+}</code></pre>
+                        <p>Here, the longest function returns a reference to the longer of two strings. This approach allows you to return data efficiently without transferring ownership or duplicating the data.</p>
+                        <p>The following are the key points:</p>
+                        <ul>
+                            <li>References can be returned from functions while maintaining the original data ownership.</li>
+                            <li>This is useful when you need to provide access to data without copying or transferring ownership.</li>
+                        </ul>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="pitfalls">
+                <h2 id="pitfalls">Pitfalls and how to avoid them</h2>
+                <p>As you start applying ownership, borrowing, and references in your Rust programs, you’ll likely encounter some common pitfalls. These mistakes happen frequently when you’re learning, but being aware of them can help you avoid frustration and write cleaner code.</p>
+                <p>Let’s see some of the most common pitfalls.</p>
+
+                <section tabindex="0" aria-labelledby="forgetting-ownership-moved">
+                    <h3 id="forgetting-ownership-moved">Forgetting ownership has moved</h3>
+                    <p>One frequent mistake is trying to access a value after its ownership has moved to another variable:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let pizza = String::from("Margherita");
+let lunch = pizza;
+// println!("{}", pizza); // Error: pizza no longer owns the data!
+println!("{}", lunch); // Works fine!</code></pre>
+                    <p>The key to avoiding this pitfall is to internalize Rust’s “move by default” behavior for owned types. Always remember that when you assign a variable that owns its data (such as String, Vec&lt;T&gt;, or Box&lt;T&gt;) to another variable, you are not creating a copy; you are <strong>transferring ownership</strong>. After this move, the original variable is no longer valid, and the compiler will prevent you from using it.</p>
+                    <p>If you find that you genuinely need two separate, independent copies of the data, you should use the .clone() method explicitly. This creates a “deep copy” of the data, meaning it duplicates the data on the heap. While this allows both the original and the new variable to be used, it’s important to be mindful of performance. Calling .clone() on large data structures, such as a big vector, can be an expensive operation in terms of both time and memory, as it requires allocating new memory and copying all the elements.</p>
+                    <p>Therefore, the idiomatic Rust approach is to prefer moving ownership or borrowing with references whenever possible, and to use .clone() only when you have a clear reason to duplicate the data.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="multiple-mutable-references">
+                    <h3 id="multiple-mutable-references">Multiple mutable references</h3>
+                    <p>Rust does not allow more than one mutable reference at the same time:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let mut gelato = String::from("Pistachio");
+let ref1 = &amp;mut gelato;
+// let ref2 = &amp;mut gelato; // Error: cannot borrow `gelato` as mutable more than once
+ref1.push_str(" &amp; Chocolate");
+println!("{}", gelato);
+
+fn main() {
+    let mut greeting = String::from("Hello"); // `greeting` owns the String
+    {
+        let read1 = &amp;greeting; // Immutable borrow: Can read `greeting`
+        let read2 = &amp;greeting; // Another immutable borrow: OK to have many readers
+        println!("Immutable read 1: {}", read1);
+        println!("Immutable read 2: {}", read2);
+        // `read1` and `read2` are no longer used after this block
+    } // `read1` and `read2` go out of scope here, so they're no longer borrowing `greeting`
+    let write1 = &amp;mut greeting; // Mutable borrow: Can modify `greeting`
+    write1.push_str(", Rust!"); // Modify the string
+    println!("Mutable write: {}", write1);
+    println!("Original greeting: {}", greeting); // `greeting` is still valid
+}</code></pre>
+                    <p>This is how to avoid this issue:</p>
+                    <ul>
+                        <li>Keep mutable references short-lived and scoped narrowly.</li>
+                        <li>Only create mutable references when truly necessary.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="dangling-references">
+                    <h3 id="dangling-references">Dangling references</h3>
+                    <p>Rust’s borrow checker protects you from dangling references (references to data that no longer exists):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This will NOT compile!
+fn return_reference() -> &amp;String {
+    let s = String::from("Espresso");
+    &amp;s // Error: returning reference to local variable
+}</code></pre>
+                    <p>This is how to avoid this issue:</p>
+                    <ul>
+                        <li>The fundamental rule is that you cannot return a reference to a value that was created <em>inside</em> the function, as that value will be deallocated when the function ends. While it is possible for functions to return references in Rust, those references must point to data that was passed <em>into</em> the function, not data it owns locally. This involves a concept called “lifetimes,” which ensures the data lives long enough.</li>
+                        <li>For now, the safest and most common approach is to <em>return an owned value</em> (such as String, Vec&lt;T&gt;, etc.) from your function. This moves ownership of the value to the caller, guaranteeing it will remain valid.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unnecessary-clones">
+                    <h3 id="unnecessary-clones">Unnecessary clones</h3>
+                    <p>Beginners sometimes clone excessively to please the borrow checker:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn print_pasta(pasta: &amp;String) {
+    println!("Pasta: {}", pasta);
+}
+let spaghetti = String::from("Carbonara");
+print_pasta(&amp;spaghetti.clone()); // Unnecessary clone!</code></pre>
+                    <p>The best way to avoid unnecessary clones is to think in terms of Rust’s preferred modes of data access, which prioritize efficiency and safety.</p>
+                    <p>Your first and most common choice should be to pass a reference (&amp;T) to functions whenever possible. If a function only needs to read data, an immutable reference is perfect. If it needs to modify the data, a mutable reference (&amp;mut T) is the right tool. Borrowing is always the most efficient option as it avoids any data duplication.</p>
+                    <p>Only when a function truly needs to consume the data and take ownership should you move it. If, after moving, you find you still need the original variable, that’s the signal to consider an explicit, and potentially expensive, clone. Therefore, you should only call .clone() when you have a clear and deliberate need for a separate, independent copy of the data and are willing to accept the potential performance cost.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch4">
+                <h2 id="summary-ch4">Summary</h2>
+                <p>In this chapter, we’ve explored the core concepts of ownership, borrowing, and references in Rust. These foundational principles are key to understanding how Rust ensures memory safety and prevents common programming errors without the need for a garbage collector.</p>
+                <p>The following are the key takeaways from this chapter:</p>
+                <ul>
+                    <li><strong>Ownership</strong>: Understanding how Rust manages memory through ownership, where each value has a single owner. We discussed how ownership can be transferred and the implications of this on memory management.</li>
+                    <li><strong>Borrowing and references</strong>: We explained how Rust allows you to borrow data through references, either immutably or mutably, enabling safe access to data without transferring ownership.</li>
+                    <li><strong>Common patterns</strong>: We explored common Rust patterns, including borrowing for read-only access and mutable borrowing for modification, providing practical examples of how to use these patterns effectively.</li>
+                    <li><strong>Pitfalls and solutions</strong>: We identified common pitfalls related to ownership and borrowing, such as dangling references and conflicting borrows, and provided strategies for avoiding these issues.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch4">
+                <h2 id="questions-and-assignments-ch4">Questions and assignments</h2>
+                <p>Congratulations on completing this chapter!</p>
+                <p>Before we conclude this chapter, let’s solidify what you’ve learned with some review questions and practical exercises. These questions will help strengthen your understanding of ownership, borrowing, and references, while the exercises offer hands-on practice to apply these concepts directly. Spending some time on these activities is important, as they will significantly improve your grasp of Rust’s memory management principles.</p>
+
+                <section tabindex="0" aria-labelledby="questions-ch4">
+                    <h3 id="questions-ch4">Questions</h3>
+                    <ol>
+                        <li>What is the primary purpose of Rust’s ownership system, and how does it differ from garbage collection in other languages?</li>
+                        <li>How does borrowing allow you to use data without transferring ownership, and what are the rules governing immutable and mutable borrowing?</li>
+                        <li>Explain the concept of a dangling reference and how Rust prevents this issue.</li>
+                        <li>In what scenarios would you use mutable borrowing, and why does Rust enforce the rule of having only one mutable reference at a time?</li>
+                        <li>What are some common patterns when using borrowing and references, and how do they contribute to safe and efficient Rust code?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch4">
+                    <h3 id="assignments-ch4">Assignments</h3>
+                    <ul>
+                        <li><strong>Assignment 4.1: ownership in action</strong><br>
+                            Write a Rust program that creates a string and transfers ownership of it to another function. The second function should print the string. Observe how the original function can no longer use the string after the transfer.</li>
+                        <li><strong>Assignment 4.2: playing with borrowing</strong><br>
+                            Create a Rust program that demonstrates both immutable and mutable borrowing. Set up a scenario where both types of borrowing are attempted simultaneously. Observe the compiler’s response, then adjust your code to satisfy Rust’s borrowing rules. This will help your understanding of how Rust handles borrowing to ensure memory safety.</li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-03.html">← Chapter 3</a>
+            <a class="nav-next" href="./chapter-05.html">Chapter 5 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 11: Ownership, References, and Optimized Builds – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch11-heading">
+            <h1 id="ch11-heading">Chapter 11: Ownership, References, and Optimized Builds</h1>
+
+            <p>Rust’s ownership model is the feature that most distinguishes it from other systems languages. At compile time, the borrow checker reasons about who owns each value and how it may be accessed. At runtime, that reasoning is over: the program either obeys the rules or it does not exist. The debugger sees the runtime side of this, and only the runtime side.</p>
+            <p>This chapter is about the interaction between these two views. We will look at the boundary between static ownership and dynamic runtime state, at what moves leave behind in memory, at how references and mutable references look when inspected, and at the effect of optimized builds on what the debugger can show you.</p>
+            <p>Much of what follows is about avoiding two common confusions:</p>
+            <ul>
+                <li>Expecting the debugger to explain a compiler error about ownership.</li>
+                <li>Being surprised when the debugger shows something that the compiler considers invalid.</li>
+            </ul>
+            <p>Understanding where the boundary lies turns both of these from sources of frustration into ordinary facts of Rust debugging.</p>
+
+            <section tabindex="0" aria-labelledby="ownership-is-static-runtime-state-is-dynamic">
+                <h2 id="ownership-is-static-runtime-state-is-dynamic">Ownership is static; runtime state is dynamic</h2>
+                <p>Ownership, borrowing, and lifetimes are checked at compile time. LLDB observes runtime memory and values. It cannot explain why the borrow checker rejected your code.</p>
+                <p>Use the compiler for static rules. Use LLDB for runtime behavior.</p>
+
+                <section tabindex="0" aria-labelledby="a-static-question">
+                    <h3 id="a-static-question">A static question</h3>
+                    <p>Consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1;
+    println!("{}", s1); // error: borrow of moved value: `s1`
+}</code></pre>
+                    <p>The compiler rejects this program with an error. LLDB has nothing to say about it, because there is no program to run. The error is not about runtime state. It is about the static analysis the compiler performs before generating any code.</p>
+                    <p>The right tools for this question are:</p>
+                    <ul>
+                        <li><code>cargo check</code>, which produces the diagnostic.</li>
+                        <li><code>rustc --explain E0382</code>, which explains the specific error code.</li>
+                        <li>Reading the source, understanding that ownership of the heap data moved from <code>s1</code> to <code>s2</code>.</li>
+                    </ul>
+                    <p>LLDB cannot help, because there is no binary to load.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-dynamic-question">
+                    <h3 id="a-dynamic-question">A dynamic question</h3>
+                    <p>Now consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut items = Vec::new();
+    items.push(10);
+    items.push(20);
+
+    println!("{:?}", items);
+}</code></pre>
+                    <p>This program compiles. If it produces the wrong output because the vector is unexpectedly empty, or because it contains the wrong elements, the compiler has no opinion. The bug is in the runtime contents of the vector, and the right tool is the debugger.</p>
+                    <p>Set a breakpoint after the pushes and inspect the vector:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable items
+(std::vector&lt;int, ...&gt;) items = size=2 {
+    [0] = 10
+    [1] = 20
+}</code></pre>
+                    <p>If the elements are correct here, the bug is later. If they are wrong here, the bug is earlier. The debugger answers a question the compiler cannot see.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-useful-practice">
+                    <h3 id="a-useful-practice">A useful practice</h3>
+                    <p>Before starting a debugging session, ask:</p>
+                    <blockquote>
+                        <p>Is this a static question or a dynamic question?</p>
+                    </blockquote>
+                    <p>If the program does not compile, it is a static question. The compiler is the first stop.</p>
+                    <p>If the program compiles and produces the wrong behavior, it is a dynamic question. The debugger is the first stop.</p>
+                    <p>Many frustrating sessions come from mixing the two: reaching for the debugger on a program that will not compile, or reaching for the compiler on a program that compiles but runs incorrectly. Keeping the categories straight saves time and keeps the investigation focused.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="moves-and-runtime-state">
+                <h2 id="moves-and-runtime-state">Moves and runtime state</h2>
+                <p>A related complication: in Rust, a value that has been moved may still be physically present in memory for some time. The compiler knows that the value is no longer valid at the source level, but the bytes may not have been overwritten. When you inspect the original variable in the debugger, you may see its last value, even though using it in source would be a compile error.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let s1 = String::from("hello");
+let s2 = s1;
+// s1 is moved here; the compiler will not let you use it.
+// But the bytes of the String metadata may still be on the stack,
+// and LLDB may show them if you ask.</code></pre>
+                <p>If you set a breakpoint after the move and inspect <code>s1</code>, LLDB may show:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable s1
+(std::string) s1 = "hello"</code></pre>
+                <p>Even though <code>s1</code> is invalid at the source level, the debugger shows the bytes it used to hold. This is not a bug in the debugger. It is a consequence of the fact that Rust does not guarantee that moved-from memory is cleared immediately. The compiler may reuse the memory later, or it may not. When you see this in the debugger, remind yourself that the source-level rules still apply: the compiler will reject any attempt to use <code>s1</code>, regardless of what the bytes currently contain.</p>
+                <p>Some compilers do insert code to clear moved-from values in certain cases, especially when the type contains pointers that could be misused if the memory were later re-read. Other compilers leave the bytes alone. Either behavior is valid. The point is that you cannot rely on the debugger’s display of a moved-from variable to mean anything about the program’s correctness.</p>
+
+                <section tabindex="0" aria-labelledby="when-this-matters">
+                    <h3 id="when-this-matters">When this matters</h3>
+                    <p>The moved-from memory issue matters in a few specific cases:</p>
+                    <ul>
+                        <li><strong>Debugging unsafe code</strong>: If you are debugging <code>unsafe</code> code that reads moved-from memory (which is itself a bug), the debugger will show you the stale bytes. Understanding that they are stale is essential to interpreting the result.</li>
+                        <li><strong>Debugging after a move</strong>: If you inspect a variable that has been moved, and it looks like it still has a value, do not conclude that the move failed. The move happened; the memory was just not cleared.</li>
+                        <li><strong>Debugging FFI</strong>: If Rust passes a value to C by value, the Rust variable is moved. The C code receives a copy or a move, depending on the FFI contract. The Rust variable may still show its old value in the debugger, even though the Rust source cannot use it.</li>
+                    </ul>
+                    <p>The general rule is:</p>
+                    <blockquote>
+                        <p>Do not use the debugger’s display of a moved-from value as evidence about correctness. Use the source-level rules.</p>
+                    </blockquote>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-difference-from-c">
+                    <h3 id="the-difference-from-c">The difference from C</h3>
+                    <p>In C, a moved-from value would typically be a pointer that you set to <code>NULL</code> manually. In Rust, the compiler tracks moves without modifying the bytes. This is one of the ways Rust delivers zero-cost abstractions: it does not pay for clearing moved-from values unless the optimizer decides that clearing is beneficial.</p>
+                    <p>For debugging, this means that inspecting a moved-from value requires a different mental model. It is not the same as inspecting a freed pointer in C, where the value is genuinely gone. It is closer to inspecting a variable that has gone out of scope: the storage exists, but the source says the value is not valid there.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="references-and-borrows">
+                <h2 id="references-and-borrows">References and borrows</h2>
+                <p>Rust code frequently contains:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>&amp;T
+&amp;mut T</code></pre>
+                <p>When debugging, distinguish:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>the reference</code></pre>
+                <p>from:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>the value referenced</code></pre>
+                <p>If:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn update(config: &amp;mut Config)</code></pre>
+                <p>is stopped inside the function, inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config</code></pre>
+                <p>Then inspect relevant fields:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config.field</code></pre>
+                <p>The question is:</p>
+                <blockquote>
+                    <p>What state does this mutable reference currently expose?</p>
+                </blockquote>
+                <p>Then step forward and determine where the mutation occurs.</p>
+                <p>Most of the time, the Rust pretty-printers dereference the reference for you: inspecting <code>config</code> shows the value of the struct, not its address. But sometimes the display shows the raw pointer, or a value that does not match what you expect. In those cases, it is useful to know which view you are looking at.</p>
+
+                <section tabindex="0" aria-labelledby="dereferencing-explicitly">
+                    <h3 id="dereferencing-explicitly">Dereferencing explicitly</h3>
+                    <p>When you are not sure whether LLDB is showing you the reference or the value, dereference explicitly:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable (*config).field</code></pre>
+                    <p>or:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config-&gt;field</code></pre>
+                    <p>Both forms tell LLDB to follow the pointer before accessing the field. If the explicit form works but the implicit form does not, you were looking at the pointer.</p>
+                    <p>For references to <code>&amp;str</code>, the pretty-printer shows the string contents directly. For references to slices (<code>&amp;[T]</code>), it shows the slice elements. For references to owned types such as <code>String</code> or <code>Vec&lt;T&gt;</code>, it shows the dereferenced value.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mutable-references">
+                    <h3 id="mutable-references">Mutable references</h3>
+                    <p>A <code>&amp;mut T</code> is displayed the same way as a <code>&amp;T</code>: as the value it points to. The difference is that as you step forward, the value changes. This makes the debugger particularly useful for tracking mutations: you can set a breakpoint before the mutation, step to the line where it occurs, and inspect the value afterward.</p>
+                    <p>An example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn apply_discount(price: &amp;mut u32, percent: u32) {
+    let reduction = *price * percent / 100;
+    *price -= reduction;
+}</code></pre>
+                    <p>Set a breakpoint at the entry of <code>apply_discount</code>. Inspect:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable price
+(unsigned int *) price = 0x... {
+    500
+}</code></pre>
+                    <p>Step over both lines, then inspect again:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable price
+(unsigned int *) price = 0x... {
+    425
+}</code></pre>
+                    <p>The value changed from 500 to 425, reflecting the discount. This is what a mutable reference lets you do: observe the mutation at the point where it happens.</p>
+                    <p>For a more careful investigation, you can set a watchpoint on the referenced value (covered in a later chapter). The watchpoint stops execution whenever the value changes, giving you a precise observation of the mutation site.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="references-in-frames">
+                    <h3 id="references-in-frames">References in frames</h3>
+                    <p>A reference held by a function may outlive the frame that created it. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn get_name(user: &amp;User) -&gt; &amp;str {
+    &amp;user.name
+}
+
+fn main() {
+    let user = User { name: String::from("Alice") };
+    let name = get_name(&amp;user);
+    println!("{name}");
+}</code></pre>
+                    <p>When <code>get_name</code> returns, the frame is gone, but the returned reference still points into the <code>user</code> value in <code>main</code>. If you inspect <code>name</code> in <code>main</code>, it displays as <code>"Alice"</code>, because the debugger follows the reference to the underlying data.</p>
+                    <p>In some cases, if you inspect a reference that points into a frame that has been popped, the value is genuinely invalid. The debugger may still show stale bytes, but the source-level rules say the reference is invalid. This is exactly the kind of case where the borrow checker prevents you from writing the code in the first place.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="ownership-bugs">
+                <h2 id="ownership-bugs">Ownership bugs</h2>
+                <p>A compiler error such as:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>borrow of moved value</code></pre>
+                <p>is usually better investigated first with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rustc --explain E0382</code></pre>
+                <p>rather than LLDB.</p>
+                <p>LLDB is for runtime behavior.</p>
+                <p>The compiler is for static ownership rules.</p>
+                <p>Use the tools together:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Compiler
+→ explains why the program cannot compile.
+
+LLDB
+→ explains what a compiled program actually does.</code></pre>
+                <p>This distinction saves time.</p>
+
+                <section tabindex="0" aria-labelledby="what-compiler-errors-mean">
+                    <h3 id="what-compiler-errors-mean">What compiler errors mean</h3>
+                    <p>Some common ownership errors and their meanings:</p>
+                    <ul>
+                        <li><strong>E0382: borrow of moved value</strong>: The value was moved, and now the code tries to use it. The fix is usually to borrow (<code>&amp;s1</code>) instead of moving, or to clone (<code>s1.clone()</code>) if a separate copy is genuinely needed.</li>
+                        <li><strong>E0502: cannot borrow as mutable because it is also borrowed as immutable</strong>: Two references of different kinds were active at the same time. The fix usually involves narrowing the scope of one of the borrows.</li>
+                        <li><strong>E0499: cannot borrow as mutable more than once at a time</strong>: Two mutable references were active at the same time. The fix usually involves restructuring the code so that only one is active at a time.</li>
+                        <li><strong>E0597: borrowed value does not live long enough</strong>: A reference outlives the data it points to. The fix usually involves changing the lifetime structure of the function, or returning an owned value instead of a reference.</li>
+                        <li><strong>E0515: cannot return reference to local variable</strong>: A function tries to return a reference to a value it owns locally. The fix is to return an owned value, or to accept the data as a parameter and return a reference into it.</li>
+                    </ul>
+                    <p>Each of these is a static question. The compiler has the answer. The debugger does not need to be involved.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-to-use-llbd-for-ownership">
+                    <h3 id="when-to-use-llbd-for-ownership">When to use LLDB for ownership questions</h3>
+                    <p>There is one scenario where LLDB is useful for an ownership-related question: when you want to observe a move or a drop at runtime. For example:</p>
+                    <ul>
+                        <li>You want to know whether a particular <code>Drop</code> implementation ran.</li>
+                        <li>You want to see the exact moment a value was moved into a new location.</li>
+                        <li>You want to confirm that a resource is released at the point you expect.</li>
+                    </ul>
+                    <p>In these cases, the question is not “is this static-correct?” but “what does this compiled program actually do?” That is exactly what LLDB is for.</p>
+                    <p>A practical example: set a breakpoint in a <code>Drop</code> implementation to observe when a resource is freed:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>impl Drop for Connection {
+    fn drop(&amp;mut self) {
+        // ...
+    }
+}</code></pre>
+                    <p>Break on <code>Connection::drop</code>. When the breakpoint fires, inspect the backtrace. The frame below the <code>drop</code> call is the point where the value went out of scope. This tells you exactly where the resource is being released, which can be valuable when tracking down a resource leak or an unexpected release.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debug-assertions">
+                <h2 id="debug-assertions">Debug assertions</h2>
+                <p>Rust debug builds can contain debug assertions.</p>
+                <p>The Rust compiler enables <code>cfg(debug_assertions)</code> automatically at optimization level 0 unless explicitly configured otherwise.</p>
+                <p>This means the debug build may behave differently from a release build.</p>
+                <p>When debugging a problem, record which profile you are running.</p>
+                <p>Typical development build:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>Typical release build:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --release</code></pre>
+                <p>If the bug only appears in release mode, reproduce it under:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/release/your_program</code></pre>
+                <p>Optimization can make debugging substantially harder.</p>
+
+                <section tabindex="0" aria-labelledby="what-debug-assertions-do">
+                    <h3 id="what-debug-assertions-do">What debug assertions do</h3>
+                    <p>Several standard-library checks are enabled only in debug builds:</p>
+                    <ul>
+                        <li><strong>Integer overflow checks</strong>: In debug builds, arithmetic overflow panics. In release builds, it wraps by default (unless <code>overflow-checks = true</code> is set in the profile).</li>
+                        <li><strong>Bounds checks</strong>: Slice and array indexing is bounds-checked in both debug and release builds, but the checks may be optimized away when the compiler can prove they are unnecessary.</li>
+                        <li><strong>Debug assertions in user code</strong>: The <code>debug_assert!</code> and <code>debug_assert_eq!</code> macros only run when <code>debug_assertions</code> is enabled. In release builds, they are compiled out entirely.</li>
+                        <li><strong>Uninitialized memory checks</strong>: Some parts of the standard library have stricter checks in debug builds that detect use of uninitialized memory.</li>
+                    </ul>
+                    <p>Because of these differences, a bug that appears in one profile may not appear in the other. When a bug reproduces only in release mode, it is often because the debug build’s extra checks catch the problem earlier, converting what would have been a silent misbehavior into a clear panic.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-common-pattern">
+                    <h3 id="a-common-pattern">A common pattern</h3>
+                    <p>Suppose a program runs correctly in debug but crashes in release. Common causes:</p>
+                    <ul>
+                        <li>Integer overflow that wraps silently in release but panics in debug.</li>
+                        <li>Undefined behavior in <code>unsafe</code> code that the optimizer exploits in release but does not trigger in debug.</li>
+                        <li>Race conditions that only manifest when timing is different, which optimization can cause.</li>
+                        <li>Uninitialized memory that happens to be zero in debug but has garbage in release.</li>
+                    </ul>
+                    <p>To debug such a bug, build the release binary with debug information:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.release]
+debug = true</code></pre>
+                    <p>This does not disable optimizations, but it allows LLDB to map addresses back to source. The optimizer will still move and eliminate values, but the debug information reduces how often you see <code>&lt;optimized out&gt;</code>.</p>
+                    <p>Then run the release binary under <code>rust-lldb</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/release/your_program</code></pre>
+                    <p>Set breakpoints at the points where the program misbehaves, and inspect what you can. This is harder than debugging the debug build, but it is the right approach when the bug does not reproduce in debug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="disabling-overflow-checks">
+                    <h3 id="disabling-overflow-checks">Disabling overflow checks</h3>
+                    <p>For an important class of bugs, it is useful to know whether the bug depends on the overflow check behavior:</p>
+                    <ul>
+                        <li><strong>Debug build</strong>: overflow panics.</li>
+                        <li><strong>Release build</strong>: overflow wraps.</li>
+                    </ul>
+                    <p>You can force the release build to keep overflow checks:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.release]
+overflow-checks = true</code></pre>
+                    <p>This can be useful when you want to reproduce a debug-only bug in a release-like build. If the bug appears with the overflow check enabled but disappears when the check is disabled, the bug is very likely an arithmetic overflow.</p>
+                    <p>Conversely, you can enable overflow checks in debug builds that already have them, or disable them explicitly for a specific experiment.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-optimized-rust">
+                <h2 id="debugging-optimized-rust">Debugging optimized Rust</h2>
+                <p>When variables appear unavailable or source stepping behaves strangely, optimization may be involved.</p>
+                <p>A useful debugging build is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>rather than:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --release</code></pre>
+                <p>If you specifically need a release-like build with better debugging information, configure the Cargo profile accordingly.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.release]
+debug = true</code></pre>
+                <p>This keeps release optimization while generating debug information.</p>
+                <p>Rust’s compiler documentation distinguishes several levels of debug information and notes that removing debug information can make debugger use ineffective.</p>
+
+                <section tabindex="0" aria-labelledby="what-optimization-does-to-values">
+                    <h3 id="what-optimization-does-to-values">What optimization does to values</h3>
+                    <p>In an optimized build, the following can happen:</p>
+                    <ul>
+                        <li><strong>A value is kept in a register</strong>: LLDB may still show it correctly, if it can map the register to the source variable.</li>
+                        <li><strong>A value is eliminated</strong>: If the compiler can prove that a value is never needed, it may not allocate storage for it. LLDB shows <code>&lt;optimized out&gt;</code>.</li>
+                        <li><strong>A value is merged with another</strong>: Two source-level variables may share the same storage. LLDB may show one or the other, or neither.</li>
+                        <li><strong>A value is split across storage</strong>: A single source-level variable may be represented by multiple registers or memory locations. LLDB may show only one part.</li>
+                        <li><strong>A function is inlined</strong>: The function no longer has its own frame. Stepping into it may not work; the source line still shows the call, but execution does not pass through a separate frame.</li>
+                        <li><strong>Instructions are reordered</strong>: The order of source lines no longer matches the order of machine instructions. <code>next</code> may jump to unexpected lines.</li>
+                    </ul>
+                    <p>The general rule: in an optimized build, expect the debugger to be less accurate. Use <code>frame variable</code> and inspect what is available. Do not assume that a missing value means the program is broken; the compiler may simply have decided not to keep it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="strategies-for-optimized-debugging">
+                    <h3 id="strategies-for-optimized-debugging">Strategies for optimized debugging</h3>
+                    <p>When you must debug an optimized build, a few strategies help:</p>
+                    <ul>
+                        <li><strong>Enable debug information</strong>: Set <code>debug = true</code> in the release profile. This keeps optimization but provides enough debug information for LLDB to map addresses to source.</li>
+                        <li><strong>Use a partial optimization profile</strong>: Configure a custom profile with <code>opt-level = 1</code> and <code>debug = true</code>. This is less aggressive than the default release profile and preserves more variables.</li>
+                        <li><strong>Isolate the suspicious function</strong>: Write a small test program that reproduces the bug with the same optimization settings. Debugging a small program is easier than debugging a large one.</li>
+                        <li><strong>Use <code>black_box</code></strong>: The <code>std::hint::black_box</code> function prevents the compiler from optimizing away a value that you want to inspect. It is a hint, not a guarantee, but it is often effective.</li>
+                        <li><strong>Inspect only what is available</strong>: When a value is optimized out, do not try to force it. Move to a nearby breakpoint where the value is still used, and inspect it there.</li>
+                    </ul>
+
+                    <section tabindex="0" aria-labelledby="example-black-box">
+                        <h4 id="example-black-box">Example: using <code>black_box</code></h4>
+                        <p>Consider:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn compute(x: i32, y: i32) -&gt; i32 {
+    let intermediate = x * y;
+    intermediate + 1
+}</code></pre>
+                        <p>In a release build, <code>intermediate</code> may be eliminated, because the compiler folds the multiplication and the addition into a single expression. If you try to inspect <code>intermediate</code>, LLDB may say it is optimized out.</p>
+                        <p>To force the compiler to keep the value:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::hint::black_box;
+
+fn compute(x: i32, y: i32) -&gt; i32 {
+    let intermediate = x * y;
+    black_box(intermediate);
+    intermediate + 1
+}</code></pre>
+                        <p>The <code>black_box</code> call tells the compiler to assume that the value has been observed, preventing it from being eliminated. This is a temporary modification for debugging; remove it when the investigation is done.</p>
+                        <p>Note that <code>black_box</code> is a hint. It greatly increases the likelihood that the compiler keeps the value, but it is not an absolute guarantee. If you still see <code>&lt;optimized out&gt;</code>, try enabling debug information, or restructure the code so the value is genuinely needed at the point you want to inspect it.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-common-mistake">
+                    <h3 id="a-common-mistake">A common mistake</h3>
+                    <p>A common mistake when debugging optimized code is to assume that a value shown by the debugger is the exact value the source-level variable held at that line. In an optimized build, the debugger is showing you what it can reconstruct from debug information and current machine state. The reconstruction is usually correct, but not always. When the reconstruction is uncertain, the debugger may show a value that differs slightly from the source-level one, because the source-level value has been transformed away.</p>
+                    <p>If you suspect that a shown value is not reliable, consider:</p>
+                    <ul>
+                        <li>Switching to a debug build to confirm the actual value.</li>
+                        <li>Adding a temporary <code>println!</code> or logging call at the point of interest.</li>
+                        <li>Using <code>black_box</code> to force the compiler to keep the value.</li>
+                    </ul>
+                    <p>The debugger is one of several tools, and the others are sometimes more appropriate for a specific question.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="building-debuggable-releases">
+                <h2 id="building-debuggable-releases">Building debuggable releases</h2>
+                <p>A practical recommendation: if your project has a release build that is used in production, add a separate profile for debugging, or enable debug information on the release profile. This makes it possible to inspect a production-like binary without compromising optimization.</p>
+                <p>A typical configuration:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.release]
+debug = true
+# optional: reduce optimization slightly to preserve more variables
+# opt-level = 2
+
+[profile.release-debug]
+inherits = "release"
+debug = true
+opt-level = 1
+lto = "off"</code></pre>
+                <p>The <code>release-debug</code> profile inherits from <code>release</code> but reduces the optimization level. This preserves more variables and reduces inlining, at a small cost in runtime performance. It is useful for reproducing bugs that appear only under optimization, without losing all the information the debugger needs.</p>
+                <p>Build with the custom profile:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --profile release-debug</code></pre>
+                <p>The resulting binary is placed in <code>target/release-debug/</code>. You can debug it with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/release-debug/your_program</code></pre>
+                <p>This is often the best compromise between fidelity to production behavior and observability in the debugger.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-ownership-and-optimization">
+                <h2 id="rust-2024-notes-on-ownership-and-optimization">Rust 2024 notes on ownership and optimization</h2>
+                <p>A few Rust 2024 specifics affect what you see when debugging ownership and optimized code.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-op-in-unsafe-fn-and-optimization">
+                    <h3 id="unsafe-op-in-unsafe-fn-and-optimization"><code>unsafe_op_in_unsafe_fn</code> and optimization</h3>
+                    <p>Rust 2024 warns when unsafe operations appear inside an <code>unsafe fn</code> without an explicit <code>unsafe { ... }</code> block. This is a source-level change, but it has a subtle effect on debugging optimized code: explicit <code>unsafe { ... }</code> blocks create natural boundaries that the optimizer respects more often than implicit unsafe regions. When you set a breakpoint at the opening of an <code>unsafe</code> block, you are less likely to find that the block was inlined into its caller, because the unsafe boundary is a stronger optimization barrier.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-and-optimization">
+                    <h3 id="static-mut-and-optimization"><code>static mut</code> and optimization</h3>
+                    <p>Rust 2024 forbids references to <code>static mut</code>. Code that previously used <code>&amp;static mut</code> now uses raw pointers or interior-mutability primitives. From an optimization perspective, this can change what the compiler assumes about aliasing and may change what the debugger sees. Raw pointer accesses are harder for the compiler to optimize aggressively, so you may find that values related to global state are more reliably inspectable in Rust 2024 builds than they were in earlier editions.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-generics">
+                    <h3 id="edition-2024-and-generics">Edition 2024 and generics</h3>
+                    <p>The Rust 2024 edition tightens several rules around generic code, particularly around lifetime capture in <code>impl Trait</code> and the meaning of certain trait bounds. From a debugging perspective, this mostly affects which instantiations exist in the binary, and therefore which breakpoints are meaningful. When you break on a generic function, LLDB may resolve the breakpoint to a specific instantiation, or to all of them. If the resolution is ambiguous, source-line breakpoints remain the most reliable alternative.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch11">
+                <h2 id="summary-ch11">Summary</h2>
+                <p>In this chapter, we covered the interaction between Rust’s static ownership rules and the runtime state that LLDB observes:</p>
+                <ul>
+                    <li><strong>Static vs. dynamic</strong>: Ownership is a static question, answered by the compiler. Runtime state is a dynamic question, answered by LLDB. Keeping the two categories straight avoids wasted effort.</li>
+                    <li><strong>Moves and stale memory</strong>: A moved-from value may still have its bytes in memory. The debugger can show them, but they do not mean the value is valid. Trust the source-level rules, not the debugger’s display.</li>
+                    <li><strong>References and borrows</strong>: The debugger shows the referenced value by default. When in doubt, dereference explicitly with <code>(*expr).field</code> or <code>expr-&gt;field</code>. Mutable references change as you step forward, which makes them useful for tracking mutations.</li>
+                    <li><strong>Ownership bugs</strong>: These are compiler errors. Use <code>rustc --explain</code> for common ones such as E0382, E0502, E0499, E0597, and E0515. Use LLDB only when the question is about runtime behavior (for example, when does a <code>Drop</code> run).</li>
+                    <li><strong>Debug assertions</strong>: Debug builds enable overflow checks and other runtime checks that release builds may disable. This is why a bug may appear in one profile but not the other.</li>
+                    <li><strong>Optimized builds</strong>: Optimization can eliminate values, inline functions, reorder code, and change the shape of the machine program. Debugging an optimized build is harder, but possible with the right settings and strategies.</li>
+                    <li><strong>Debuggable releases</strong>: A separate profile that inherits from <code>release</code> but enables debug information and reduces optimization is often the best compromise.</li>
+                    <li><strong>Rust 2024 specifics</strong>: <code>unsafe</code> blocks are stronger optimization barriers, <code>static mut</code> restrictions change global-state access patterns, and tightening of generic rules affects which instantiations exist in the binary.</li>
+                </ul>
+                <p>The unifying theme: the debugger is a runtime instrument, and runtime behavior is the domain of dynamic questions. For everything static, the compiler is the tool. Learning to move fluently between the two views is what makes Rust debugging productive.</p>
+                <p>In the next chapter, we turn to two tools that extend the debugger’s reach: conditional breakpoints, which stop only when a specific condition is met, and watchpoints, which stop when a value changes. Both are essential for debugging bugs that appear only in rare circumstances or depend on subtle state changes.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-10.html">← Chapter 10</a>
+            <a class="nav-next" href="./chapter-12.html">Chapter 12 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

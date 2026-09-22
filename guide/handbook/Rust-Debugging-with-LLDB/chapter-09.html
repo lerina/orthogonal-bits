@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 9: Inspecting Rust Values – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch9-heading">
+            <h1 id="ch9-heading">Chapter 9: Inspecting Rust Values</h1>
+
+            <p>Once you have stopped the program at a chosen location, the next task is to look at what is actually there. This is the heart of debugging: comparing the state the program has with the state you expected. Everything else, stepping, frames, backtraces, breakpoints, exists to bring you to a place where you can inspect a value and ask whether it is correct.</p>
+            <p>In this chapter, we will look at how to inspect Rust values in LLDB. We will start with the primary command, <code>frame variable</code>, and then work through the common Rust types: primitives, strings, vectors, maps, structs, enums, references, and the arguments that entered a function. Along the way, we will see the discipline of inspecting one value at a time, which is particularly important in a screen-reader workflow.</p>
+
+            <section tabindex="0" aria-labelledby="the-right-tool-frame-variable">
+                <h2 id="the-right-tool-frame-variable">The right tool: <code>frame variable</code></h2>
+                <p>LLDB offers two families of commands for looking at values:</p>
+                <ul>
+                    <li><code>frame variable</code> reads the current storage associated with a variable and formats it using debug information. It does not evaluate anything.</li>
+                    <li><code>expression</code> (or <code>expr</code>) tries to evaluate an expression in the current frame. It may call into user code, allocate memory, or run into language semantics the debugger’s expression evaluator does not fully support.</li>
+                </ul>
+                <p>For inspecting Rust values, <code>frame variable</code> is almost always the right tool. It is fast, safe, and reliable. Because it does not evaluate, it has no side effects. Because it uses debug information, it can render complex values using the Rust pretty-printers.</p>
+                <p>The general form is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable
+frame variable NAME
+frame variable NAME.FIELD
+frame variable NAME.0</code></pre>
+                <p>Where <code>NAME</code> is a local variable, a function argument, or an expression referring to nested fields or tuple indices.</p>
+                <p>We will use <code>frame variable</code> almost exclusively in this chapter. We return to <code>expression</code> in a later chapter, when the situation calls for it.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-primitives">
+                <h2 id="inspecting-primitives">Inspecting primitives</h2>
+                <p>The simplest case is inspecting primitive values. Suppose you have:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let count: i32 = 42;
+let ratio: f64 = 0.75;
+let active: bool = true;
+let letter: char = 'R';</code></pre>
+                <p>With the program stopped inside the same function, ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable count</code></pre>
+                <p>You should see something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(int) count = 42</code></pre>
+                <p>Notice the type shown is <code>int</code>, not <code>i32</code>. This is because LLDB renders the underlying C-level type. For Rust primitives, the underlying machine-level representation is the same as the corresponding C integer or floating-point type, so the layout matches. The Rust type information is still present in debug information, but the pretty-printer chooses to display the C name for simple values.</p>
+                <p>The same command works for the other primitives:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable ratio
+(double) ratio = 0.75
+(lldb) frame variable active
+(bool) active = true
+(lldb) frame variable letter
+(char) letter = 'R'</code></pre>
+                <p>These outputs are compact and readable. For a screen-reader workflow, this is ideal: one value, one line, one clear type.</p>
+                <p>Two details are worth noting:</p>
+                <ul>
+                    <li><strong>Bool</strong>: Rust’s <code>bool</code> is displayed as <code>true</code> or <code>false</code>, not as <code>0</code> or <code>1</code>. The Rust pretty-printer is handling the formatting.</li>
+                    <li><strong>Char</strong>: Rust’s <code>char</code> is a Unicode scalar value, not a C <code>char</code>. LLDB renders it as a quoted character, which matches the way you would write the value in Rust source.</li>
+                </ul>
+                <p>If you ask for a variable that does not exist in the current frame, LLDB will say something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>error: no variable named 'count' in this frame</code></pre>
+                <p>As we saw in the previous chapter, the most common cause is being in the wrong frame. Use <code>bt</code> and <code>frame select</code> to move to the correct one.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-strings">
+                <h2 id="inspecting-strings">Inspecting strings</h2>
+                <p>Strings are one of the first places where Rust’s type system becomes visible in the debugger. Rust has two string types that matter here:</p>
+                <ul>
+                    <li><strong><code>&amp;str</code></strong>: a borrowed string slice, consisting of a pointer and a length.</li>
+                    <li><strong><code>String</code></strong>: an owned, growable, heap-allocated string.</li>
+                </ul>
+                <p>Both are rendered by the Rust pretty-printers in a readable form.</p>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let name = "Alice";                  // &amp;str
+let owned = String::from("Bob");     // String</code></pre>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable name
+(const char *) name = 0x... "Alice"
+
+(lldb) frame variable owned
+(std::string) owned = "Bob"</code></pre>
+                <p>The <code>&amp;str</code> is shown as a C string pointer with the contents in quotes. The <code>String</code> is shown as a fully materialized string. Both give you the human-readable text, which is what you usually want.</p>
+                <p>When the pretty-printers are not active, the <code>String</code> is displayed as its internal fields instead:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(alloc::string::String) owned = {
+    vec = {
+        buf = {
+            ptr = { pointer = 0x... }
+            cap = 3
+            alloc = { ... }
+        }
+        len = 3
+    }
+}</code></pre>
+                <p>This is the same value, but the presentation is far less useful. If you see this form, check that you launched the debugger with <code>rust-lldb</code> rather than plain <code>lldb</code>.</p>
+                <p>A detail worth knowing: Rust strings are UTF-8 encoded. A <code>String</code> can contain any sequence of valid UTF-8 bytes, including multi-byte characters. The pretty-printer handles multi-byte characters correctly, displaying them as the characters they represent.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-vectors-and-slices">
+                <h2 id="inspecting-vectors-and-slices">Inspecting vectors and slices</h2>
+                <p>Vectors (<code>Vec&lt;T&gt;</code>) and slices (<code>&amp;[T]</code>) are the primary sequence types in Rust. Both are rendered as their element lists.</p>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let numbers = vec![10, 20, 30, 40];
+let slice = &amp;numbers[1..3];</code></pre>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable numbers
+(std::vector&lt;int, ...&gt;) numbers = size=4 {
+    [0] = 10
+    [1] = 20
+    [2] = 30
+    [3] = 40
+}
+
+(lldb) frame variable slice
+(...) slice = size=2 {
+    [0] = 20
+    [1] = 30
+}</code></pre>
+                <p>The exact formatting varies with LLDB version and pretty-printer configuration, but the shape is consistent: the vector shows its length and its elements, and the slice shows the portion it refers to.</p>
+                <p>For a vector of strings:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let names = vec![
+    String::from("Alice"),
+    String::from("Bob"),
+];</code></pre>
+                <p>The output shows each element rendered as a string, not as a nested struct. This is the pretty-printer composing type-specific formatters across nested values.</p>
+                <p>When a vector is very long, LLDB may truncate the display. You can inspect individual elements directly:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable numbers[2]</code></pre>
+                <p>This gives you just the third element, without the surrounding structure. For a screen-reader workflow, this is often more useful than dumping the entire vector.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-maps-and-other-collections">
+                <h2 id="inspecting-maps-and-other-collections">Inspecting maps and other collections</h2>
+                <p>Rust’s standard library also provides <code>HashMap</code>, <code>BTreeMap</code>, <code>HashSet</code>, and <code>BTreeSet</code>. The pretty-printers render these as their entry lists:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::collections::HashMap;
+
+let mut scores: HashMap&lt;String, u32&gt; = HashMap::new();
+scores.insert("Alice".to_string(), 100);
+scores.insert("Bob".to_string(), 85);</code></pre>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable scores
+(std::unordered_map&lt;...&gt;) scores = size=2 {
+    ["Alice"] = 100
+    ["Bob"] = 85
+}</code></pre>
+                <p>The exact form and ordering of entries depend on the map type. <code>HashMap</code> entries are not in any particular order; <code>BTreeMap</code> entries are sorted by key. In both cases, you see the semantic content: keys and values.</p>
+                <p>Inspecting a single entry directly is also possible:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable scores["Alice"]</code></pre>
+                <p>However, this can be unreliable for <code>HashMap</code>, because the index expression must be evaluated as an operator. In practice, it is safer to dump the whole map and read the entry you care about, or to inspect the map through a helper method in your code.</p>
+                <p>For very large collections, the output is naturally large. The strategy of inspecting one value at a time applies here: instead of dumping the entire collection, consider adding a temporary helper in your code that extracts the specific entry you want to inspect, and inspect that instead.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-structs">
+                <h2 id="inspecting-structs">Inspecting structs</h2>
+                <p>Structs are the fundamental way to group related data in Rust. LLDB renders them field by field.</p>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>struct User {
+    name: String,
+    age: u32,
+    active: bool,
+}
+
+let user = User {
+    name: String::from("Alice"),
+    age: 30,
+    active: true,
+};</code></pre>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable user
+(User) user = {
+    name = "Alice"
+    age = 30
+    active = true
+}</code></pre>
+                <p>This is a small, readable view. For a screen-reader workflow, the field-by-field presentation is easy to scan because each field is on its own line and has a clear label.</p>
+                <p>To inspect a single field:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable user.name
+(std::string) user.name = "Alice"
+
+(lldb) frame variable user.age
+(unsigned int) user.age = 30</code></pre>
+                <p>Nested field access works as you would expect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable user.name.0</code></pre>
+                <p>However, <code>.0</code> on a <code>String</code> is not the string’s bytes; it is the underlying <code>Vec&lt;u8&gt;</code>. This is one of the few cases where the pretty-printed form (<code>"Alice"</code>) is far more useful than the raw field access. Use field access for struct fields you have defined; use the pretty-printed form for types the standard library provides.</p>
+                <p>A note on tuple structs: they have fields accessed by index (<code>.0</code>, <code>.1</code>, and so on). LLDB renders them the same way as regular structs, but the field names are numbers:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable pair
+(...) pair = {
+    [0] = 10
+    [1] = 20
+}</code></pre>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-nested-values">
+                <h2 id="inspecting-nested-values">Inspecting nested values</h2>
+                <p>Real Rust programs often have deeply nested structures. A configuration might contain a server sub-struct, which itself contains a TLS sub-struct, which contains a certificate path. Dumping the top-level config in full produces a large, hard-to-read output. Inspecting one field at a time produces a much clearer picture.</p>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Server {
+    host: String,
+    port: u16,
+}
+
+struct Config {
+    server: Server,
+    debug: bool,
+}
+
+let config = Config {
+    server: Server { host: "localhost".to_string(), port: 8080 },
+    debug: false,
+};</code></pre>
+                <p>Instead of dumping the entire config:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config</code></pre>
+                <p>which shows every field, inspect one path at a time:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config.server.host
+(std::string) config.server.host = "localhost"
+
+(lldb) frame variable config.server.port
+(unsigned short) config.server.port = 8080
+
+(lldb) frame variable config.debug
+(bool) config.debug = false</code></pre>
+                <p>Three small, targeted outputs are easier to read than one large block. In a screen-reader workflow, this is the difference between a usable session and a frustrating one.</p>
+                <p>This also helps when the config contains a field you do not care about, such as a large data structure that would flood the output. By asking only for the fields you want, you avoid producing output you do not need.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-enums">
+                <h2 id="inspecting-enums">Inspecting enums</h2>
+                <p>Enums are more interesting than structs because a value of an enum type is one of several variants. LLDB shows which variant is active and, if the variant carries data, the data it carries.</p>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Message {
+    Quit,
+    Write(String),
+    Move { x: i32, y: i32 },
+}
+
+let msg = Message::Move { x: 10, y: 20 };</code></pre>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable msg
+(Message) msg = Move {
+    x = 10
+    y = 20
+}</code></pre>
+                <p>This tells you several things at once: the enum type, the variant name, and the data the variant carries. For a <code>Move</code> variant with two fields, both are shown. For a <code>Quit</code> variant with no data, the output is simply:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable msg
+(Message) msg = Quit</code></pre>
+                <p>For a tuple-style variant, the fields are numbered:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable msg
+(Message) msg = Write("Hello")</code></pre>
+                <p>Enums are one of the places where the debugger is most valuable. Because <code>match</code> can dispatch on the variant, the specific variant active at runtime is not always obvious from reading the source. The debugger shows you exactly which variant is in play.</p>
+                <p>We will return to enums in the next chapter, when we look at <code>Option</code>, <code>Result</code>, and panics in more detail. For now, the important point is that the debugger exposes the variant and its data.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspecting-references-and-borrows">
+                <h2 id="inspecting-references-and-borrows">Inspecting references and borrows</h2>
+                <p>Rust code frequently contains references: <code>&amp;T</code> and <code>&amp;mut T</code>. When the debugger shows you a reference, you need to distinguish between two things:</p>
+                <ul>
+                    <li><strong>The reference itself</strong>: a pointer with a lifetime, at a specific memory address.</li>
+                    <li><strong>The value referenced</strong>: the data at the address the reference points to.</li>
+                </ul>
+                <p>For most debugging, you want the value referenced.</p>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn update(config: &amp;mut Config) {
+    // ...
+}</code></pre>
+                <p>Stop inside <code>update</code>. Inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config
+(Config *) config = 0x... {
+    server = { ... }
+    debug = false
+}</code></pre>
+                <p>Depending on LLDB version and pretty-printer configuration, the reference may be dereferenced automatically for display, showing you the value at the other end of the pointer. If it is not, you may need to ask for a field of the referenced value:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config-&gt;debug</code></pre>
+                <p>Or, equivalently:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable (*config).debug</code></pre>
+                <p>Both forms tell LLDB to dereference the pointer before accessing the field. In practice, most Rust references are rendered with the dereferenced value automatically, because the Rust pretty-printers understand the reference type. If you see a raw address instead of a value, it usually means the reference is to a type the pretty-printer does not handle, or that optimizations have eliminated the value.</p>
+                <p>For a <code>&amp;str</code>, the debugger shows the string directly:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable name
+(const char *) name = 0x... "Alice"</code></pre>
+                <p>For a <code>&amp;[T]</code>, the debugger shows the slice:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable items
+(...) items = size=3 {
+    [0] = ...
+    [1] = ...
+    [2] = ...
+}</code></pre>
+                <p>For a <code>&amp;mut T</code>, the same as for <code>&amp;T</code>, but the mutation is now visible: as you step forward, the value at that address changes.</p>
+                <p>A common pitfall: <code>frame variable config</code> on a reference may show the pointer value rather than the referenced value. When in doubt, try accessing a field through the reference, such as <code>config.field</code> or <code>(*config).field</code>. If that works, the reference is being followed correctly.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="arguments">
+                <h2 id="arguments">Arguments</h2>
+                <p>Function arguments are part of the current frame. They are, in practice, the most frequently inspected values in any debugging session, because arguments tell you what entered a function.</p>
+                <p>For:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn parse(input: &amp;str, strict: bool) -&gt; Result&lt;Config, Error&gt;</code></pre>
+                <p>use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable</code></pre>
+                <p>or inspect them individually:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable input
+(const char *) input = 0x... "..."
+(lldb) frame variable strict
+(bool) strict = false</code></pre>
+                <p>Ask the fundamental question:</p>
+                <blockquote>
+                    <p>What entered this function?</p>
+                </blockquote>
+                <p>Then:</p>
+                <blockquote>
+                    <p>Is it already wrong?</p>
+                </blockquote>
+                <p>Then:</p>
+                <blockquote>
+                    <p>Or does it become wrong here?</p>
+                </blockquote>
+                <p>The answer determines the direction of the next investigation. If the argument is already wrong on entry, the bug is upstream, in the caller. If the argument is correct on entry, the bug is either inside this function or downstream, after the function passes the value on.</p>
+                <p>Arguments are especially useful as debugging landmarks because they are always present at the entry of a function. Even if some locals have been optimized away, the arguments are usually accessible. This makes a breakpoint at a function entry a reliable observation point.</p>
+                <p>One useful technique: when you are unsure which function is at fault, place breakpoints at the entry of every function in the call path and inspect their arguments. The first function that receives an incorrect argument is the one whose caller is at fault.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="locating-the-first-bad-value">
+                <h2 id="locating-the-first-bad-value">Locating the first bad value</h2>
+                <p>Suppose the final error is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>invalid configuration</code></pre>
+                <p>Do not immediately investigate the final error.</p>
+                <p>Trace the value backward.</p>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Where was the value created?
+
+Where was it transformed?
+
+Where did it become invalid?
+
+Which function first received the invalid value?</code></pre>
+                <p>Set breakpoints at those transitions.</p>
+                <p>Then inspect the value.</p>
+                <p>The debugger becomes a tool for locating the <strong>first incorrect state</strong>.</p>
+
+                <section tabindex="0" aria-labelledby="worked-example-first-wrong-state">
+                    <h3 id="worked-example-first-wrong-state">Worked example: first wrong state</h3>
+                    <p>Suppose this program prints the wrong result:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+struct Config {
+    path: String,
+    debug: bool,
+}
+
+fn find_config() -&gt; Option&lt;Config&gt; {
+    let path = std::env::var("CONFIG_PATH").ok()?;
+
+    if path.is_empty() {
+        return None;
+    }
+
+    Some(Config {
+        path,
+        debug: false,
+    })
+}
+
+fn load_config() -&gt; Option&lt;Config&gt; {
+    let config = find_config()?;
+    Some(config)
+}
+
+fn main() {
+    let config = load_config();
+
+    match config {
+        Some(c) =&gt; println!("{}", c.path),
+        None =&gt; println!("no config"),
+    }
+}</code></pre>
+                    <p>The final symptom is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>no config</code></pre>
+                    <p>Do not start at <code>main</code>. Start at the boundary:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name find_config
+(lldb) run</code></pre>
+                    <p>At entry:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable</code></pre>
+                    <p>You may see nothing useful yet. Step over the <code>std::env::var</code> call:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                    <p>Inspect <code>path</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable path</code></pre>
+                    <p>If <code>path</code> is correct, continue:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                    <p>Check the <code>if</code> branch. Inspect:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable path</code></pre>
+                    <p>If <code>path</code> is empty here, you have found the first wrong state.</p>
+                    <p>The investigation is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>main
+→ load_config
+→ find_config
+→ env var
+→ empty path</code></pre>
+                    <p>Now you can ask the real question:</p>
+                    <blockquote>
+                        <p>Why is <code>CONFIG_PATH</code> empty or missing?</p>
+                    </blockquote>
+                    <p>That is much better than guessing at the final <code>None</code>.</p>
+                    <p>Note the debugging discipline here. We did not start by inspecting <code>main</code>. We started at a boundary, inspected the value at a specific point, and moved backward step by step until we found the first place where reality diverged from expectation. This is the opposite of stepping forward from the beginning of the program, and it is far more efficient when you have a concrete symptom to trace.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="value-inspection-discipline">
+                <h2 id="value-inspection-discipline">Value inspection discipline</h2>
+                <p>A debugging session is a sequence of small observations. The way you manage those observations determines how productive the session feels.</p>
+                <p>A few rules of thumb:</p>
+                <ul>
+                    <li><strong>Inspect the smallest useful piece of state.</strong> Ask for a single field rather than an entire struct, when the whole struct is not needed.</li>
+                    <li><strong>Ask one question at a time.</strong> Instead of “what is the state of the config,” ask “what is <code>config.server.port</code>.”</li>
+                    <li><strong>Compare with expectations.</strong> An inspection only has meaning when you compare it with what you expected. Say the expectation out loud, or write it down: “I expect <code>config.debug</code> to be <code>true</code> here.” Then check.</li>
+                    <li><strong>Record the surprising values.</strong> When a value differs from your expectation, that difference is the evidence you were looking for. Note it before moving on.</li>
+                    <li><strong>Avoid dumping collections.</strong> A map with a hundred entries produces output that is hard to read. A single key access, or a temporary helper function in your code, produces a much clearer observation.</li>
+                </ul>
+                <p>For screen-reader workflows, these rules are especially important. Output that is easy to scan visually can be overwhelming when spoken aloud. One value at a time is the safest and most effective pattern.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="when-the-value-looks-wrong">
+                <h2 id="when-the-value-looks-wrong">When the value looks wrong</h2>
+                <p>Sometimes, the debugger shows a value that does not match what you know to be true. There are several possible explanations, and it is worth knowing which one applies before concluding that the program is broken.</p>
+
+                <section tabindex="0" aria-labelledby="moved-values">
+                    <h3 id="moved-values">Moved values</h3>
+                    <p>When a value is moved, the compiler marks the original variable as no longer valid. But the bytes may still be present in memory, and LLDB may still show them if you ask. This can produce the illusion that a moved-from value “still has data.” In practice, the source-level rules still apply: the moved-from value cannot be used, and any appearance to the contrary is a debugger artifact, not a signal about the program’s actual behavior.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="optimized-out-values">
+                    <h3 id="optimized-out-values">Optimized-out values</h3>
+                    <p>In optimized builds, LLDB may report a value as <code>&lt;optimized out&gt;</code>. This means the compiler decided not to keep storage for the value at this point. There is no runtime data to read. This is expected behavior, not a debugger bug. If you need to inspect such a value, switch to a debug build, or restructure the code so the value is used at the point you care about.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="stale-values">
+                    <h3 id="stale-values">Stale values</h3>
+                    <p>When you step backward through an execution history, or inspect a frame that has returned, the value may be from an earlier point in time. This is rare in normal forward-stepping debugging, but it can occur when you inspect frames deep in the stack whose variables are no longer in scope.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="reference-visualization">
+                    <h3 id="reference-visualization">Reference visualization</h3>
+                    <p>A reference displays the value at the other end of the pointer, which is what you want most of the time. But occasionally the display shows the pointer itself, or a stale pointer, or a pointer into memory the program no longer owns. When the displayed value seems impossible, ask whether you are looking at the pointer or the referenced value. <code>frame variable (*expr).field</code> is often more explicit than relying on automatic dereference.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-value-inspection">
+                <h2 id="rust-2024-notes-on-value-inspection">Rust 2024 notes on value inspection</h2>
+                <p>A few Rust 2024 specifics affect what you see when inspecting values:</p>
+                <ul>
+                    <li><strong><code>unsafe extern</code> blocks</strong>: Values declared inside an <code>unsafe extern</code> block are external symbols. When you inspect them, the debugger shows the C-level type, because that is the type the external library declared. This is expected and matches the FFI boundary.</li>
+                    <li><strong><code>#[unsafe(no_mangle)]</code></strong>: Functions exposed with this attribute keep their source names. When you inspect their arguments, the names are the ones you declared in source, which is often clearer than the mangled names of other functions.</li>
+                    <li><strong><code>static mut</code> restrictions</strong>: Because Rust 2024 disallows references to <code>static mut</code>, global state is accessed through raw pointers or through interior-mutability primitives such as <code>Mutex</code>, <code>AtomicUsize</code>, or <code>UnsafeCell</code>. When you inspect such values, you will see the interior-mutability wrapper, not a bare reference. For example, a <code>Mutex&lt;T&gt;</code> shows the lock and the contained value; you may need to inspect the contained value after acquiring the lock in your code, or check the internal fields at the debugger level.</li>
+                    <li><strong>Async state</strong>: Futures are compiler-generated state machines. When you inspect a future, you see the state machine’s fields, including the variant indicating which suspension point the future is currently at. This is useful but can be verbose. In practice, most async debugging focuses on application state (the values inside the future), not the state machine’s internal structure.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch9">
+                <h2 id="summary-ch9">Summary</h2>
+                <p>In this chapter, we covered how to inspect Rust values in LLDB:</p>
+                <ul>
+                    <li><strong><code>frame variable</code></strong> is the primary tool. It reads existing storage and formats it with Rust pretty-printers. It does not evaluate, so it is fast, safe, and reliable.</li>
+                    <li><strong>Primitives</strong> display as their corresponding C types, with values rendered in Rust-friendly form (<code>true</code>/<code>false</code> for <code>bool</code>, quoted characters for <code>char</code>).</li>
+                    <li><strong>Strings</strong>: <code>&amp;str</code> shows as a C string pointer with contents in quotes; <code>String</code> shows as a materialized string.</li>
+                    <li><strong>Vectors and slices</strong>: rendered as element lists with length information.</li>
+                    <li><strong>Maps and sets</strong>: rendered as entry lists, with keys and values visible.</li>
+                    <li><strong>Structs</strong>: field-by-field view, with each field labeled and its value rendered by its own pretty-printer.</li>
+                    <li><strong>Enums</strong>: variant name plus the data the active variant carries.</li>
+                    <li><strong>References</strong>: shown as either the pointer or the referenced value, depending on the pretty-printer and configuration. When in doubt, dereference explicitly.</li>
+                    <li><strong>Arguments</strong>: the most important values in a frame, because they tell you what entered a function.</li>
+                    <li><strong>Locating the first wrong state</strong>: trace values backward from the symptom, stopping at each function boundary to ask whether the value is already wrong or becomes wrong here.</li>
+                    <li><strong>Discipline</strong>: inspect one small piece of state at a time, compare with expectations, and record surprising values.</li>
+                </ul>
+                <p>We also covered the common ways a value can look wrong in the debugger: moved values, optimized-out values, stale values, and reference-visualization quirks. None of these mean the debugger is broken; each has a specific explanation and a specific remedy.</p>
+                <p>In the next chapter, we will focus on the two most common Rust enums: <code>Option</code> and <code>Result</code>. These appear in almost every Rust program, and the debugger’s ability to show which variant is active and what data it carries is one of the most useful features of Rust debugging.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-08.html">← Chapter 8</a>
+            <a class="nav-next" href="./chapter-10.html">Chapter 10 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

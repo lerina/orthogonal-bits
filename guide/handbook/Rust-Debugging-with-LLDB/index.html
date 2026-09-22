@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust Debugging with LLDB – Table of Contents</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <h1>Rust Debugging with LLDB</h1>
+        <h2>A Progressive Manual for Rust Programmers</h2>
+        <p><strong>Debian, Cargo, rust-lldb, and LLDB</strong></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+        <nav aria-label="Table of Contents" role="navigation">
+            <h2 id="toc-heading">Table of Contents</h2>
+
+            <ul class="toc-list" aria-labelledby="toc-heading">
+                <li><a href="./preface.html">Preface</a></li>
+
+                <li><a href="./chapter-01.html">Chapter 1: Prerequisites and Setup on Debian</a></li>
+                <li><a href="./chapter-02.html">Chapter 2: What Debugging Actually Is</a></li>
+                <li><a href="./chapter-03.html">Chapter 3: Why Rust Debugging Is Different</a></li>
+                <li><a href="./chapter-04.html">Chapter 4: The Rust Debugging Stack</a></li>
+
+                <li><a href="./chapter-05.html">Chapter 5: First Debugging Session</a></li>
+                <li><a href="./chapter-06.html">Chapter 6: The Essential Commands</a></li>
+
+                <li><a href="./chapter-07.html">Chapter 7: Breakpoints</a></li>
+                <li><a href="./chapter-08.html">Chapter 8: Stepping, Frames, and Backtraces</a></li>
+                <li><a href="./chapter-09.html">Chapter 9: Inspecting Rust Values</a></li>
+
+                <li><a href="./chapter-10.html">Chapter 10: Option, Result, and Panics</a></li>
+                <li><a href="./chapter-11.html">Chapter 11: Ownership, References, and Optimized Builds</a></li>
+
+                <li><a href="./chapter-12.html">Chapter 12: Conditional Breakpoints, Expressions, and Watchpoints</a></li>
+                <li><a href="./chapter-13.html">Chapter 13: Threads and Async Rust</a></li>
+                <li><a href="./chapter-14.html">Chapter 14: Debugging Tests, Examples, and Workspace Binaries</a></li>
+
+                <li><a href="./chapter-15.html">Chapter 15: Traits, Generics, Closures, Iterators, and Macros</a></li>
+                <li><a href="./chapter-16.html">Chapter 16: Unsafe Rust, Memory, and FFI</a></li>
+
+                <li><a href="./chapter-17.html">Chapter 17: Breakpoint Strategy and the First Wrong State</a></li>
+                <li><a href="./chapter-18.html">Chapter 18: Debugging as Experimental Science</a></li>
+                <li><a href="./chapter-19.html">Chapter 19: When to Stop Using the Debugger</a></li>
+
+                <li><a href="./chapter-20.html">Chapter 20: Output Discipline and Screen-Reader Workflow</a></li>
+                <li><a href="./chapter-21.html">Chapter 21: Breakpoint Commands and Automated Observation</a></li>
+
+                <li><a href="./chapter-22.html">Chapter 22: The Progressive Learning Path</a></li>
+                <li><a href="./chapter-23.html">Chapter 23: Core Questions and the Minimal Command Set</a></li>
+
+                <li><a href="./appendix-a.html">Appendix A: Troubleshooting</a></li>
+                <li><a href="./appendix-b.html">Appendix B: Glossary and Minimal Command Reference</a></li>
+                <li><a href="./appendix-c.html">Appendix C: Exercises and Further Reading</a></li>
+            </ul>
+
+            <p class="toc-note">
+                Each chapter and appendix is on its own page, linked from this table of contents.
+            </p>
+        </nav>
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

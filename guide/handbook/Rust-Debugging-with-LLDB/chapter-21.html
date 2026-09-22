@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 21: Breakpoint Commands and Automated Observation – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch21-heading">
+            <h1 id="ch21-heading">Chapter 21: Breakpoint Commands and Automated Observation</h1>
+
+            <p>Every debugging session is a conversation with the running program. Breakpoints are how you ask a question: “stop here.” Once stopped, inspection commands are how you ask follow-up questions: “what is the value of this variable,” “what is the call stack,” “which thread is executing.” Most sessions involve many rounds of this: stop, inspect, continue, stop, inspect, continue.</p>
+            <p>When the same inspection is needed every time, the conversation becomes repetitive. A breakpoint that fires a hundred times, with the same three inspection commands typed each time, produces a hundred rounds of identical input. This is tedious for a human and even more so for a screen-reader workflow, where each typed command requires time and attention.</p>
+            <p>This chapter is about <strong>breakpoint commands</strong>: a way to attach a list of LLDB commands to a breakpoint so that when the breakpoint fires, those commands are executed automatically. This turns the debugger into a lightweight tracing tool, and it is one of the most effective ways to reduce the amount of manual work in a debugging session.</p>
+            <p>The chapter covers the mechanism, the practical patterns, and the ways to keep the automatic output manageable. It also discusses when automatic observation is the right tool and when it is not.</p>
+
+            <section tabindex="0" aria-labelledby="breakpoint-commands-section">
+                <h2 id="breakpoint-commands-section">Breakpoint commands</h2>
+                <p>LLDB can associate commands with breakpoints.</p>
+                <p>For example, a breakpoint can automatically execute:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>bt
+</code></pre>
+                <p>when hit.</p>
+                <p>The general mechanism is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint command add 1
+</code></pre>
+                <p>Then enter:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>bt
+DONE
+</code></pre>
+                <p>LLDB documents breakpoint command lists as a way to automatically perform actions when a breakpoint is hit.</p>
+                <p>This can be useful for repetitive investigations.</p>
+
+                <section tabindex="0" aria-labelledby="how-the-mechanism-works">
+                    <h3 id="how-the-mechanism-works">How the mechanism works</h3>
+                    <p>The mechanism has three parts:</p>
+                    <ol>
+                        <li><strong>The breakpoint</strong>: an ordinary breakpoint, set with the usual commands. It has a numeric ID.</li>
+                        <li><strong>The command list</strong>: a sequence of LLDB commands that should be executed each time the breakpoint fires.</li>
+                        <li><strong>The attachment</strong>: the act of associating the command list with the breakpoint.</li>
+                    </ol>
+                    <p>The attachment is done with the <code>breakpoint command add</code> command, followed by the breakpoint ID. LLDB then enters a multi-line editing mode, where each line is a command to be attached. The editing mode ends with the <code>DONE</code> keyword on its own line.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command add 1
+Enter your debugger command(s). Type 'DONE' to end.
+&gt; frame variable state
+&gt; bt 5
+&gt; DONE
+(lldb)
+</code></pre>
+                    <p>Now, whenever breakpoint 1 fires, LLDB executes <code>frame variable state</code>, then <code>bt 5</code>, then pauses and waits for the user to type the next command. The commands are run in sequence, and their output is displayed before the debugger stops and shows its prompt.</p>
+                    <p>By default, breakpoint commands execute and then return control to the user. The breakpoint still stops execution. The difference is that by the time the prompt is shown, the requested output has already been produced.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="one-command-per-line">
+                    <h3 id="one-command-per-line">One command per line</h3>
+                    <p>Each line in the command list is one LLDB command. The command is parsed exactly as if it had been typed at the prompt. This means that all the same options, arguments, and forms work inside a command list that would work at the prompt.</p>
+                    <p>For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command add 1
+&gt; frame variable config.timeout
+&gt; frame variable config.debug
+&gt; frame variable items.len
+&gt; bt 3
+&gt; DONE
+</code></pre>
+                    <p>Each of these commands produces the same output inside a breakpoint command list as it would when typed directly. This is important: the command list is not a limited subset of LLDB. It is the full command language.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="viewing-and-removing-commands">
+                    <h3 id="viewing-and-removing-commands">Viewing and removing commands</h3>
+                    <p>To view the commands attached to a breakpoint, use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command list 1
+</code></pre>
+                    <p>This shows the sequence of commands currently attached to breakpoint 1, in the same order they were added. If no commands are attached, LLDB reports that the breakpoint has no command list.</p>
+                    <p>To remove the commands from a breakpoint, use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command delete 1
+</code></pre>
+                    <p>This deletes the command list but does not delete the breakpoint itself. The breakpoint continues to fire; it just does not run the attached commands.</p>
+                    <p>To delete the breakpoint entirely, use <code>breakpoint delete 1</code>, as described in an earlier chapter. Deleting a breakpoint also deletes its command list, because the command list is part of the breakpoint.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-simple-example">
+                    <h3 id="a-simple-example">A simple example</h3>
+                    <p>Consider a program that processes a list of items:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process_items(items: &amp;[Item]) {
+    for item in items {
+        let result = compute(item);
+        println!("{}: {}", item.id, result);
+    }
+}
+</code></pre>
+                    <p>Suppose you want to see, for each item, its ID and the computed result, without stopping the program at each iteration. Set a breakpoint at the line where <code>result</code> is computed, then attach a command list:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 3
+(lldb) breakpoint command add 1
+&gt; frame variable item.id
+&gt; frame variable result
+&gt; continue
+&gt; DONE
+</code></pre>
+                    <p>The command list includes a <code>continue</code> at the end. This is the key pattern: after the inspection commands, <code>continue</code> resumes the program, so the debugger does not stop for the user to press <code>continue</code> manually. The program runs from one breakpoint hit to the next, and each hit produces a small block of output.</p>
+                    <p>The net effect is a trace of the loop: one line for each iteration, showing the ID and the result. The user did not have to type anything after the initial setup. This is automation in the simplest form.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-continue-command-in-a-command-list">
+                    <h3 id="the-continue-command-in-a-command-list">The <code>continue</code> command in a command list</h3>
+                    <p>The <code>continue</code> command inside a command list is what turns a breakpoint into a tracing tool. Without it, the breakpoint fires, the commands execute, and the debugger stops for the user. With it, the breakpoint fires, the commands execute, and the program resumes.</p>
+                    <p>This changes the character of the session entirely. Without <code>continue</code>, the breakpoint is a stopping point that requires user input. With <code>continue</code>, the breakpoint is a recording point that produces output as the program runs.</p>
+                    <p>For a screen-reader workflow, this is particularly valuable. Each breakpoint hit produces a small, predictable block of output, and the program keeps running. The user can listen to the output as it is produced, or can redirect it to a file for later reading. Either way, the user is not required to press <code>continue</code> manually for each hit.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-to-use-continue-and-when-not-to">
+                    <h3 id="when-to-use-continue-and-when-not-to">When to use <code>continue</code>, and when not to</h3>
+                    <p>The decision of whether to include <code>continue</code> in a command list depends on the goal:</p>
+                    <ul>
+                        <li><strong>Include <code>continue</code></strong> when you want a trace. The breakpoint fires many times, and you want each firing to produce output without requiring manual intervention.</li>
+                        <li><strong>Omit <code>continue</code></strong> when you want an inspection stop. The breakpoint fires, the commands produce output, and the debugger stops so that you can run additional commands interactively before deciding what to do next.</li>
+                    </ul>
+                    <p>A useful pattern is to start without <code>continue</code>, verify that the inspection commands produce the output you expect, and then add <code>continue</code> once you are satisfied with the format. This avoids a session that runs the program to completion before you have verified the output.</p>
+                    <p>To add or remove <code>continue</code> from an existing command list, delete the command list and re-add it with the desired commands. There is no in-place editing of a command list in LLDB; the commands are reattached as a block.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="attaching-commands-at-creation-time">
+                    <h3 id="attaching-commands-at-creation-time">Attaching commands at creation time</h3>
+                    <p>Some versions of LLDB support attaching commands to a breakpoint when the breakpoint is created, using the <code>--command</code> option or its equivalent. The exact syntax depends on the version. The general idea is that a breakpoint can be created with an attached command list in a single step:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 3 --command 'frame variable item.id' --command 'continue'
+</code></pre>
+                    <p>For multiple commands, the option can be repeated. This is convenient when the command list is short and known in advance. For longer lists, or for lists that are being developed interactively, the two-step approach (set the breakpoint, then add the commands) is often easier.</p>
+                    <p>Because the exact syntax of this feature varies across LLDB versions, the two-step approach is the most portable. It uses only the core <code>breakpoint set</code> and <code>breakpoint command add</code> commands, which are available in all recent versions.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="automated-observation-section">
+                <h2 id="automated-observation-section">Automated observation</h2>
+                <p>Suppose a function is called many times.</p>
+                <p>Instead of manually stopping every time:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint
+→ inspect
+→ continue
+</code></pre>
+                <p>you can attach commands to the breakpoint.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint command add 1
+</code></pre>
+                <p>then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable state
+bt
+DONE
+</code></pre>
+                <p>Now every hit produces the same observation.</p>
+                <p>This turns LLDB into a lightweight tracing tool.</p>
+
+                <section tabindex="0" aria-labelledby="why-automated-observation-matters">
+                    <h3 id="why-automated-observation-matters">Why automated observation matters</h3>
+                    <p>In a debugging session without automation, the user is the bottleneck. Each breakpoint hit requires typing one or more commands, reading the output, and deciding whether to continue. For a breakpoint that fires a hundred times, this is a hundred rounds of manual work.</p>
+                    <p>Automated observation removes the user from the loop. The debugger handles the repetitive work, and the user processes the output afterward. This has several benefits:</p>
+                    <ul>
+                        <li><strong>Speed</strong>: the program runs at full speed between breakpoint hits, rather than waiting for the user to type each command.</li>
+                        <li><strong>Consistency</strong>: every firing produces the same format of output, which is easier to compare across firings.</li>
+                        <li><strong>Reduced typing</strong>: the user does not need to type the same commands repeatedly.</li>
+                        <li><strong>Better focus</strong>: the user’s attention is on analyzing the output, not on remembering which commands to run.</li>
+                    </ul>
+                    <p>For a screen-reader workflow, these benefits are even more pronounced. Reducing the amount of typing reduces the time spent navigating the command line, and having a consistent output format makes the audio easier to follow.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-shape-of-a-tracing-session">
+                    <h3 id="the-shape-of-a-tracing-session">The shape of a tracing session</h3>
+                    <p>A tracing session has a characteristic shape:</p>
+                    <ol>
+                        <li><strong>Identify the location</strong> to trace. This is usually a function or a source line that is reached once per event of interest.</li>
+                        <li><strong>Set a breakpoint</strong> at that location.</li>
+                        <li><strong>Attach a command list</strong> that inspects the relevant state and then continues.</li>
+                        <li><strong>Run the program</strong>. The program traces itself, producing output at each hit.</li>
+                        <li><strong>Inspect the output</strong>. Either read it live or redirect it to a file.</li>
+                        <li><strong>Analyze the trace</strong> for patterns. The trace shows the sequence of values over time, which is often the evidence you need.</li>
+                    </ol>
+                    <p>The trace is a form of temporal evidence. A single breakpoint stop shows a snapshot; a trace shows a movie. For bugs that depend on the sequence of events, the trace is often more useful than any number of snapshots.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-to-trace">
+                    <h3 id="what-to-trace">What to trace</h3>
+                    <p>A good trace records the state that changes over time. Common targets include:</p>
+                    <ul>
+                        <li><strong>Loop iterations</strong>: the index, the current element, the accumulated result.</li>
+                        <li><strong>Function calls</strong>: the arguments, the return value, the call site.</li>
+                        <li><strong>State transitions</strong>: the current state, the event that triggered the transition.</li>
+                        <li><strong>Error paths</strong>: the error variant, the input that produced the error.</li>
+                        <li><strong>Resource usage</strong>: allocations, locks acquired, files opened.</li>
+                        <li><strong>Thread activity</strong>: which thread is executing, which task is running.</li>
+                    </ul>
+                    <p>The general principle is the same as for a single inspection: record the smallest useful piece of state. A trace with one field per line is easier to read than a trace with ten fields per line. If you need more fields, add them incrementally.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="formatting-the-output">
+                    <h3 id="formatting-the-output">Formatting the output</h3>
+                    <p>By default, each breakpoint command produces its output on its own line, in LLDB’s standard format. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(int) item.id = 1
+(int) result = 2
+</code></pre>
+                    <p>This is functional, but for a longer trace it can be verbose. Several techniques help:</p>
+                    <ul>
+                        <li><strong>Use expression output for compact lines</strong>: <code>expr item.id</code> produces just the value, without the type prefix. This is more compact than <code>frame variable item.id</code>.</li>
+                        <li><strong>Print a formatted line</strong>: <code>expr "item \(item.id) result \(result)"</code> produces a single line that combines the fields. The exact syntax of interpolation in LLDB expressions depends on the version, but the idea is to produce a single human-readable line per hit.</li>
+                        <li><strong>Use Python breakpoint commands</strong>: LLDB supports breakpoint commands written in Python, which can format the output however you want. This is more advanced but very powerful.</li>
+                    </ul>
+                    <p>For a screen-reader workflow, compact output is especially valuable. A trace with one line per hit is easier to follow than a trace with multiple lines per hit. If you need to keep the type information, consider putting it in a header rather than repeating it on every line.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="redirecting-the-trace-to-a-file">
+                    <h3 id="redirecting-the-trace-to-a-file">Redirecting the trace to a file</h3>
+                    <p>A long trace can overwhelm the terminal. Redirecting the trace to a file solves this and has two extra benefits:</p>
+                    <ul>
+                        <li><strong>Persistence</strong>: the trace is saved and can be reviewed after the session.</li>
+                        <li><strong>Searchability</strong>: the file can be searched with <code>rg</code> to find specific patterns.</li>
+                    </ul>
+                    <p>LLDB itself supports logging to a file with the <code>log</code> command, but a simpler approach is to run the debugger inside a terminal that supports session logging, or to run the whole session with output redirected:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/my_program &gt; trace.log 2&gt;&amp;1
+</code></pre>
+                    <p>The <code>2&gt;&amp;1</code> redirects standard error to standard output so that all the debugger’s output is captured in the same file. After the session, <code>trace.log</code> contains the full transcript.</p>
+                    <p>For a screen-reader workflow, this is often the best approach for long traces. The trace is collected quietly in the background, and the user reviews it afterward at their own pace. Searching the file with <code>rg</code> is faster than listening to the whole trace.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="limiting-the-trace">
+                    <h3 id="limiting-the-trace">Limiting the trace</h3>
+                    <p>A trace that runs for thousands of hits produces thousands of lines. Even if redirected to a file, this is a lot of evidence to process. Several techniques limit the trace to what is interesting:</p>
+                    <ul>
+                        <li><strong>Conditional breakpoints</strong>: attach a condition to the breakpoint so that it fires only when the interesting state occurs. For example, <code>item.id &gt; 100</code> would skip the first hundred iterations.</li>
+                        <li><strong>Counters in the command list</strong>: use a Python breakpoint command to maintain a counter and continue without printing until the counter reaches a threshold.</li>
+                        <li><strong>Filtering after the fact</strong>: write the trace to a file, then use <code>rg</code> to find specific lines. For example, search for lines containing a specific value.</li>
+                        <li><strong>Two-pass tracing</strong>: first run a trace with minimal output (just a hit count), to establish how many times the breakpoint fires. Then decide whether to trace in detail.</li>
+                    </ul>
+                    <p>For a screen-reader workflow, filtering after the fact is often the most effective. The trace file becomes a database that can be queried with <code>rg</code>, and the user only listens to the specific lines that match a query.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-tracing-example">
+                    <h3 id="a-worked-tracing-example">A worked tracing example</h3>
+                    <p>Consider a program that computes a running sum:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn compute_running_sum(values: &amp;[i32]) -&gt; i32 {
+    let mut sum = 0;
+    for value in values {
+        sum += value;
+    }
+    sum
+}
+
+fn main() {
+    let values = vec![1, 2, 3, 4, 5];
+    let result = compute_running_sum(&amp;values);
+    println!("sum = {}", result);
+}
+</code></pre>
+                    <p>Suppose the program reports an unexpected sum. Instead of stepping through the loop manually, trace the loop:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 4
+(lldb) breakpoint command add 1
+&gt; expr value
+&gt; expr sum
+&gt; continue
+&gt; DONE
+(lldb) run
+</code></pre>
+                    <p>The program runs to completion, producing output like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(int) value = 1
+(int) sum = 1
+(int) value = 2
+(int) sum = 3
+(int) value = 3
+(int) sum = 6
+(int) value = 4
+(int) sum = 10
+(int) value = 5
+(int) sum = 15
+</code></pre>
+                    <p>Each pair of lines shows the value and the running sum at the point of the breakpoint. The trace shows how the sum accumulates as each value is added. If the sum is wrong at the end, the trace shows where it diverges: the first line where <code>sum</code> is not what you expected is the origin of the bug.</p>
+                    <p>This is a direct application of the first-wrong-state principle, with the trace providing the sequence of states rather than a single snapshot.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-trace-as-evidence">
+                    <h3 id="the-trace-as-evidence">The trace as evidence</h3>
+                    <p>A trace is evidence in the same sense as a single inspection. It has properties that make it useful:</p>
+                    <ul>
+                        <li><strong>It is reproducible</strong>: running the program again with the same input produces the same trace (assuming the program is deterministic).</li>
+                        <li><strong>It is complete</strong>: the trace records every firing of the breakpoint, not just the ones the user happened to notice.</li>
+                        <li><strong>It is persistent</strong>: written to a file, the trace can be analyzed and shared.</li>
+                        <li><strong>It is comparable</strong>: two traces can be diffed to see how a change affected behavior.</li>
+                    </ul>
+                    <p>These properties make the trace a valuable debugging artifact. In many cases, a trace reveals the bug faster than a session of interactive stepping, because the pattern is easier to see in a sequence than in a series of individual observations.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-not-to-automate">
+                    <h3 id="when-not-to-automate">When not to automate</h3>
+                    <p>Automated observation is powerful, but it is not always the right approach:</p>
+                    <ul>
+                        <li><strong>The breakpoint fires too many times</strong>: if a breakpoint fires millions of times, the trace will be enormous, and the debugger’s output will dominate the runtime. Use a conditional breakpoint or a hit count to reduce the trace.</li>
+                        <li><strong>The inspection is complex</strong>: if the inspection requires reasoning at each step, automation prevents the user from reacting to what is seen. Interactive stepping is better in that case.</li>
+                        <li><strong>The breakpoint fires from multiple paths</strong>: if the breakpoint fires both for interesting events and for noise, the trace will be noisy. Refine the breakpoint or add a condition.</li>
+                        <li><strong>The bug depends on precise timing</strong>: adding commands to a breakpoint changes the timing of the program, which can hide or reveal the bug. In a timing-sensitive case, log-based observation is often better than debugger-based tracing.</li>
+                    </ul>
+                    <p>A practical rule: automate when the output is what you want and the number of hits is manageable. Do not automate when the inspection requires human judgment at each step, or when the trace would be overwhelmingly large.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tracing-versus-logging">
+                    <h3 id="tracing-versus-logging">Tracing versus logging</h3>
+                    <p>Both tracing and logging produce a sequence of records over time. They are often interchangeable in practice, but each has strengths:</p>
+                    <ul>
+                        <li><strong>Tracing with LLDB</strong>: works without source changes. The set of fields to record can be chosen at the debugger prompt, without rebuilding. This is useful for exploratory tracing, or for tracing code you do not want to modify.</li>
+                        <li><strong>Logging with the <code>log</code> crate</strong>: works in production and in long-running sessions. The log statements are part of the source, so the trace is reproducible across environments.</li>
+                    </ul>
+                    <p>For a bug that has already been reproduced, tracing with LLDB is often faster to set up. For a bug that requires long-running observation, logging is the only option. Many investigations use both: tracing to understand the pattern locally, and logging to confirm that the pattern holds in production.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="python-breakpoint-commands">
+                <h2 id="python-breakpoint-commands">Python breakpoint commands</h2>
+                <p>LLDB supports breakpoint commands written in Python. These are more powerful than LLDB command lists and are worth knowing about for cases where command lists are not flexible enough.</p>
+
+                <section tabindex="0" aria-labelledby="the-basics">
+                    <h3 id="the-basics">The basics</h3>
+                    <p>To attach a Python breakpoint command, use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command add --python 1
+</code></pre>
+                    <p>LLDB then opens a Python editing mode. The function entered is expected to accept three arguments:</p>
+                    <ul>
+                        <li><code>frame</code>: the current stack frame.</li>
+                        <li><code>bp_loc</code>: the breakpoint location that was hit.</li>
+                        <li><code>internal_dict</code>: a dictionary of internal LLDB state.</li>
+                    </ul>
+                    <p>A minimal Python breakpoint command looks like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>def breakpoint_function(frame, bp_loc, internal_dict):
+    value = frame.FindVariable('item')
+    print(f"item = {value}")
+    frame.GetThread().GetProcess().Continue()
+</code></pre>
+                    <p>The function can read variables from the frame, format the output as needed, and call <code>Continue()</code> to resume the program. This is the Python equivalent of a command list that inspects a value and continues.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-python-enables">
+                    <h3 id="what-python-enables">What Python enables</h3>
+                    <p>Python breakpoint commands enable several things that are difficult or impossible with plain LLDB commands:</p>
+                    <ul>
+                        <li><strong>Conditional printing</strong>: only print when a specific condition is true, even if the breakpoint fires unconditionally. This is more flexible than a breakpoint condition, because the condition can be based on state that is only available inside the Python callback.</li>
+                        <li><strong>Aggregate output</strong>: maintain counters, sums, or other aggregates across firings, and print only periodically. For example, print every hundredth hit.</li>
+                        <li><strong>Formatted output</strong>: produce output in any format, including JSON, CSV, or a custom format for later parsing.</li>
+                        <li><strong>Interacting with the process</strong>: access memory, call functions, or manipulate the process in ways that are cumbersome from the command line.</li>
+                        <li><strong>Automatic side effects</strong>: modify the program’s state for testing purposes, such as forcing a specific value into a variable at a specific point.</li>
+                    </ul>
+                    <p>For a complex tracing session, Python breakpoint commands are often the right tool. They require more setup, but they provide much more control over the trace.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-python-tracing-example">
+                    <h3 id="a-python-tracing-example">A Python tracing example</h3>
+                    <p>Consider a loop where the interesting hits are only the ones where a specific condition holds, but the condition is expensive to express as a breakpoint condition. Use a Python command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>def trace_interesting(frame, bp_loc, internal_dict):
+    item = frame.FindVariable('item')
+    if item.IsValid():
+        value = item.GetValueAsUnsigned()
+        if value % 100 == 0:
+            print(f"interesting item: {value}")
+    frame.GetThread().GetProcess().Continue()
+</code></pre>
+                    <p>This command inspects the <code>item</code> variable on each hit, but only prints when the value is divisible by 100. All other hits are silent. The program continues automatically.</p>
+                    <p>The trace produced contains only the interesting hits, so the output is smaller and easier to process. This is a form of filtering at the source rather than after the fact.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="accessing-values-in-python">
+                    <h3 id="accessing-values-in-python">Accessing values in Python</h3>
+                    <p>The <code>frame</code> argument provides access to the frame’s variables:</p>
+                    <ul>
+                        <li><code>frame.FindVariable('name')</code>: returns the variable with the given name, or an invalid variable object if it does not exist.</li>
+                        <li><code>variable.IsValid()</code>: returns True if the variable was found.</li>
+                        <li><code>variable.GetValueAsUnsigned()</code>: returns the value as an unsigned integer, useful for primitive types.</li>
+                        <li><code>variable.GetValue()</code>: returns the value as a string.</li>
+                        <li><code>variable.GetChildMemberWithName('field')</code>: for structs, returns the named field.</li>
+                        <li><code>variable.GetNumChildren()</code>: for collections, returns the number of elements.</li>
+                    </ul>
+                    <p>With these methods, a Python command can inspect arbitrary state, format it as needed, and print it. The output can be filtered, aggregated, or written to a file, depending on the need.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-trade-off">
+                    <h3 id="the-trade-off">The trade-off</h3>
+                    <p>Python breakpoint commands are more powerful than LLDB command lists, but they require:</p>
+                    <ul>
+                        <li><strong>Knowledge of the LLDB Python API</strong>: the API is documented, but it has many classes and methods.</li>
+                        <li><strong>More setup time</strong>: writing and debugging a Python breakpoint command takes longer than writing a two-line LLDB command list.</li>
+                        <li><strong>More chances for bugs</strong>: a Python command that accesses an invalid variable, or that calls the wrong API, may produce confusing errors or crash the debugger.</li>
+                    </ul>
+                    <p>The general guidance is to use LLDB command lists for simple traces and Python breakpoint commands for complex traces. If the trace needs only a few fields and no filtering, an LLDB command list is faster to set up. If the trace needs filtering, aggregation, or custom formatting, Python is the better choice.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-python-is-not-the-right-tool">
+                    <h3 id="when-python-is-not-the-right-tool">When Python is not the right tool</h3>
+                    <p>Python breakpoint commands are not the right tool for every tracing need. They are not the right choice when:</p>
+                    <ul>
+                        <li><strong>The command list is simple</strong>: an LLDB command list with a few lines is easier to write and easier to read.</li>
+                        <li><strong>The trace needs to be quick to set up</strong>: for a one-off investigation, the overhead of writing Python is not worth it.</li>
+                        <li><strong>The trace is being shared</strong>: LLDB command lists are easier to share because they are just LLDB commands that other users can paste directly.</li>
+                    </ul>
+                    <p>Use Python breakpoint commands when the flexibility they provide is essential. Otherwise, prefer the simpler LLDB command list.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="combining-breakpoint-commands-with-other-techniques">
+                <h2 id="combining-breakpoint-commands-with-other-techniques">Combining breakpoint commands with other techniques</h2>
+                <p>Breakpoint commands are most powerful when combined with other debugging techniques. A few common combinations:</p>
+
+                <section tabindex="0" aria-labelledby="with-conditional-breakpoints">
+                    <h3 id="with-conditional-breakpoints">With conditional breakpoints</h3>
+                    <p>A conditional breakpoint fires only when a condition is true. Combine it with a command list to trace only the interesting cases:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --file src/main.rs --line 4
+(lldb) breakpoint modify 1 --condition 'item.id &gt; 100'
+(lldb) breakpoint command add 1
+&gt; expr item.id
+&gt; expr sum
+&gt; continue
+&gt; DONE
+</code></pre>
+                    <p>The trace contains only hits where <code>item.id &gt; 100</code>, so it is smaller and focused on the interesting region. This is a common pattern for tracing a hot loop where only the later iterations matter.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="with-watchpoints">
+                    <h3 id="with-watchpoints">With watchpoints</h3>
+                    <p>A watchpoint stops when a value changes. Combine it with a command list to trace the sequence of changes:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) watchpoint set variable counter
+(lldb) watchpoint command add 1
+&gt; expr counter
+&gt; bt 2
+&gt; continue
+&gt; DONE
+</code></pre>
+                    <p>Each time <code>counter</code> changes, the command list prints its value and the top two frames of the stack (showing where the change occurred). The trace is a sequence of state transitions with their sources, which is often exactly the evidence needed for a subtle state bug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="with-thread-selection">
+                    <h3 id="with-thread-selection">With thread selection</h3>
+                    <p>In a multithreaded program, a breakpoint can fire on different threads. A command list can inspect the current thread and print thread information along with the value:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint command add 1
+&gt; thread list
+&gt; expr item.id
+&gt; continue
+&gt; DONE
+</code></pre>
+                    <p>Each hit produces a list of threads and the value being processed. The thread list shows which thread was active at that moment. For a bug that depends on interleaving, this trace shows the sequence of thread activity that led to the bug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="with-async-tasks">
+                    <h3 id="with-async-tasks">With async tasks</h3>
+                    <p>In async Rust, a breakpoint at a task boundary can be combined with a command list to trace task activity:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name process_request
+(lldb) breakpoint command add 1
+&gt; expr request.id
+&gt; bt 3
+&gt; continue
+&gt; DONE
+</code></pre>
+                    <p>Each hit corresponds to a request being processed by the runtime. The trace shows which requests were processed, in what order, and from which call site. For bugs that depend on task ordering, the trace reveals the actual interleaving that occurred.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="with-python-for-advanced-tracing">
+                    <h3 id="with-python-for-advanced-tracing">With Python for advanced tracing</h3>
+                    <p>For advanced cases, a Python breakpoint command can combine all the above:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>import json
+
+def trace_request(frame, bp_loc, internal_dict):
+    request = frame.FindVariable('request')
+    if request.IsValid():
+        request_id = request.GetChildMemberWithName('id').GetValueAsUnsigned()
+        print(json.dumps({"request_id": request_id}))
+    frame.GetThread().GetProcess().Continue()
+</code></pre>
+                    <p>This prints a JSON record for each request, which can be collected and analyzed by other tools. The trace becomes a data stream, processed by scripts rather than read line by line. This is the natural extension of tracing for large or complex systems.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-discipline-of-automated-observation">
+                <h2 id="the-discipline-of-automated-observation">The discipline of automated observation</h2>
+                <p>Automated observation is powerful, and like any power tool, it has discipline requirements.</p>
+
+                <section tabindex="0" aria-labelledby="start-small">
+                    <h3 id="start-small">Start small</h3>
+                    <p>Begin with a breakpoint without commands. Verify that it fires where you expect. Then add the inspection commands, still without <code>continue</code>. Verify that the output is what you want. Only then add <code>continue</code> and let the program run to completion.</p>
+                    <p>This staged approach catches mistakes early. If the breakpoint fires in an unexpected place, or if the inspection commands produce unexpected output, you find out before the trace runs the whole program.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="limit-the-trace">
+                    <h3 id="limit-the-trace">Limit the trace</h3>
+                    <p>Always consider how many times the breakpoint will fire. If the answer is “thousands,” reconsider the trace. Use a conditional breakpoint, or filter the trace after the fact, or add a Python counter that prints only occasionally.</p>
+                    <p>For a screen-reader workflow, an unbounded trace is particularly problematic. The audio output cannot keep up, and the relevant information is buried in noise. A bounded or filtered trace is much more useful.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="record-the-trace">
+                    <h3 id="record-the-trace">Record the trace</h3>
+                    <p>Redirect the trace to a file. Live reading of a long trace is difficult; reviewing a file is easier. The file can be searched, filtered, and diffed against other traces.</p>
+                    <p>A useful convention: name trace files after the investigation, such as <code>trace-requests-2024-01-15.log</code>. Include the date and the purpose. Later, when you return to the same bug, the trace is easy to find.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="delete-the-automation">
+                    <h3 id="delete-the-automation">Delete the automation</h3>
+                    <p>Once the trace has served its purpose, delete the breakpoint and its commands. A breakpoint that continues to fire automatically during unrelated investigations is a nuisance. Clean up after each tracing session.</p>
+                    <p>For a persistent tracing need, consider creating a dedicated script or alias that sets up the trace on demand. This keeps the automation out of the way when it is not needed.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-trace-is-not-the-answer">
+                    <h3 id="the-trace-is-not-the-answer">The trace is not the answer</h3>
+                    <p>A trace is evidence, not a conclusion. The trace shows the sequence of states; the user must interpret it. A trace that shows a value going wrong at some point still requires the same reasoning as a single inspection: what caused the value to be wrong, and where was it first produced.</p>
+                    <p>This is why the tracing session is best followed by a focused investigation. The trace identifies the transition; the debugger (or another tool) investigates the transition in detail. Tracing and interactive debugging are complementary.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-breakpoint-commands">
+                <h2 id="rust-2024-notes-on-breakpoint-commands">Rust 2024 notes on breakpoint commands</h2>
+                <p>The Rust 2024 edition does not change the syntax or behavior of breakpoint commands. The commands and their options are the same. A few interactions with the edition are worth noting.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-blocks-and-breakpoint-commands">
+                    <h3 id="unsafe-blocks-and-breakpoint-commands"><code>unsafe</code> blocks and breakpoint commands</h3>
+                    <p>Because Rust 2024 requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies, the source location of a breakpoint inside an <code>unsafe</code> block is more precise than in earlier editions. A command list attached to such a breakpoint sees exactly the state at the opening of the unsafe region, which is often the state that determines whether the region is sound.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks-and-tracing">
+                    <h3 id="unsafe-extern-blocks-and-tracing"><code>unsafe extern</code> blocks and tracing</h3>
+                    <p>Functions declared inside <code>unsafe extern</code> blocks appear under their foreign symbol names. A breakpoint attached to such a function fires when the foreign function is called. A command list can inspect the arguments at the FFI boundary, which is valuable for tracing across the language boundary.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-and-tracing-global-state">
+                    <h3 id="static-mut-and-tracing-global-state"><code>static mut</code> and tracing global state</h3>
+                    <p>Because Rust 2024 disallows references to <code>static mut</code>, tracing global state now goes through interior-mutability primitives or raw pointers. A command list that inspects a <code>Mutex</code> or an <code>AtomicUsize</code> must use the appropriate accessor. In the debugger, the wrapper is inspected directly, and the value inside is a field of the wrapper.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="async-closures-and-tracing">
+                    <h3 id="async-closures-and-tracing">Async closures and tracing</h3>
+                    <p>Rust 2024 stabilizes async closures. A breakpoint inside an async closure fires during each poll of the closure’s future. A command list can trace the values of the captured variables and the current state of the closure, providing a trace of the async computation across suspension points.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="python-breakpoint-commands-and-2024">
+                    <h3 id="python-breakpoint-commands-and-2024">Python breakpoint commands and 2024</h3>
+                    <p>The LLDB Python API is unaffected by the Rust edition. Python breakpoint commands written for earlier editions continue to work in Rust 2024, as long as the underlying symbol names and types are the same. If the edition changes a symbol name (which it can, for functions exposed via <code>#[unsafe(no_mangle)]</code> or <code>#[unsafe(export_name = "...")]</code>), the Python command may need updating to match.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch21">
+                <h2 id="summary-ch21">Summary</h2>
+                <p>In this chapter, we covered breakpoint commands and automated observation:</p>
+                <ul>
+                    <li><strong>The mechanism</strong>: attach commands to a breakpoint with <code>breakpoint command add</code>, enter one command per line, and end with <code>DONE</code>. Each hit executes the command list automatically.</li>
+                    <li><strong>The <code>continue</code> pattern</strong>: including <code>continue</code> at the end of a command list turns a breakpoint into a tracing tool. Without it, the breakpoint stops for the user; with it, the program runs continuously and produces a trace.</li>
+                    <li><strong>Automated observation</strong>: use command lists to record state across many firings without manual intervention. This is a form of tracing, and it is often the fastest way to see the sequence of states that leads to a bug.</li>
+                    <li><strong>Compact output</strong>: prefer <code>expr</code> over <code>frame variable</code> for smaller lines; consider Python for custom formatting or aggregation.</li>
+                    <li><strong>Redirection</strong>: redirect the trace to a file for persistence and searchability, especially with a screen reader.</li>
+                    <li><strong>Limiting the trace</strong>: use conditional breakpoints, counters, or post-hoc filtering to keep the trace manageable.</li>
+                    <li><strong>Python breakpoint commands</strong>: more powerful than LLDB command lists, with access to the full LLDB Python API. Use them for filtering, aggregation, or custom formatting.</li>
+                    <li><strong>Combining techniques</strong>: breakpoint commands work well with conditional breakpoints, watchpoints, thread selection, async tasks, and Python scripting.</li>
+                    <li><strong>Discipline</strong>: start small, limit the trace, record it, delete the automation when done, and remember that a trace is evidence rather than a conclusion.</li>
+                    <li><strong>Rust 2024 specifics</strong>: the edition does not change the breakpoint command syntax, but the new unsafe rules affect what appears in the source and in the debugger’s view, and may require updating Python commands that reference symbol names.</li>
+                </ul>
+                <p>The unifying principle: the debugger is a tool for producing evidence, and breakpoint commands are a way to produce evidence at scale. They turn a series of manual inspections into a single automated trace, freeing the programmer to focus on analysis rather than on repetitive typing.</p>
+                <p>In the next chapter, we step back and look at the entire learning path: how the skills introduced in this manual fit together, and how to continue developing them over time.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-20.html">← Chapter 20</a>
+            <a class="nav-next" href="./chapter-22.html">Chapter 22 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

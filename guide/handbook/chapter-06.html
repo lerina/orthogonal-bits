@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 6: Introduction to Error Handling – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch6-heading">
+            <h1 id="ch6-heading">Chapter 6: Introduction to Error Handling</h1>
+
+            <p>Welcome to <em>Chapter 6</em>!</p>
+            <p>After exploring composite types in the previous chapter, we now turn to a very important aspect of building robust and reliable software: <strong>error handling</strong>. In Rust, effectively handling errors isn’t just good practice; it’s a <em>core</em> part of mastering the language. It ensures our programs can gracefully manage unexpected situations, maintaining stability and predictability.</p>
+
+            <section tabindex="0" aria-labelledby="why-error-handling-matters">
+                <h2 id="why-error-handling-matters">Why error handling matters</h2>
+                <p>But why dedicate an entire chapter to error handling? There are several fundamental reasons:</p>
+                <ul>
+                    <li><strong>Robustness</strong>: Programs must handle unexpected inputs, system issues (such as missing files or denied permissions), and other anomalies without crashing. Good error handling makes software more resilient.</li>
+                    <li><strong>User experience</strong>: Clearly reporting errors helps users (and fellow developers!) understand what went wrong and potentially how to fix it.</li>
+                    <li><strong>Maintainability</strong>: A consistent approach to error handling makes code easier to read, understand, and modify over time.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-approach-to-errors">
+                <h2 id="rust-approach-to-errors">Rust’s approach to errors</h2>
+                <p>Rust takes a distinctive approach to error handling, heavily focused on safety and clarity, avoiding many common pitfalls found in other languages (such as unchecked exceptions or unhandled null/nil values). In Rust, errors primarily fall into two categories:</p>
+                <ul>
+                    <li><strong>Recoverable errors</strong>: These are problematic situations the program can anticipate and potentially handle or recover from, such as trying to open a file that doesn’t exist. Rust encourages explicit handling of these, usually via the Result&lt;T, E&gt; type.</li>
+                    <li><strong>Unrecoverable errors (panic)</strong>: These indicate serious, unexpected problems, typically bugs in the program (such as accessing an array index out of bounds), from which recovery isn’t expected. In these cases, Rust enters a panic state (using the panic! macro), which, by default, unwinds the stack and quits the current thread.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="core-tools-result-option">
+                <h2 id="core-tools-result-option">Core tools: Result and Option</h2>
+                <p>To manage these categories, Rust provides two fundamental enum types, which we’ve had a glimpse of before and will now explore thoroughly:</p>
+                <ul>
+                    <li><strong>Result&lt;T, E&gt;</strong>: Used for operations that might succeed (returning a value of type T in the Ok variant) or fail (returning an error of type E in the Err variant). It’s the primary tool for recoverable errors.</li>
+                    <li><strong>Option&lt;T&gt;</strong>: Used when a value might be present (the Some(T) variant) or absent (the None variant). It doesn’t necessarily signify an error, but rather the absence of an expected value, such as when a search yields no results.</li>
+                </ul>
+                <p>These types make the possibility of failure or absence an explicit part of a function’s signature, forcing callers to consider these cases and dramatically improving code reliability.</p>
+                <p>In this chapter, we’ll explore Rust’s error-handling mechanisms in detail. We will cover the following:</p>
+                <ul>
+                    <li><strong>The Result and Option types</strong>: How to use these enums effectively.</li>
+                    <li><strong>Handling Result and Option</strong>: Safe ways to extract values or handle Err and None cases (e.g., match, unwrap_or).</li>
+                    <li><strong>Propagating errors with ?</strong>: Simplifying error handling in call chains.</li>
+                    <li><strong>Custom error types</strong>: Creating specific error types for your application.</li>
+                    <li><strong>Useful crates</strong>: Introducing thiserror and anyhow for further simplification.</li>
+                    <li><strong>Logging errors</strong>: Techniques for recording useful information during execution.</li>
+                    <li><strong>Practical examples and best practices</strong>: Applying what we learn in realistic scenarios.</li>
+                </ul>
+                <p>Mastering error handling is essential for writing robust Rust software. This chapter will equip you with the tools and knowledge to do so effectively. Let’s get started!</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="introduction-to-result-and-option">
+                <h2 id="introduction-to-result-and-option">Introduction to Result and Option</h2>
+                <p>As mentioned, Result and Option are the cornerstones of handling errors and potentially missing values in Rust. They are both enum types defined in the standard library. Understanding their operation deeply is the first step toward writing safe and clear Rust code. Let’s start with Result.</p>
+
+                <section tabindex="0" aria-labelledby="the-result-type">
+                    <h3 id="the-result-type">The Result type</h3>
+                    <p>The Result type is Rust’s primary tool for handling operations that can fail. It is an enum defined in the standard library with two variants: Ok, which represents success and contains a value, and Err, which represents failure and contains an error value. The definition is as follows:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Result&lt;T, E&gt; {
+    Ok(T),  // Success: contains a value of type T
+    Err(E), // Failure: contains an error value of type E
+}</code></pre>
+                    <p>Here, T is the type of the value in the success case (Ok), and E is the type of the error in the failure case (Err). It’s important to note that T and E are <strong>generic type parameters</strong>. This means you can use Result with any combination of success and error types, making it incredibly flexible. T stands for the type of the value that will be returned in a success case, and E stands for the type of the error that will be returned in a failure case.</p>
+                    <p>For example, a function that parses a string into a number might return Result&lt;i32, ParseIntError&gt;, while a function that opens a file might return Result&lt;File, std::io::Error&gt;.</p>
+                    <p>Let’s look at a classic example – a division function that must handle division by 0:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Function returning a Result: Ok with an f64 result, or Err with a String error message.
+fn divide(numerator: f64, denominator: f64) -> Result&lt;f64, String&gt; {
+    if denominator == 0.0 {
+        // If denominator is zero, return an error (Err)
+        Err(String::from("Error: division by zero!"))
+    } else {
+        // Otherwise, return the result successfully (Ok)
+        Ok(numerator / denominator)
+    }
+}
+
+fn main() {
+    let result1 = divide(10.0, 2.0); // Successful call
+    let result2 = divide(5.0, 0.0);  // Failing call
+    // Use 'match' to handle both cases of the Result
+    match result1 {
+        Ok(value) => println!("Division 10/2 succeeded: {}", value), // Output: 5.0
+        Err(message) => println!("Error in division 10/2: {}", message),
+    }
+    match result2 {
+        Ok(value) => println!("Division 5/0 succeeded: {}", value),
+        Err(message) => println!("Error in division 5/0: {}", message), // Output: Error: division by zero!
+    }
+}</code></pre>
+                    <p>In this example, the divide function declares that it returns Result&lt;f64, String&gt;. If the operation is valid, it wraps the f64 result in Ok. If division by 0 is attempted, it wraps a String error message in Err. The calling code (in main) uses match to inspect the Result and act differently depending on whether it’s Ok or Err, extracting the value or the error message accordingly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-option-type">
+                    <h3 id="the-option-type">The Option type</h3>
+                    <p>The Option&lt;T&gt; type is used when a value might be present or absent. It’s defined as follows:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Option&lt;T&gt; {
+    Some(T), // Value is present: contains a value of type T
+    None,    // Value is absent
+}</code></pre>
+                    <p>Here, T is the type of the potentially present value. Option is very useful for functions that might not find what they’re looking for, or for representing optional fields in structs.</p>
+
+                    <section tabindex="0" aria-labelledby="option-example">
+                        <h4 id="option-example">Option example</h4>
+                        <p>Let’s see an example involving searching for a substring:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function searches for a word in a sentence.
+// It returns Option&lt;usize&gt;: Some(index) if the word is found, or None otherwise.
+fn find_word_index(haystack: &amp;str, needle: &amp;str) -> Option&lt;usize&gt; {
+    // The built-in .find() method on string slices already returns Option&lt;usize&gt;,
+    // which is very convenient.
+    haystack.find(needle)
+}
+
+fn main() {
+    let famous_phrase = "The quick brown fox jumps over the lazy dog.";
+    let word_to_find = "fox";
+    let word_not_present = "cat";
+    // --- Test Case 1: Word is found ---
+    println!("Searching for '{}'...", word_to_find);
+    match find_word_index(famous_phrase, word_to_find) {
+        Some(index) => println!("Success! Found at index {}.", index),
+        None => println!("Failure: Word not found."),
+    }
+    println!("---");
+    // --- Test Case 2: Word is NOT found ---
+    println!("Searching for '{}'...", word_not_present);
+    match find_word_index(famous_phrase, word_not_present) {
+        Some(index) => println!("Success! Found at index {}.", index),
+        None => println!("Correctly determined that the word was not found."),
+    }
+}</code></pre>
+                        <p>The find_word_index function uses the string slice’s built-in .find() method, which perfectly illustrates the use of Option&lt;usize&gt; by returning Some(index) if the substring is found, or None otherwise. Our single main function then demonstrates how to call this function and use a match statement to safely handle both the success (Some) and failure (None) cases, printing an appropriate message for each outcome.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="when-to-use-result-vs-option">
+                        <h4 id="when-to-use-result-vs-option">When to use Result versus Option</h4>
+                        <p>Choosing between Result and Option depends on the meaning you want to convey about the absence of a value:</p>
+                        <ul>
+                            <li>Use Result&lt;T, E&gt; when an operation can fail for a specific reason you want to communicate to the caller via the error type, E. It’s for recoverable errors.</li>
+                            <li>Use Option&lt;T&gt; when the absence of a value is a possible and normal outcome (e.g., search failed or optional data not provided), and the reason for absence isn’t important or is implicit.</li>
+                        </ul>
+                        <p>It’s also worth noting that from a programming perspective, Rust makes it very easy to convert between Option and Result, allowing you to adapt a function’s return type to the specific needs of your error-handling logic.</p>
+                        <p>Getting a good handle on Result and Option is really important. They encourage you to think about failure or missing values, which helps make Rust code clearer and much safer compared to languages that depend on unchecked exceptions or nulls.</p>
+                        <p>In the next section, we will start exploring how to implement error handling in Rust. We will gradually move from the simplest methods to the most advanced ones. There is no single way to do this, but of course, using the most advanced techniques makes your code more robust and less prone to errors. It also helps you better understand what went wrong and why, instead of just failing.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="handling-result-and-option">
+                <h2 id="handling-result-and-option">Handling Result and Option (unwrapping and alternatives)</h2>
+
+                <section tabindex="0" aria-labelledby="unrecoverable-errors-panic">
+                    <h3 id="unrecoverable-errors-panic">Unrecoverable errors: Understanding panic!</h3>
+                    <p>Before we look at the different ways to handle Result and Option, it’s important to understand Rust’s mechanism for dealing with <strong>unrecoverable errors</strong>. These are errors that indicate a bug or a state from which your program cannot safely continue. The primary tool for this is the panic! macro.</p>
+                    <p>When panic! is called, your program will, by default, stop execution immediately, unwind the stack (cleaning up memory as it goes), and print an error message. A panic signifies that something has gone so wrong that it’s impossible to proceed. This is Rust’s way of failing “loudly and early” rather than continuing with potentially corrupt data.</p>
+                    <p>You can call panic! directly in your code to signal an unrecoverable error state:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn check_critical_value(value: i32) {
+    if value < 0 {
+        // If the value is negative, it's an unrecoverable state for this function.
+        panic!("Critical value cannot be negative! Received: {}", value);
+    }
+    println!("Value {} is valid.", value);
+}
+
+fn main() {
+    check_critical_value(10); // This will run fine.
+    // The line below will cause the program to panic and terminate.
+    // check_critical_value(-5);
+    // This line will not be reached if the panic occurs.
+    println!("Program finished successfully.");
+}</code></pre>
+                    <p>While you can trigger a panic yourself, you’ll more often encounter panics when using methods that are shortcuts for this behavior, such as unwrap() and expect(). It’s helpful to remember that these methods are purposely designed to trigger a panic upon failure, which is an important aspect to keep in mind when using them effectively.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="introduction-to-unwrapping">
+                    <h3 id="introduction-to-unwrapping">Introduction to unwrapping</h3>
+                    <p>We’ve seen that match is a powerful and safe way of handling Result and Option. However, sometimes you might <em>know</em> with certainty (or near certainty) that a value is present (Ok or Some) and want to access that value directly. Rust provides methods for this, but it’s important to use them cautiously.</p>
+
+                    <section tabindex="0" aria-labelledby="using-unwrap-and-expect">
+                        <h4 id="using-unwrap-and-expect">Using unwrap and expect</h4>
+                        <p>The most direct methods for extracting the value are unwrap and expect:</p>
+                        <ul>
+                            <li><strong>unwrap()</strong>: If Result is Ok(value) or Option is Some(value), it returns value. If it’s Err or None, the program will panic (crashing the current thread):
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>// A simple function that returns a Result, for context.
+fn divide(a: f64, b: f64) -> Result&lt;f64, String&gt; {
+    if b == 0.0 {
+        Err("Division by zero".to_string())
+    } else {
+        Ok(a / b)
+    }
+}
+
+fn main() {
+    // --- Success Case ---
+    let ok_result = divide(10.0, 5.0);
+    // Print the Result before unwrapping to show its Ok(value) state.
+    println!("The Result before unwrap: {:?}", ok_result); // Prints: Ok(2.0)
+    // .unwrap() extracts the value from the Ok variant.
+    let value = ok_result.unwrap();
+    println!("The value after unwrap: {}", value); // Prints: 2.0
+
+    // --- Panic Case ---
+    // let err_result = divide(10.0, 0.0); // This would be Err("Division by zero")
+    // println!("The Result before panic: {:?}", err_result);
+    // // Calling .unwrap() on an Err variant will cause the program to panic.
+    // let value_panic = err_result.unwrap(); // This line would PANIC!
+}</code></pre>
+                            </li>
+                            <li><strong>expect(“error message”)</strong>: Works like unwrap, but if it panics, it will use the provided message as part of the panic output. It’s slightly better than unwrap as it lets you specify why you expected a value:
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>let non_existent_file: Result&lt;String, std::io::Error&gt; =
+    std::fs::read_to_string("file_no_exist.txt");
+// This will panic with the specified message
+// non_existent_file.expect("Expected the file to definitely exist!");</code></pre>
+                            </li>
+                        </ul>
+                        <p><strong>Caution</strong>: unwrap and expect turn a potentially recoverable error (Err or None) into an unrecoverable one (panic). Use them only when there is a logic bug in your program from which there’s no sensible recovery path, or in prototypes/examples where a crash is acceptable. In most production code, prefer safer methods.</p>
+                        <p>If you were to run a program with the .expect() call on a failing operation, the output would look something like this, clearly showing your custom message:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>thread 'main' panicked at 'Expected the file to definitely exist!: Os { code: 2, kind: NotFound, message: "No such file or directory" }', src/main.rs:4:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="safe-unwrapping-with-defaults">
+                        <h4 id="safe-unwrapping-with-defaults">Safe unwrapping with defaults</h4>
+                        <p>To access the value or provide a safe alternative without risking panic, Rust offers unwrap_or and unwrap_or_else:</p>
+                        <ul>
+                            <li><strong>unwrap_or(default_value)</strong>: Returns the contained value if Ok/Some. If Err/None, it returns the provided default_value (which must be of the same type as the Ok/Some value):
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>let err_result = divide(10.0, 0.0); // This is Err(...)
+let value_or_default = err_result.unwrap_or(0.0); // Doesn't panic, returns 0.0
+println!("Value or default: {}", value_or_default);
+
+let none_option: Option&lt;i32&gt; = None;
+let option_value = none_option.unwrap_or(100); // Returns 100
+println!("Option or default: {}", option_value);</code></pre>
+                            </li>
+                            <li><strong>unwrap_or_else(closure)</strong>: Similar to unwrap_or, but if the value is Err/None, it executes the provided <em>closure</em> (anonymous function) and returns the result of that closure. This is useful if the default value requires computation:
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>let err_result = divide(10.0, 0.0); // Err(...)
+let value_or_computed = err_result.unwrap_or_else(|err_msg| {
+    println!("Error during division: {}. Using fallback value.", err_msg);
+    -1.0 // Value computed/returned by the closure
+});
+println!("Value or computed: {}", value_or_computed);</code></pre>
+                            </li>
+                        </ul>
+                        <p>These methods are much safer and more common alternatives to unwrap/expect in robust code.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="using-combinators">
+                        <h4 id="using-combinators">Using combinators</h4>
+                        <p>While match is powerful, Rust provides several convenient methods on Result and Option called <strong>combinators</strong> that allow you to chain operations together in a more concise, functional style. These methods can often replace a match statement for common patterns. Let’s look at a few of the most common ones for Result:</p>
+                        <ul>
+                            <li><strong>map()</strong>: This applies a function to the contained Ok value. The map method takes a closure and applies it to the value inside an Ok, leaving an Err value untouched. The closure takes the success value (T) and returns a new value (U), and map returns Result&lt;U, E&gt;:
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let successful_parse: Result&lt;i32, _&gt; = "10".parse();
+    // If successful_parse is Ok(10), the closure |x| x * 2 is called with 10.
+    // The result is Ok(20).
+    let doubled_result = successful_parse.map(|x| x * 2);
+    println!("Doubled result: {:?}", doubled_result); // Prints: Ok(20)
+}</code></pre>
+                            </li>
+                            <li><strong>and_then</strong>: This chains another operation that might fail. The and_then method is used when you want to perform a subsequent operation that <em>also</em> returns a Result. If the initial Result is Ok, and_then calls the closure with the success value. The closure itself must return a new Result. If the initial Result is Err, the closure is not called, and the error is propagated:
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>// A function that only succeeds for even numbers.
+fn check_if_even(n: i32) -> Result&lt;i32, String&gt; {
+    if n % 2 == 0 {
+        Ok(n)
+    } else {
+        Err("Number is not even".to_string())
+    }
+}
+fn main() {
+    let successful_parse: Result&lt;i32, _&gt; = "10".parse();
+    let failed_parse: Result&lt;i32, _&gt; = "7".parse();
+    // Chain the parsing with the even check.
+    let even_result = successful_parse.and_then(check_if_even);
+    println!("Result for '10': {:?}", even_result); // Prints: Ok(10)
+    let odd_result = failed_parse.and_then(check_if_even);
+    println!("Result for '7': {:?}", odd_result); // Prints: Err("Number is not even")
+}</code></pre>
+                            </li>
+                            <li><strong>or_else</strong>: This provides a fallback operation that might also fail. The or_else method is used to handle an Err case by trying an alternative operation. If the initial Result is Ok, or_else does nothing and returns the Ok value. If it’s Err, it calls the closure with the error value. <em>Crucially, the closure passed to or_else must itself return a Result&lt;T, E&gt; of the same type</em>. This allows you to provide a fallback that could either succeed (Ok) or produce a different error (Err):
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // First attempt fails to parse.
+    let first_attempt: Result&lt;i32, _&gt; = "hello".parse();
+    // Second attempt will succeed.
+    let second_attempt: Result&lt;i32, _&gt; = "42".parse();
+    // Use or_else to try the second attempt if the first one fails.
+    // The closure `|_| second_attempt` is called because first_attempt is Err.
+    // It returns the second_attempt Result.
+    let final_result = first_attempt.or_else(|_| second_attempt);
+    println!("Final result after fallback: {:?}", final_result); // Prints: Ok(42)
+}</code></pre>
+                            </li>
+                        </ul>
+                        <p>These combinators allow for more expressive and concise error handling, enabling you to chain operations and handle errors inline.</p>
+                        <p>By mastering these techniques for unwrapping and handling Result and Option types, you’ll make your Rust code more reliable and easier to read. It helps ensure that errors are managed in a smooth and proper way, making your coding experience more confident and stress-free.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="propagating-errors-with-question-mark">
+                <h2 id="propagating-errors-with-question-mark">Propagating errors with ?</h2>
+                <p>While combinator methods are excellent for handling a single Result or Option, a common challenge in Rust is managing errors within a function that calls multiple other functions that might fail. To solve this problem and avoid deeply nested match statements, Rust provides a powerful and concise piece of syntactic sugar for error propagation: the question mark (?) operator.</p>
+
+                <section tabindex="0" aria-labelledby="the-problem-of-manual-propagation">
+                    <h3 id="the-problem-of-manual-propagation">The problem of manual propagation</h3>
+                    <p>Often, a function might call other functions that return Result or Option. If one of these inner calls fails (returns Err or None), we might want our outer function to also fail immediately, returning that specific error or None to its caller. Handling this manually with match at every step can become verbose:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Verbose example without '?'
+fn read_then_divide(file_path: &amp;str, divisor: f64) -> Result&lt;f64, String&gt; {
+    let content_result = std::fs::read_to_string(file_path);
+    let content = match content_result {
+        Ok(c) => c,
+        Err(e) => return Err(format!("File read error: {}", e)), // Manual propagation
+    };
+    let number_result = content.trim().parse::&lt;f64&gt;();
+    let number = match number_result {
+        Ok(n) => n,
+        Err(e) => return Err(format!("Number parse error: {}", e)), // Manual propagation
+    };
+    match divide(number, divisor) { // Using our previous 'divide' function
+        Ok(result) => Ok(result),
+        Err(e) => Err(e), // Manual propagation (simpler here)
+    }
+}</code></pre>
+                    <p>This code works, but the match blocks used solely for error propagation add noise.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-question-mark-operator-for-result">
+                    <h3 id="the-question-mark-operator-for-result">The ? operator for Result</h3>
+                    <p>Rust offers an elegant solution: the ? (question mark) operator. Placed at the end of an expression that returns a Result, it does exactly what the propagation match blocks did:</p>
+                    <ul>
+                        <li>If the Result is Ok(value), it unwraps value from the Ok, and execution continues.</li>
+                        <li>If the Result is Err(error), the ? operator <em>immediately halts</em> the execution of the current function and returns that Err(error) to the function’s caller.</li>
+                    </ul>
+                    <p><strong>Important</strong>: The ? operator can only be used inside functions that themselves return a compatible Result (the error type, E, of the inner Result must be convertible into the error type, E, of the Result returned by the current function, typically via the From trait).</p>
+
+                    <section tabindex="0" aria-labelledby="example-question-mark-for-result">
+                        <h4 id="example-question-mark-for-result">Example: the ? operator for Result with Result</h4>
+                        <p>Let’s rewrite the previous example using ?:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs;
+use std::num::ParseFloatError; // Specific error type for parse::&lt;f64&gt;
+use std::io; // For io::Error
+
+// Define a custom error type for our function
+#[derive(Debug)] // Implement Debug for printing
+enum ReadDivideError {
+    Io(io::Error),
+    Format(ParseFloatError),
+    Math(String), // For the error from our 'divide' function
+}
+
+// Implement `From` trait to allow '?' to automatically convert errors
+impl From&lt;io::Error&gt; for ReadDivideError {
+    fn from(err: io::Error) -> ReadDivideError {
+        ReadDivideError::Io(err)
+    }
+}
+
+impl From&lt;ParseFloatError&gt; for ReadDivideError {
+    fn from(err: ParseFloatError) -> ReadDivideError {
+        ReadDivideError::Format(err)
+    }
+}
+
+// We also need a way to convert the String error from 'divide'
+impl From&lt;String&gt; for ReadDivideError {
+    fn from(err: String) -> ReadDivideError {
+        ReadDivideError::Math(err)
+    }
+}
+
+// Our original 'divide' function (could also return ReadDivideError directly)
+fn divide(numerator: f64, denominator: f64) -> Result&lt;f64, String&gt; {
+    if denominator == 0.0 { Err(String::from("Division by zero!")) } else { Ok(numerator / denominator) }
+}
+
+// Function using '?' - Note it now returns our custom error type
+fn read_then_divide_with_qmark(file_path: &amp;str, divisor: f64) -> Result&lt;f64, ReadDivideError&gt; {
+    // '?' handles io::Error, converting it via From into ReadDivideError::Io
+    let content = fs::read_to_string(file_path)?;
+    // '?' handles ParseFloatError, converting it via From into ReadDivideError::Format
+    let number = content.trim().parse::&lt;f64&gt;()?;
+    // '?' handles the String error from divide, converting via From into ReadDivideError::Math
+    let result = divide(number, divisor)?;
+    Ok(result) // If all OK, return Ok(...)
+}
+
+fn main() {
+    // Create a dummy file for testing
+    fs::write("number.txt", "100.5").expect("Cannot write file");
+    match read_then_divide_with_qmark("number.txt", 2.0) {
+        Ok(r) => println!("Result with '?': {}", r), // Output: 50.25
+        Err(e) => println!("Error with '?': {:?}", e),
+    }
+    match read_then_divide_with_qmark("number.txt", 0.0) { // Test division by zero
+        Ok(r) => println!("Result with '?': {}", r),
+        Err(e) => println!("Error with '?': {:?}", e), // Output: Math("Division by zero!")
+    }
+    match read_then_divide_with_qmark("non_existent_file.txt", 2.0) { // Test missing file
+        Ok(r) => println!("Result with '?': {}", r),
+        Err(e) => println!("Error with '?': {:?}", e), // Output: Io(Os { code: 2, kind: NotFound, message: "No such file or directory" })
+    }
+    fs::remove_file("number.txt").ok(); // Clean up dummy file
+}</code></pre>
+                        <p><strong>Note</strong>: We implemented the From trait manually here. Later, we’ll see how the thiserror crate can generate these implementations automatically. The code is now significantly cleaner and more readable! The ? operator hides the repetitive error propagation logic.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-question-mark-operator-for-option">
+                    <h3 id="the-question-mark-operator-for-option">The ? operator for Option</h3>
+                    <p>The ? operator works analogously with Option&lt;T&gt;:</p>
+                    <ul>
+                        <li>If the Option is Some(value), it unwraps value, and execution continues.</li>
+                        <li>If the Option is None, the ? operator <em>immediately halts</em> the execution of the current function and returns None to the function’s caller.</li>
+                    </ul>
+                    <p>It can only be used in functions that return Option.</p>
+                    <p>Let’s see an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Function that finds the first number in a slice satisfying a condition
+// and possibly performs an operation on it.
+fn find_and_operate(slice: &amp;[i32], operation: fn(i32) -> Option&lt;i32&gt;) -> Option&lt;i32&gt; {
+    // Find the first element > 10. '?' propagates None if not found.
+    let found_element = slice.iter().find(|&amp;&amp;x| x > 10)?; // find returns Option&lt;&amp;i32&gt;
+    // Perform the operation on the found element.
+    // The operation itself might return None. '?' propagates this None too.
+    let operation_result = operation(*found_element)?; // Dereference found_element (*...)
+    Some(operation_result) // If all OK, return Some(...)
+}
+
+// Example operation: double if even, otherwise None
+fn double_if_even(n: i32) -> Option&lt;i32&gt; {
+    if n % 2 == 0 {
+        Some(n * 2)
+    } else {
+        None
+    }
+}
+
+fn main() {
+    let numbers1 = [5, 12, 8, 15, 6]; // First > 10 is 12 (even)
+    let numbers2 = [5, 8, 13, 9];     // First > 10 is 13 (odd)
+    let numbers3 = [1, 2, 3];         // No number > 10
+    println!("Operation result on {:?}: {:?}", numbers1, find_and_operate(&amp;numbers1, double_if_even)); // Output: Some(24)
+    println!("Operation result on {:?}: {:?}", numbers2, find_and_operate(&amp;numbers2, double_if_even)); // Output: None (because 13 is odd)
+    println!("Operation result on {:?}: {:?}", numbers3, find_and_operate(&amp;numbers3, double_if_even)); // Output: None (no number > 10 found)
+}</code></pre>
+                    <p>This example demonstrates how ? can chain Option-returning operations, short-circuiting the chain as soon as None is encountered.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-to-use-the-question-mark-operator">
+                    <h3 id="when-to-use-the-question-mark-operator">When to use the ? operator</h3>
+                    <p>The ? operator is a fantastic tool for reducing boilerplate when working with Result and Option. It’s the idiomatic choice when you want to quickly propagate an error or a None up the call stack. However, it’s not always the right choice: if a function needs to handle a specific error differently (e.g., log a special message or try an alternative operation), then match or other methods such as map_err might be more appropriate for that local error-handling logic.</p>
+                    <p>The ? operator is incredibly effective for propagating errors, but its power is fully realized when the errors being propagated are more descriptive than just a simple string.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="custom-error-types">
+                <h2 id="custom-error-types">Custom error types</h2>
+                <p>While Result&lt;T, String&gt; or generic errors such as std::io::Error suffice for simple cases, more complex applications greatly benefit from defining <strong>custom error types</strong>. This allows you to do the following:</p>
+                <ul>
+                    <li><strong>Distinguish</strong> between different application-specific failure modes.</li>
+                    <li><strong>Encapsulate</strong> additional information relevant to the error.</li>
+                    <li><strong>Implement</strong> more structured and meaningful error-handling logic.</li>
+                </ul>
+
+                <section tabindex="0" aria-labelledby="defining-custom-error-types-with-enum">
+                    <h3 id="defining-custom-error-types-with-enum">Defining custom error types with an enum</h3>
+                    <p>The most common and flexible way to create custom error types in Rust is using an enum. Each variant of the enum can represent a distinct class of error.</p>
+                    <p>Here is an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::num::ParseIntError; // Error from parsing integers
+
+// Our custom enum for data processing errors
+#[derive(Debug)] // Allows printing the error with :?
+enum DataProcessingError {
+    FileNotFound(String), // Contains the name of the missing file
+    InvalidFormat(ParseIntError), // Contains the original parsing error
+    NegativeValue(i32), // Contains the negative value found
+    IoError(std::io::Error), // Contains a generic I/O error
+}
+
+// We can implement methods or traits for our error enum
+impl DataProcessingError {
+    fn user_message(&amp;self) -> String {
+        match self {
+            DataProcessingError::FileNotFound(name) => format!("Error: Could not find file '{}'", name),
+            DataProcessingError::InvalidFormat(_) => String::from("Error: Invalid data format, expected an integer."),
+            DataProcessingError::NegativeValue(val) => format!("Error: Found negative value {}, expected positive.", val),
+            DataProcessingError::IoError(_) => String::from("Error: Problem during reading/writing."),
+        }
+    }
+}</code></pre>
+                    <p>Here, DataProcessingError defines four possible failure causes, some carrying specific data (such as FileNotFound or NegativeValue). We also added a user_message method for more user-friendly descriptions.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="implementing-standard-error-traits">
+                    <h3 id="implementing-standard-error-traits">Implementing standard error traits</h3>
+                    <p>To best integrate custom error types with the Rust ecosystem (e.g., to work smoothly with ? and third-party libraries), it’s good practice to implement two standard traits: std::fmt::Display (for user-friendly string representation) and std::error::Error (for advanced features such as error “sourcing”):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::{fmt, error}; // Import the traits
+
+// ---- Enum defined as before ----
+#[derive(Debug)]
+enum DataProcessingError {
+    FileNotFound(String),
+    InvalidFormat(ParseIntError),
+    NegativeValue(i32),
+    IoError(std::io::Error),
+}
+
+// Implement Display for user-friendly output (e.g., with {})
+impl fmt::Display for DataProcessingError {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -> fmt::Result {
+        match self {
+            DataProcessingError::FileNotFound(name) => write!(f, "Could not find file '{}'", name),
+            DataProcessingError::InvalidFormat(e) => write!(f, "Invalid data format: {}", e),
+            DataProcessingError::NegativeValue(val) => write!(f, "Found negative value {}, expected positive.", val),
+            DataProcessingError::IoError(e) => write!(f, "I/O error: {}", e),
+        }
+    }
+}
+
+// Implement the Error trait
+impl error::Error for DataProcessingError {
+    // The 'source()' method is optional but useful. It returns the underlying
+    // error that caused this error, if any.
+    fn source(&amp;self) -> Option&lt;&amp;(dyn error::Error + 'static)&gt; {
+        match self {
+            // If our error is InvalidFormat, the source is ParseIntError
+            DataProcessingError::InvalidFormat(ref e) => Some(e),
+            // If our error is IoError, the source is std::io::Error
+            DataProcessingError::IoError(ref e) => Some(e),
+            // Our other errors don't have a standard underlying cause
+            _ => None,
+        }
+    }
+}</code></pre>
+                    <p>In the DataProcessingError::IoError(ref e) pattern, the ref keyword is used to create a <strong>reference</strong> to the io::Error value inside the enum variant, rather than moving it. Because the source method only has a reference to itself (&amp;DataProcessingError), Rust’s ownership rules prevent us from moving io::Error out of it. Using ref e solves this by borrowing the error, which is exactly what we need to return a reference from the function.</p>
+                    <p>Implementing Display allows printing the error with println!("{}", err). Implementing Error (especially source) enables features such as printing an error’s cause chain.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-custom-errors-in-functions">
+                    <h3 id="using-custom-errors-in-functions">Using custom errors in functions</h3>
+                    <p>Now we can use our DataProcessingError as the E type in Result&lt;T, E&gt; within our functions:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs;
+
+// Function that reads a number from a file, validates it's positive
+fn read_positive_number(path: &amp;str) -> Result&lt;i32, DataProcessingError&gt; {
+    let content = fs::read_to_string(path)
+        // Manual error mapping needed here (for now)
+        .map_err(|e| DataProcessingError::IoError(e))?;
+    let number = content.trim().parse::&lt;i32&gt;()
+        // Manual error mapping needed here (for now)
+        .map_err(|e| DataProcessingError::InvalidFormat(e))?;
+    if number < 0 {
+        Err(DataProcessingError::NegativeValue(number))
+    } else {
+        Ok(number)
+    }
+}
+
+fn main() {
+    // Test with non-existent file (simulated)
+    match read_positive_number("non_existent_data.txt") {
+        Ok(n) => println!("Number read: {}", n),
+        Err(e) => println!("Error: {}", e), // Uses Display impl
+        // Output: Error: I/O error: No such file or directory ...
+    }
+    // Test with invalid format
+    fs::write("invalid_data.txt", "abc").unwrap();
+    match read_positive_number("invalid_data.txt") {
+        Ok(n) => println!("Number read: {}", n),
+        Err(e) => println!("Error: {}", e), // Output: Error: Invalid data format: invalid digit found in string
+    }
+    fs::remove_file("invalid_data.txt").ok();
+    // Test with negative value
+    fs::write("negative_data.txt", "-10").unwrap();
+    match read_positive_number("negative_data.txt") {
+        Ok(n) => println!("Number read: {}", n),
+        Err(e) => println!("Error: {}", e), // Output: Error: Found negative value -10, expected positive.
+    }
+    fs::remove_file("negative_data.txt").ok();
+    // Test success
+    fs::write("valid_data.txt", "123").unwrap();
+    match read_positive_number("valid_data.txt") {
+        Ok(n) => println!("Number read: {}", n), // Output: Number read: 123
+        Err(e) => println!("Error: {}", e),
+    }
+    fs::remove_file("valid_data.txt").ok();
+}</code></pre>
+                    <p><strong>Note</strong>: Error conversion using map_err is still manual here. We’ll simplify this next.</p>
+                    <p>Using custom error types makes the code clearer about potential failures and allows for more targeted error handling by the calling code.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="simplifying-custom-errors-thiserror-anyhow">
+                <h2 id="simplifying-custom-errors-thiserror-anyhow">Simplifying custom errors with thiserror and anyhow</h2>
+                <p>Manually implementing the Display and Error traits for every custom error type can become repetitive. Fortunately, the Rust community has created excellent <em>crates</em> (libraries) to streamline this process. The two most popular crates for error handling are thiserror and anyhow.</p>
+
+                <section tabindex="0" aria-labelledby="the-thiserror-crate">
+                    <h3 id="the-thiserror-crate">The thiserror crate</h3>
+                    <p>The thiserror crate drastically reduces the boilerplate code needed for custom errors. By using the #[derive(Error)] macro and attributes such as #[error("...")] and #[from], you can automatically generate Display and Error trait implementations, making your error types both ergonomic and powerful. The #[from] attribute is particularly useful as it generates From trait implementations, allowing the ? operator to automatically convert source errors (such as io::Error or ParseIntError) into the appropriate variant of your custom error enum.</p>
+                    <p>Let’s see a practical example with a main function that handles the various errors our function can produce.</p>
+                    <p>First, add thiserror to your Cargo.toml:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+thiserror = "2.0"</code></pre>
+                    <p>Then, redefine your error using the #[derive(Error, Debug)] macro and the #[error(...)] and #[from] attributes:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use thiserror::Error;
+use std::num::ParseIntError;
+use std::io;
+use std::fs;
+use std::path::Path;
+
+#[derive(Error, Debug)]
+pub enum DataProcessingError {
+    #[error("Invalid data format in file")]
+    InvalidFormat(#[from] ParseIntError),
+    #[error("Value '{0}' is negative and cannot be processed")]
+    NegativeValue(i32),
+    #[error("I/O error when accessing file")]
+    Io(#[from] io::Error),
+}
+
+/// Reads a number from a file and ensures it's not negative.
+fn read_positive_number(path: &amp;Path) -> Result&lt;i32, DataProcessingError&gt; {
+    // The '?' operator automatically converts io::Error into
+    // DataProcessingError::Io thanks to the #[from] attribute.
+    let content = fs::read_to_string(path)?;
+    // The '?' operator automatically converts ParseIntError into
+    // DataProcessingError::InvalidFormat thanks to the #[from] attribute.
+    let number = content.trim().parse::&lt;i32&gt;()?;
+    if number < 0 {
+        // We create this error variant manually.
+        Err(DataProcessingError::NegativeValue(number))
+    } else {
+        Ok(number)
+    }
+}
+
+fn main() {
+    // --- Setup dummy files for demonstration ---
+    fs::write("valid_number.txt", "123").unwrap();
+    fs::write("invalid_format.txt", "abc").unwrap();
+    fs::write("negative_number.txt", "-42").unwrap();
+
+    // --- Test different scenarios ---
+    println!("--- Test Case 1: Success ---");
+    let path_valid = Path::new("valid_number.txt");
+    match read_positive_number(path_valid) {
+        Ok(n) => println!("Successfully read positive number: {}", n),
+        Err(e) => eprintln!("An unexpected error occurred: {}", e),
+    }
+    println!("\n--- Test Case 2: File Not Found ---");
+    let path_nonexistent = Path::new("no_such_file.txt");
+    match read_positive_number(path_nonexistent) {
+        Ok(n) => println!("Read number: {}", n),
+        Err(e) => eprintln!("Error: {}", e), // Will print "I/O error when accessing file"
+    }
+    println!("\n--- Test Case 3: Invalid Format ---");
+    let path_invalid_format = Path::new("invalid_format.txt");
+    match read_positive_number(path_invalid_format) {
+        Ok(n) => println!("Read number: {}", n),
+        Err(e) => eprintln!("Error: {}", e), // Will print "Invalid data format in file"
+    }
+    println!("\n--- Test Case 4: Negative Value ---");
+    let path_negative = Path::new("negative_number.txt");
+    match read_positive_number(path_negative) {
+        Ok(n) => println!("Read number: {}", n),
+        Err(e) => eprintln!("Error: {}", e), // Will print "Value '-42' is negative..."
+    }
+    // --- Cleanup ---
+    fs::remove_file("valid_number.txt").ok();
+    fs::remove_file("invalid_format.txt").ok();
+    fs::remove_file("negative_number.txt").ok();
+}</code></pre>
+                    <p>This example demonstrates a more realistic use case. The main function acts as the entry point of an application that calls our read_positive_number function and handles its potential failures.</p>
+                    <ul>
+                        <li><strong>Error enum</strong>: DataProcessingError defines the specific ways our operation can fail. The #[from] attribute on the Io and InvalidFormat variants allows the ? operator in read_positive_number to automatically convert io::Error and ParseIntError into our custom error type.</li>
+                        <li><strong>main function logic</strong>: The main function sets up several test files to simulate different scenarios (success, file not found, bad data, and invalid value). It then calls read_positive_number for each case and uses a match statement to handle the Result.</li>
+                        <li><strong>Error output</strong>: When an Err is returned, eprintln!("Error: {}" e) prints the user-friendly message defined by the #[error("...")] attribute in our enum, demonstrating how thiserror automatically implements the Display trait.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-anyhow-crate">
+                    <h3 id="the-anyhow-crate">The anyhow crate</h3>
+                    <p>anyhow takes a different approach, primarily aimed at <strong>applications</strong> (or binaries). It provides a single, generic error type, anyhow::Error, designed to wrap <em>any</em> other error type that implements std::error::Error. Its goal is to simplify application-level error handling, where you often don’t need to <em>distinguish</em> between dozens of different error types programmatically, but just want to know that something went wrong and get a good error report (with context and a cause chain).</p>
+                    <p>Add anyhow to Cargo.toml:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+anyhow = "1.0"</code></pre>
+                    <p>Then, you can use anyhow::Result&lt;T&gt; (which is an alias for Result&lt;T, anyhow::Error&gt;) as your return type and use ? freely. anyhow::Error implements From for most common error types:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use anyhow::{Context, Result, bail}; // Import Result, Context, bail
+use std::fs;
+
+// The function now returns anyhow::Result
+fn read_positive_number_anyhow(path: &amp;str) -> Result&lt;i32&gt; {
+    let content = fs::read_to_string(path)
+        // context() adds contextual information to the original error
+        .context(format!("Failed to read file '{}'", path))?;
+    let number = content.trim().parse::&lt;i32&gt;()
+        .context("File content is not a valid integer")?;
+    if number < 0 {
+        // bail! is an easy way to create and return an anyhow::Error
+        bail!("The number read ({}) must be positive.", number);
+    }
+    Ok(number)
+}
+
+// main can also return anyhow::Result&lt;()&gt; for easy error propagation
+fn main() -> Result&lt;()&gt; {
+    fs::write("valid_data_ah.txt", "789").unwrap();
+    let number = read_positive_number_anyhow("valid_data_ah.txt")?;
+    println!("Success with anyhow: {}", number);
+    fs::remove_file("valid_data_ah.txt").ok();
+    // Test with error (negative value)
+    fs::write("negative_data_ah.txt", "-5").unwrap();
+    match read_positive_number_anyhow("negative_data_ah.txt") {
+        Ok(_) => println!("This shouldn't happen"),
+        Err(e) => {
+            // anyhow formats the error including context and cause chain
+            println!("Error with anyhow: {:?}", e);
+            // Output (approx): Error: The number read (-5) must be positive.
+        }
+    }
+    fs::remove_file("negative_data_ah.txt").ok();
+    // Test with error (file not found)
+    match read_positive_number_anyhow("nonexistent_ah.txt") {
+        Ok(_) => println!("This shouldn't happen"),
+        Err(e) => {
+            println!("Error with anyhow: {:?}", e);
+            // Output (approx):
+            // Error: Failed to read file 'nonexistent_ah.txt'
+            // Caused by:
+            //     No such file or directory (os error 2)
+        }
+    }
+    Ok(()) // main returns Ok if everything succeeded
+}</code></pre>
+                    <p>The following are key features of anyhow:</p>
+                    <ul>
+                        <li>Use anyhow::Result&lt;T&gt; (or Result&lt;T, anyhow::Error&gt;).</li>
+                        <li>The ? operator automatically converts most errors into anyhow::Error.</li>
+                        <li>The .context("...") method easily adds context to errors as they propagate.</li>
+                        <li>The bail!("...") macro is a convenient way to create and return an anyhow::Error from a specific point.</li>
+                        <li>anyhow::Error provides excellent formatting for display ({:?}), including context and the full cause chain.</li>
+                    </ul>
+                    <p>anyhow is great for application code (such as main, web handlers, and CLI tools) where you want simple error handling and good reporting, without needing to define dozens of custom error enums or manage complex conversions.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-to-use-thiserror-vs-anyhow">
+                    <h3 id="when-to-use-thiserror-vs-anyhow">When to use thiserror versus anyhow</h3>
+                    <ul>
+                        <li>Use thiserror in libraries to define a stable, specific set of errors that library consumers can handle programmatically (e.g., with match).</li>
+                        <li>Use anyhow in applications to simplify error handling and reporting, especially when you don’t need to programmatically distinguish between specific error types but just want to log/display a detailed error.</li>
+                    </ul>
+                    <p>Both crates are extremely useful and often used together: a library might use thiserror to define its errors, and an application using that library might use anyhow to handle those errors alongside others from various sources.</p>
+                    <p>Handling errors with Result is crucial for program correctness, but for debugging and monitoring, it’s equally important to record when and why these errors occur using a structured logging system.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="logging-errors">
+                <h2 id="logging-errors">Logging errors</h2>
+
+                <section tabindex="0" aria-labelledby="importance-of-logging">
+                    <h3 id="importance-of-logging">Importance of logging</h3>
+                    <p>Error handling often doesn’t stop at just returning a Result. Especially in complex applications or long-running services, having a <strong>logging</strong> system is important for tracking important events, warnings, and, critically, errors. Logging helps us do the following:</p>
+                    <ul>
+                        <li><strong>Diagnose</strong> problems after they occur (post-mortem debugging).</li>
+                        <li><strong>Monitor</strong> the application’s health in production.</li>
+                        <li><strong>Understand</strong> execution flow and identify bottlenecks or unexpected behavior.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-log-crate-and-implementations">
+                    <h3 id="the-log-crate-and-implementations">The log crate and implementations</h3>
+                    <p>The Rust ecosystem has a de facto standard logging facade crate called log. This crate defines a common logging API (macros such as info!, warn!, and error!) that libraries and applications can use to emit log messages. However, the log crate itself doesn’t <em>do</em> anything with the messages; it doesn’t write them anywhere. It needs a logging <strong>implementation</strong> backend that actually filters the messages and writes them to the console or a file, or sends them to an external service.</p>
+                    <p>One of the simplest and most common implementations to get started with is env_logger, which configures logging based on environment variables.</p>
+
+                    <section tabindex="0" aria-labelledby="basic-setup-with-env_logger">
+                        <h4 id="basic-setup-with-env_logger">Basic setup with env_logger</h4>
+                        <p>To use log and env_logger, add them to your Cargo.toml:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+log = "0.11"
+env_logger = "0.9" # Or latest version
+anyhow = "1.0" # Often useful alongside logging</code></pre>
+                        <p>Then, initialize the logger at the start of your application (usually in main):</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use log::{info, warn, error, debug, trace, LevelFilter}; // Import macros and LevelFilter
+use env_logger::{Builder, Env};
+use anyhow::Result; // Using anyhow for simplicity in examples
+
+fn main() -> Result&lt;()&gt; {
+    // Initialize env_logger. By default, reads RUST_LOG env var.
+    // We can set a default level if RUST_LOG is not defined.
+    Builder::from_env(Env::default().default_filter_or("info")) // Default to 'info' if RUST_LOG isn't set
+        .init();
+    info!("Application started."); // Logged at INFO level
+    match risky_operation(10) {
+        Ok(_) => info!("Operation successful."),
+        Err(e) => {
+            // Log the error at ERROR level. {:?} with anyhow shows the cause chain.
+            error!("Operation failed: {:?}", e);
+        }
+    }
+    match risky_operation(-5) {
+        Ok(_) => info!("Operation (negative) successful."),
+        Err(e) => {
+            error!("Operation (negative) failed: {:?}", e);
+        }
+    }
+    debug!("This is detailed debug information."); // Only visible if RUST_LOG=debug or trace
+    trace!("This message is very verbose."); // Only visible if RUST_LOG=trace
+    info!("Application finished.");
+    Ok(())
+}
+
+fn risky_operation(value: i32) -> Result&lt;()&gt; {
+    if value < 0 {
+        // Log a warning before returning the error
+        warn!("Attempting operation on negative value: {}", value);
+        anyhow::bail!("Value cannot be negative: {}", value);
+    }
+    debug!("Performing operation on value: {}", value);
+    // ... operation logic ...
+    Ok(())
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="logging-levels-and-configuration">
+                    <h3 id="logging-levels-and-configuration">Logging levels and configuration</h3>
+                    <p>With env_logger, you don’t control log levels directly in your Rust code; instead, you control them from your terminal by setting the RUST_LOG environment variable before running your program. This is a powerful feature because it allows you or users of your application to change the log verbosity for debugging without needing to recompile the code.</p>
+                    <p>The general pattern in your terminal is VARIABLE=value command. For a Rust project managed with Cargo, the command is typically cargo run. Let’s look at some examples:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code># In your terminal, in your project's root directory:
+# Run your program, showing only INFO, WARN, and ERROR messages (a good default).
+RUST_LOG=info cargo run
+# Show more detailed DEBUG messages and everything above (info, warn, error).
+RUST_LOG=debug cargo run
+# Show only WARNING and ERROR messages.
+RUST_LOG=warn cargo run
+# Show DEBUG messages only for your own crate's code, keeping libraries quieter.
+# Replace 'your_crate_name' with the actual name of your package from Cargo.toml.
+RUST_LOG=your_crate_name=debug cargo run
+# Show everything (can be very verbose, useful for deep debugging).
+RUST_LOG=trace cargo run</code></pre>
+                    <p>The most useful feature here is the ability to set log levels on a per-crate basis. For instance, RUST_LOG=my_web_app=debug (where my_web_app is the name of your crate from Cargo.toml) is incredibly helpful for seeing detailed logs from <em>your</em> application code while keeping the output from libraries you’re using (such as Actix Web or Diesel) at a less verbose level. This helps you focus on the logs that matter most for your immediate debugging task.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="logging-errors-with-context">
+                    <h3 id="logging-errors-with-context">Logging errors with Context</h3>
+                    <p>When logging an error (especially using error!), it’s crucial to include as much context as possible. If you’re using anyhow, the {:?} format specifier on anyhow::Error is excellent because it automatically includes context added via .context() and the chain of causes:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use anyhow::{Context, Result};
+use log::error;
+// ... (other imports and logger init) ...
+
+fn read_config(path: &amp;str) -> Result&lt;String&gt; {
+    std::fs::read_to_string(path)
+        .context(format!("Unable to read configuration file from '{}'", path))
+}
+
+fn main() -> Result&lt;()&gt; {
+    // ... init logger ...
+    match read_config("config.toml") {
+        Ok(config) => log::info!("Configuration read: {} bytes", config.len()),
+        Err(e) => {
+            // Log the error using anyhow's detailed formatting
+            error!("Failed to read configuration: {:?}", e);
+            // Example log output:
+            // ERROR [my_app] Failed to read configuration: Unable to read configuration file from 'config.toml'
+            // Caused by:
+            //     No such file or directory (os error 2)
+        }
+    }
+    Ok(())
+}</code></pre>
+                    <p>Good error logging is indispensable for maintaining and diagnosing complex Rust applications.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="practical-examples-and-best-practices">
+                <h2 id="practical-examples-and-best-practices">Practical examples and error handling best practices</h2>
+                <p>We’ve covered the fundamental mechanisms (Result, Option, ?, match, custom errors, and logging). Now, let’s consolidate this with a more integrated example and summarize key best practices for error handling in Rust.</p>
+
+                <section tabindex="0" aria-labelledby="practical-example-file-data-processing">
+                    <h3 id="practical-example-file-data-processing">Practical example: File data processing</h3>
+                    <p>Imagine a program that reads numbers from a file (one per line), validates them (must be positive), and calculates their sum. It needs to handle I/O errors, number format errors, and validation errors:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fs::File;
+use std::io::{self, BufRead, BufReader};
+use thiserror::Error; // Using thiserror for specific processing errors
+use anyhow::{Context, Result}; // Using anyhow for app level and context
+use log::{info, warn, error};
+
+// Specific error for this processing logic
+#[derive(Error, Debug)]
+enum ProcessingError {
+    #[error("Invalid number format on line {line_num}: '{content}'")]
+    InvalidFormat {
+        line_num: usize,
+        content: String,
+        #[source] // Original source error
+        source: std::num::ParseIntError,
+    },
+    #[error("Negative number {number} not allowed on line {line_num}")]
+    NegativeNumber {
+        line_num: usize,
+        number: i32,
+    },
+    // Could add other specific errors here
+}
+
+// Function to process a single line
+fn process_line(line_content: &amp;str, line_num: usize) -> Result&lt;i32, ProcessingError&gt; {
+    let number = line_content.trim().parse::&lt;i32&gt;()
+        .map_err(|e| ProcessingError::InvalidFormat {
+            line_num,
+            content: line_content.to_string(),
+            source: e, // Include original parse error
+        })?;
+    if number < 0 {
+        Err(ProcessingError::NegativeNumber { line_num, number })
+    } else {
+        Ok(number)
+    }
+}
+
+// Main file processing function
+fn process_file_and_sum(filename: &amp;str) -> anyhow::Result&lt;i32&gt; {
+    info!("Starting file processing: {}", filename);
+    let file = File::open(filename)
+        .context(format!("Failed to open file '{}'", filename))?; // Anyhow context
+    let reader = BufReader::new(file);
+    let mut total_sum = 0;
+    let mut lines_processed = 0;
+    for (index, line_result) in reader.lines().enumerate() {
+        let line_num = index + 1;
+        let line = line_result.context(format!("Failed reading line {}", line_num))?; // Anyhow context for I/O
+        match process_line(&amp;line, line_num) {
+            Ok(number) => {
+                total_sum += number;
+                lines_processed += 1;
+            }
+            Err(e) => {
+                // Log the specific error but continue with other lines
+                warn!("Error processing line {}: {} - Skipping line.", line_num, e);
+                // Could also choose to stop here by returning Err(e.into())
+                // which works if ProcessingError impls Error, as anyhow::Error impls From&lt;E: Error&gt;
+            }
+        }
+    }
+    info!("File processing complete. Lines processed: {}. Total sum: {}", lines_processed, total_sum);
+    Ok(total_sum)
+}
+
+fn main() -> anyhow::Result&lt;()&gt; {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // Create a test file
+    use std::io::Write;
+    let mut file = File::create("test_data.txt")?;
+    writeln!(file, "10")?;
+    writeln!(file, "25")?;
+    writeln!(file, "-5")?; // Error: negative
+    writeln!(file, "abc")?; // Error: format
+    writeln!(file, "15")?;
+    drop(file); // Ensure file is closed
+    match process_file_and_sum("test_data.txt") {
+        Ok(sum) => {
+            info!("Final sum calculated: {}", sum); // Should be 10 + 25 + 15 = 50
+            assert_eq!(sum, 50); // Add a check
+            println!("Sum calculated successfully: {}", sum);
+        }
+        Err(e) => {
+            // Errors here would likely be I/O errors opening the file,
+            // as internal errors are logged but not propagated by process_file_and_sum
+            error!("Critical error during file processing: {:?}", e);
+        }
+    }
+    std::fs::remove_file("test_data.txt")?; // Clean up test file
+    Ok(())
+}</code></pre>
+                    <p>This example combines several concepts:</p>
+                    <ul>
+                        <li>Defining a custom error (ProcessingError) with thiserror for specific processing failures.</li>
+                        <li>Using anyhow::Result and .context() for the main process_file_and_sum function, handling I/O errors, and adding context.</li>
+                        <li>The process_line function returns the specific ProcessingError.</li>
+                        <li>In the loop within process_file_and_sum, specific errors from process_line are caught using match. Here, we choose to log them as warn! and <em>continue</em> processing subsequent lines, rather than halting everything (a common design choice).</li>
+                        <li>Logging (info!, warn!, and error!) tracks progress and reports issues.</li>
+                    </ul>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch6">
+                <h2 id="summary-ch6">Summary</h2>
+                <p>Great job getting through <em>Chapter 6</em>!</p>
+                <p>Error handling can seem intimidating, but as you’ve seen, Rust gives you a clear and powerful toolkit to manage it with confidence.</p>
+                <p>In this chapter, we learned that Rust thinks about errors in two main ways: recoverable errors (such as a file not being found) and unrecoverable errors (bugs that would crash the program).</p>
+                <p>Here’s a quick recap of the main tools we added to our belt:</p>
+                <ul>
+                    <li><strong>Result&lt;T, E&gt;</strong>: Our go-to for any operation that might fail, letting us handle both the Ok(value) and Err(error) cases.</li>
+                    <li><strong>Option&lt;T&gt;</strong>: The perfect tool for values that might be absent, safely handling Some(value) and None.</li>
+                    <li><strong>panic!</strong>: The big red button for unrecoverable errors, which we saw is what methods such as .unwrap() and .expect() use under the hood.</li>
+                </ul>
+                <p>We then explored the most common patterns for working with these types. We started with the exhaustive match statement and then saw how to make our code more concise with the <strong>? operator</strong>, which is a fantastic way of propagating errors cleanly. Finally, we saw how to make our errors even better by creating <strong>custom error types</strong> (especially with awesome crates such as thiserror and anyhow) and the importance of <strong>logging</strong> to keep an eye on our application’s health.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch6">
+                <h2 id="questions-and-assignments-ch6">Questions and assignments</h2>
+                <p>Now that we’ve covered the concepts and best practices for error handling in Rust, it’s time to test your knowledge with some exercises and assignments.</p>
+
+                <section tabindex="0" aria-labelledby="questions-ch6">
+                    <h3 id="questions-ch6">Questions</h3>
+                    <ol>
+                        <li>What is the fundamental difference in meaning between returning Result&lt;T, E&gt; versus Option&lt;T&gt; from a function? Describe a scenario where each would be the more appropriate choice.</li>
+                        <li>Explain what a “panic” is in Rust. When is it appropriate to let a program panic (e.g., by using .unwrap() or .expect()) instead of returning a Result?</li>
+                        <li>What does the <strong>?</strong> operator do when used on a Result? What is the main requirement for the function in which you use the ? operator?</li>
+                        <li>Why would you create a custom error enum instead of just returning Result&lt;T, String&gt; with a descriptive error message?</li>
+                        <li>What is the primary difference in use cases between the thiserror and anyhow crates? When would you choose one over the other?</li>
+                        <li>What does the .unwrap_or(default_value) method on an Option do, and how does it help prevent a panic?</li>
+                        <li>Why is structured logging (using a crate such as log) considered an important part of a robust error-handling strategy?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch6">
+                    <h3 id="assignments-ch6">Assignments</h3>
+                    <ul>
+                        <li><strong>Assignment 6.1: File reading with detailed error handling</strong>
+                            <ol>
+                                <li>Write a read_content(path: &amp;str) -> Result&lt;String, std::io::Error&gt; function.</li>
+                                <li>Use std::fs::read_to_string.</li>
+                                <li>In main, call read_content for both an existing and a non-existent file.</li>
+                                <li>Use match in main to print the content on Ok, or a specific error message (e.g., “File not found” or “Permission denied”) on Err. (Hint: Inspect the err.kind() of the io::Error.)</li>
+                            </ol>
+                        </li>
+                        <li><strong>Assignment 6.2: Division function with custom errors (using thiserror)</strong>
+                            <ol>
+                                <li>Define a DivisionError enum using thiserror. It should have at least a DivisionByZero variant.</li>
+                                <li>Implement a safe_divide(a: f64, b: f64) -> Result&lt;f64, DivisionError&gt; function.</li>
+                                <li>In main, call safe_divide with valid cases and a division-by-zero case.</li>
+                                <li>Use match to handle the Result and print appropriate messages using the Display implementation generated by thiserror.</li>
+                            </ol>
+                        </li>
+                        <li><strong>Assignment 6.3: Finding elements with Option and ?</strong>
+                            <ol>
+                                <li>Write a find_first_greater_than_ten(slice: &amp;[i32]) -> Option&lt;i32&gt; function.</li>
+                                <li>Use iterator methods (iter(), find(), and copied()) to find the <em>value</em> of the first element greater than 10.</li>
+                                <li>(Optional advanced): Write a second function, sum_first_and_last_even(slice: &amp;[i32]) -> Option&lt;i32&gt;, that uses ? to find the first even number and the last even number, returning their sum, or None if either is not found.</li>
+                            </ol>
+                        </li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-05.html">← Chapter 5</a>
+            <a class="nav-next" href="./chapter-07.html">Chapter 7 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

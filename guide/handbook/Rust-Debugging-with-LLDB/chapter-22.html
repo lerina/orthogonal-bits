@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 22: The Progressive Learning Path – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch22-heading">
+            <h1 id="ch22-heading">Chapter 22: The Progressive Learning Path</h1>
+
+            <p>Debugging with LLDB is a skill that develops in stages. You do not become fluent by reading one chapter; you become fluent by practicing one level until it feels natural, then moving to the next. This chapter lays out a path of ten levels. Each level introduces a small set of capabilities, describes what to practice, and defines what mastery looks like before moving on.</p>
+            <p>The path is progressive: each level builds on the previous ones. Do not skip ahead. The early levels are the foundation for the later ones; a session that skips the basics will not be productive when the problems become harder.</p>
+            <p>The good news is that each level is small. You can move from one level to the next in a few days of deliberate practice. By the time you reach Level 5, you will be more comfortable in the debugger than most Rust developers. By Level 10, you will be able to approach unfamiliar runtime behavior with the same confidence you bring to reading code.</p>
+
+            <section tabindex="0" aria-labelledby="level-1-stop-and-continue">
+                <h2 id="level-1-stop-and-continue">Level 1 — Stop and Continue</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>run
+breakpoint set
+continue
+quit</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Stop the program at a known location.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-1-what-to-practice">
+                    <h3 id="level-1-what-to-practice">What to practice</h3>
+                    <p>At this level, the goal is to become comfortable launching a Rust program under LLDB and stopping it at a specific point. The tools are minimal:</p>
+                    <ol>
+                        <li>Build a small Rust program with <code>cargo build</code>.</li>
+                        <li>Launch it with <code>rust-lldb target/debug/your_program</code>.</li>
+                        <li>Set a breakpoint with <code>breakpoint set --name main</code>.</li>
+                        <li>Run with <code>run</code>.</li>
+                        <li>Observe the stop. Read the frame info and the source location.</li>
+                        <li>Continue with <code>continue</code>.</li>
+                        <li>Quit with <code>quit</code>.</li>
+                    </ol>
+                    <p>Repeat this cycle with several small programs. Each time, change the breakpoint location: a function name, a source line, a method. Observe that the program stops at the location you chose.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-1-what-mastery-looks-like">
+                    <h3 id="level-1-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 1 when:</p>
+                    <ul>
+                        <li>You can launch any Rust binary under LLDB without needing to look up the command.</li>
+                        <li>You can set a breakpoint on a function name and on a source line.</li>
+                        <li>You can read the stop output and understand where the program has paused.</li>
+                        <li>You can continue and quit cleanly.</li>
+                        <li>You know how to verify which binary you are debugging.</li>
+                    </ul>
+                    <p>This level feels trivial, but it is the foundation. Every subsequent level assumes you can reliably start a debug session and stop at a chosen point.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-1-common-mistakes">
+                    <h3 id="level-1-common-mistakes">Common mistakes at this level</h3>
+                    <ul>
+                        <li><strong>Debugging the wrong binary</strong>: always check the path. Workspaces, examples, and tests produce binaries in different directories.</li>
+                        <li><strong>Forgetting to rebuild</strong>: if you changed the source, rebuild before launching.</li>
+                        <li><strong>Using plain <code>lldb</code></strong> instead of <code>rust-lldb</code>: you will lose the Rust pretty-printers.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-1-rust-2024-notes">
+                    <h3 id="level-1-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Nothing in the Rust 2024 edition changes the basic workflow of starting a session and setting a breakpoint. The binary format, debug information, and LLDB interaction are the same as in previous editions. Ensure your project builds with the 2024 edition (rustc 1.85.0 or later) before launching, and the rest is identical.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-2-navigate-execution">
+                <h2 id="level-2-navigate-execution">Level 2 — Navigate Execution</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>next
+step
+finish</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Control how execution moves through Rust functions.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-2-what-to-practice">
+                    <h3 id="level-2-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to develop an internal model of what each step command does. Practice with small programs where you can see each step's effect:</p>
+                    <ol>
+                        <li>Write a program with several small functions, each one calling the next.</li>
+                        <li>Break at the entry of the outer function.</li>
+                        <li>Use <code>next</code> to walk through the function without entering its calls.</li>
+                        <li>Use <code>step</code> to enter the first call, and observe the new frame.</li>
+                        <li>Use <code>finish</code> to return to the outer function.</li>
+                        <li>Repeat, choosing different combinations of <code>next</code> and <code>step</code>.</li>
+                    </ol>
+                    <p>The mental model to internalize:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next   → stay at this level
+step   → go down one level
+finish → go up one level</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-2-what-mastery-looks-like">
+                    <h3 id="level-2-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 2 when:</p>
+                    <ul>
+                        <li>You can predict what each step command will do before you run it.</li>
+                        <li>You can navigate through a call chain of three or four functions without getting lost.</li>
+                        <li>You can use <code>finish</code> to exit a function when you have seen enough.</li>
+                        <li>You know when stepping is unproductive (long loops, library code) and can switch to a breakpoint instead.</li>
+                    </ul>
+                    <p>If you find yourself asking "which command was that again?" you are still at Level 2. That is fine; the goal is to make the commands automatic.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-2-the-question-to-ask">
+                    <h3 id="level-2-the-question-to-ask">The question to ask</h3>
+                    <p>Before each step, ask:</p>
+                    <blockquote>
+                        <p>Am I interested in what happens inside this call, or only in what happens after it?</p>
+                    </blockquote>
+                    <p>If the answer is "inside," use <code>step</code>. If it is "after," use <code>next</code>. If you have seen enough of the current function, use <code>finish</code>.</p>
+                    <p>This question becomes second nature with practice. Until it does, ask it explicitly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-2-when-stepping-fails">
+                    <h3 id="level-2-when-stepping-fails">When stepping fails</h3>
+                    <p>Sometimes, stepping behaves in unexpected ways:</p>
+                    <ul>
+                        <li><strong>Functions that are inlined</strong>: <code>step</code> may not descend, because there is no separate frame. Switch to a debug build if you need to step into them.</li>
+                        <li><strong>Library code</strong>: <code>step</code> into a standard library call may lead through many implementation frames. Use <code>finish</code> to get back to your code.</li>
+                        <li><strong>Iterator chains</strong>: <code>step</code> into an iterator method may descend into adapter machinery. Avoid stepping through chains; use named intermediates instead.</li>
+                        <li><strong>Async functions</strong>: <code>step</code> into an <code>async fn</code> call may not enter the function body the way you expect; the future is returned immediately.</li>
+                    </ul>
+                    <p>Recognizing these situations saves a great deal of frustration later.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-2-rust-2024-notes">
+                    <h3 id="level-2-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Because Rust 2024 requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies, stepping through unsafe code now produces more predictable transitions: the safe/unsafe boundary is visible in the source, and <code>step</code> typically moves between the two consistently. This is a small but real improvement in stepping reliability for code that involves <code>unsafe</code>.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-3-inspect-state">
+                <h2 id="level-3-inspect-state">Level 3 — Inspect State</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable
+frame info</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>See what the current function actually knows.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-3-what-to-practice">
+                    <h3 id="level-3-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to become comfortable inspecting the state at any point where the program is stopped. Practice with programs that have a variety of local variables:</p>
+                    <ol>
+                        <li>Write a program with several functions, each having two or three locals of different types: integers, strings, booleans, structs, vectors.</li>
+                        <li>At a breakpoint in each function, inspect the locals one at a time:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable count
+frame variable name
+frame variable active
+frame variable user</code></pre>
+                        </li>
+                        <li>Practice inspecting nested fields:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config.server.port
+frame variable user.email</code></pre>
+                        </li>
+                        <li>Compare the value shown by the debugger with the value you expected from the source.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-3-what-mastery-looks-like">
+                    <h3 id="level-3-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 3 when:</p>
+                    <ul>
+                        <li>You can inspect any local variable in the current frame with a single command.</li>
+                        <li>You can inspect a nested field directly, without dumping the entire parent struct.</li>
+                        <li>You understand the difference between <code>frame variable</code> and <code>expression</code>, and you reach for <code>frame variable</code> by default.</li>
+                        <li>You recognize the pretty-printed forms of Rust types: strings in quotes, vectors as lists, enums as variant plus data.</li>
+                        <li>You know what to do when a value appears as <code>&lt;optimized out&gt;</code>.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-3-the-most-common-question">
+                    <h3 id="level-3-the-most-common-question">The most common question</h3>
+                    <p>The question you will ask most often at this level is:</p>
+                    <blockquote>
+                        <p>Is this value what I expected it to be?</p>
+                    </blockquote>
+                    <p>Inspection without a stated expectation is meaningless. Before each inspection, state what you expect. If the value matches, move on. If it does not, you have found evidence.</p>
+                    <p>This discipline is what turns inspection into debugging, and it is the foundation for the first-wrong-state rule described in Chapter 17.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-3-when-a-value-is-not-available">
+                    <h3 id="level-3-when-a-value-is-not-available">When a value is not available</h3>
+                    <p>If <code>frame variable x</code> reports that <code>x</code> is not available, the cause is almost always one of the following:</p>
+                    <ul>
+                        <li><strong>Wrong frame</strong>: <code>x</code> is defined in a different function. Use <code>bt</code> and <code>frame select</code> to move to the correct frame.</li>
+                        <li><strong>Wrong scope</strong>: <code>x</code> has not been declared yet at this point, or has gone out of scope. Check the source line.</li>
+                        <li><strong>Optimized out</strong>: <code>x</code> is not stored in a form the debugger can read, usually in optimized builds. Switch to a debug build, or restructure the code so <code>x</code> is genuinely needed at this point.</li>
+                    </ul>
+                    <p>Each cause suggests a specific remedy. Recognizing the cause avoids wasting time trying different commands.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-3-rust-2024-notes">
+                    <h3 id="level-3-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>The Rust 2024 edition does not change <code>frame variable</code> or the pretty-printer output. Enum variants, struct fields, and string values render exactly the same way as in earlier editions. The one small change worth noting is that <code>unsafe</code> blocks are now more explicit in source, which means the source locations you inspect (via <code>frame info</code>) will more often correspond to a specific <code>unsafe</code> block rather than a whole function.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-4-understand-the-call-stack">
+                <h2 id="level-4-understand-the-call-stack">Level 4 — Understand the Call Stack</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>bt
+frame select
+up
+down</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Understand how execution reached the current location.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-4-what-to-practice">
+                    <h3 id="level-4-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to become comfortable reading backtraces and navigating between frames. Practice with programs that have a call depth of at least three:</p>
+                    <ol>
+                        <li>Write a program with a call chain: <code>main</code> calls <code>outer</code> calls <code>middle</code> calls <code>inner</code>.</li>
+                        <li>Set a breakpoint inside <code>inner</code>.</li>
+                        <li>Run. Inspect the backtrace with <code>bt</code>.</li>
+                        <li>Identify each frame by its function name.</li>
+                        <li>Use <code>frame select 2</code> to move to the frame for <code>outer</code>.</li>
+                        <li>Inspect the locals of <code>outer</code>.</li>
+                        <li>Use <code>up</code> and <code>down</code> to move back and forth.</li>
+                        <li>Return to frame 0 with <code>frame select 0</code>.</li>
+                    </ol>
+                    <p>The crucial insight: selecting a frame does not change the execution point. It only changes the target of inspection. You can look at any frame in the stack without moving execution.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-4-what-mastery-looks-like">
+                    <h3 id="level-4-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 4 when:</p>
+                    <ul>
+                        <li>You can read a backtrace and identify which frames belong to your own code and which belong to libraries or runtime machinery.</li>
+                        <li>You can select any frame and inspect its locals without confusing yourself about where execution is actually stopped.</li>
+                        <li>You can move up and down the stack efficiently, without needing to look up the frame numbers.</li>
+                        <li>You understand that <code>up</code> and <code>down</code> change the selected frame, not the execution point.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-4-reading-a-backtrace-with-confidence">
+                    <h3 id="level-4-reading-a-backtrace-with-confidence">Reading a backtrace with confidence</h3>
+                    <p>A useful pattern for reading a backtrace in a Rust program:</p>
+                    <ol>
+                        <li>Start at the top (frame #0). This is where execution is currently stopped.</li>
+                        <li>Move down the stack, looking for the first frame whose name contains your crate's name.</li>
+                        <li>That frame is usually the most interesting one, because it is where your code begins doing something on this path.</li>
+                        <li>Below that frame are the runtime and library frames. Unless you are debugging the runtime itself, you can usually ignore them.</li>
+                    </ol>
+                    <p>With practice, this pattern becomes automatic. You will glance at a backtrace and immediately see the frames that matter.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-4-when-frames-are-missing">
+                    <h3 id="level-4-when-frames-are-missing">When frames are missing</h3>
+                    <p>If a backtrace seems to be missing frames, the cause is usually one of the following:</p>
+                    <ul>
+                        <li><strong>Inlining</strong>: the missing function was inlined into its caller. This happens frequently in optimized builds.</li>
+                        <li><strong>Missing debug info</strong>: the missing frame belongs to a library compiled without debug information.</li>
+                        <li><strong>Tail calls</strong>: the compiler replaced a call with a jump, so there is no separate frame for the callee.</li>
+                        <li><strong>Corrupted stack</strong>: the program has overwritten its stack, which is a serious bug. Unwinding the stack can then produce nonsense.</li>
+                    </ul>
+                    <p>Each cause suggests a different remedy. Inlining and missing debug info are expected; corrupted stacks are a bug in themselves.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-4-rust-2024-notes">
+                    <h3 id="level-4-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Frames for functions exposed with <code>#[unsafe(no_mangle)]</code> now appear under their exact source names in Rust 2024, which makes them easy to identify in a backtrace. Ordinary Rust functions appear under their mangled names, which LLDB demangles for display. The overall shape of the backtrace—application frames at the top, runtime frames at the bottom—is unchanged.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-5-investigate-rust-values">
+                <h2 id="level-5-investigate-rust-values">Level 5 — Investigate Rust Values</h2>
+                <p>Practice with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>struct
+enum
+Option
+Result
+references
+mutable references
+Vec
+String
+HashMap</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Become comfortable inspecting real Rust state.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-5-what-to-practice">
+                    <h3 id="level-5-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to become fluent with the debugger’s view of Rust’s common types. Practice with a single program that exercises each type:</p>
+                    <ol>
+                        <li>Define a struct with a string, an integer, and a boolean field. Inspect it with <code>frame variable</code> and inspect each field individually.</li>
+                        <li>Define an enum with a data-carrying variant. Inspect it and confirm the variant name and data are visible.</li>
+                        <li>Create an <code>Option&lt;T&gt;</code> with a <code>Some</code> value, and a separate one with <code>None</code>. Inspect both.</li>
+                        <li>Create a <code>Result&lt;T, E&gt;</code> with an <code>Ok</code> value and another with a custom error variant. Inspect both.</li>
+                        <li>Create a <code>&amp;T</code> and a <code>&amp;mut T</code>. Inspect the referenced values.</li>
+                        <li>Create a <code>Vec</code>, a <code>String</code>, and a <code>HashMap</code>. Inspect each one and confirm the pretty-printer’s output matches your expectation.</li>
+                    </ol>
+                    <p>Repeat until the display of each type is familiar. The pretty-printer output is the debugger’s interface to Rust’s types; knowing what to expect from each one saves time in every subsequent session.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-5-what-mastery-looks-like">
+                    <h3 id="level-5-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 5 when:</p>
+                    <ul>
+                        <li>You can look at a <code>Vec</code> and immediately see its length and elements.</li>
+                        <li>You can look at an enum and immediately identify its active variant and its data.</li>
+                        <li>You can inspect an <code>Option</code> or <code>Result</code> and tell whether it is <code>Some</code>/<code>None</code> or <code>Ok</code>/<code>Err</code>.</li>
+                        <li>You know how to inspect a field of a struct inside a reference, and how to dereference explicitly when needed.</li>
+                        <li>You recognize the raw field layout of a <code>String</code> or <code>Vec</code> if the pretty-printer is not loaded, and you know how to fix the situation by using <code>rust-lldb</code>.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-5-the-pretty-printer-contract">
+                    <h3 id="level-5-the-pretty-printer-contract">The pretty-printer contract</h3>
+                    <p>The Rust pretty-printers in LLDB present a view of each type that is intended to be human-readable. The contract is:</p>
+                    <ul>
+                        <li>Strings render as their text content, in quotes.</li>
+                        <li>Sequences render as their elements, with the length shown.</li>
+                        <li>Enums render as their variant name plus the variant’s data.</li>
+                        <li>References render as the value at the other end of the pointer.</li>
+                        <li>Options and Results render as their variants with the inner values visible.</li>
+                    </ul>
+                    <p>When the pretty-printer’s output does not match this contract, the most common cause is that the pretty-printers are not loaded. The fix is to launch via <code>rust-lldb</code> instead of plain <code>lldb</code>.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-5-going-beyond-pretty-printing">
+                    <h3 id="level-5-going-beyond-pretty-printing">Going beyond pretty-printing</h3>
+                    <p>Sometimes the pretty-printer’s view is not enough. For example, you may need to see the raw pointer of a <code>Vec</code>, or the capacity field separately from the length. At this level, learn to access the raw fields:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable items.ptr
+frame variable items.len
+frame variable items.cap</code></pre>
+                    <p>For a <code>String</code>, which wraps a <code>Vec&lt;u8&gt;</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable s.vec.ptr
+frame variable s.vec.len
+frame variable s.vec.cap</code></pre>
+                    <p>This level of detail is rarely needed in safe code, but it is essential when debugging unsafe code that manipulates these types directly. Practicing at this level prepares you for Chapter 16's material.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-5-rust-2024-notes">
+                    <h3 id="level-5-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Because Rust 2024 discourages references to <code>static mut</code>, global state now appears in the debugger as raw pointers or interior-mutability wrappers. If you inspect a global variable, you may see a <code>Mutex</code>, <code>AtomicUsize</code>, or <code>UnsafeCell</code> rather than a bare reference. This is expected: the wrapper is the source-level representation, and the debugger shows the wrapper’s internal value, which is what you want to inspect.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-6-conditional-investigation">
+                <h2 id="level-6-conditional-investigation">Level 6 — Conditional Investigation</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint modify --condition
+watchpoint</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Stop only when the interesting state occurs.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-6-what-to-practice">
+                    <h3 id="level-6-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to move beyond unconditional breakpoints and into the territory of conditions and watchpoints. Practice with programs that have repeated behavior:</p>
+                    <ol>
+                        <li>Write a loop that runs many times and processes items with an ID. Introduce a bug that only appears for one specific ID.</li>
+                        <li>Set a breakpoint inside the loop and observe that it fires many times.</li>
+                        <li>Add a condition: <code>breakpoint modify 1 --condition 'item.id == 42'</code>. Now the breakpoint fires only for the interesting case.</li>
+                        <li>Write a program with a counter that becomes wrong at some point. Set a watchpoint on the counter: <code>watchpoint set variable counter</code>. Observe the stop when the counter changes.</li>
+                        <li>Inspect the backtrace at the watchpoint to identify the code that changed the value.</li>
+                        <li>Try a conditional watchpoint: <code>watchpoint modify 1 --condition 'counter &gt; 100'</code>.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-6-what-mastery-looks-like">
+                    <h3 id="level-6-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 6 when:</p>
+                    <ul>
+                        <li>You can add a condition to a breakpoint and remove it later.</li>
+                        <li>You know that conditions must be simple to evaluate reliably in Rust. You use field accesses and primitive comparisons rather than method calls or iterators.</li>
+                        <li>You can set a watchpoint on a variable and observe the moment it changes.</li>
+                        <li>You know the limits of watchpoints: they require a stable address, they do not work for temporaries or optimized-out values, and they are impractical for values that change very frequently.</li>
+                        <li>You can choose between a conditional breakpoint and a watchpoint for a given problem. Use a conditional breakpoint when you know the location; use a watchpoint when you know the value.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-6-conditions-as-a-narrowing-tool">
+                    <h3 id="level-6-conditions-as-a-narrowing-tool">Conditions as a narrowing tool</h3>
+                    <p>Conditions are a form of interactive filtering. Instead of running a loop thousands of times and inspecting each iteration manually, you describe what you are looking for with a condition, and the debugger does the filtering for you.</p>
+                    <p>A useful heuristic: if you find yourself pressing <code>continue</code> more than a handful of times in a session, consider whether a condition could have told the debugger to stop only when the interesting case occurred. The condition might take a minute to write, but it can save an hour of manual continues.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-6-watchpoints-as-a-detection-tool">
+                    <h3 id="level-6-watchpoints-as-a-detection-tool">Watchpoints as a detection tool</h3>
+                    <p>Watchpoints answer a specific question: “when did this value change?” This is different from the question answered by a conditional breakpoint (“when execution reaches this point and a condition holds”). Watchpoints are particularly useful when:</p>
+                    <ul>
+                        <li>You know a value should be immutable, but it is being changed by something you cannot identify.</li>
+                        <li>You know a value should remain constant over a period, but it changes at some point during that period.</li>
+                        <li>You suspect a state corruption but cannot guess where it happens.</li>
+                    </ul>
+                    <p>Watchpoints give you the moment of change without requiring you to guess the code that changed the value. This makes them one of the most powerful debugging tools in LLDB.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-6-rust-2024-notes">
+                    <h3 id="level-6-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>For Rust 2024, watchpoints on interior-mutability primitives behave slightly differently than watchpoints on plain variables. A watchpoint on a <code>Mutex</code> watches the mutex structure, which contains both the lock and the wrapped value; a watchpoint on the inner value watches only the value. Use the inner value when you want to detect changes to the value itself.</p>
+                    <p>Conditions that reference fields of a struct through a raw pointer may need an explicit dereference (<code>(*ptr).field == value</code>). This is normal and expected.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-7-threads">
+                <h2 id="level-7-threads">Level 7 — Threads</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>thread list
+thread select
+thread backtrace all</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Understand concurrent execution.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-7-what-to-practice">
+                    <h3 id="level-7-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to become comfortable with multithreaded programs under the debugger. Practice with programs that spawn several threads:</p>
+                    <ol>
+                        <li>Write a program that spawns three named worker threads, each running a loop.</li>
+                        <li>Set a breakpoint inside the worker function.</li>
+                        <li>Run. When the first breakpoint hits, inspect the thread list with <code>thread list</code>.</li>
+                        <li>Note which thread is selected. Inspect its backtrace with <code>bt</code>.</li>
+                        <li>Continue. When the breakpoint hits again, the selected thread may be different.</li>
+                        <li>Use <code>thread select 2</code> to switch to a specific thread and inspect its state.</li>
+                        <li>Use <code>thread backtrace all</code> to see all threads at once.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-7-what-mastery-looks-like">
+                    <h3 id="level-7-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 7 when:</p>
+                    <ul>
+                        <li>You can list threads, identify the selected one, and switch between them.</li>
+                        <li>You can read a multithreaded backtrace and identify which thread belongs to which role.</li>
+                        <li>You name threads in your own programs (using <code>thread::Builder::new().name(...)</code>), and you know that named threads are much easier to debug than unnamed ones.</li>
+                        <li>You can recognize the signature of a deadlock: two or more threads blocked on lock acquisitions, with no progress possible.</li>
+                        <li>You understand that a stopped thread is just paused, not terminated; <code>continue</code> resumes all threads.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-7-naming-as-a-practice">
+                    <h3 id="level-7-naming-as-a-practice">Naming as a practice</h3>
+                    <p>Naming threads is one of the highest-leverage habits in concurrent debugging. It costs almost nothing in source code and pays off enormously when a session becomes complex:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread::Builder::new()
+    .name("cache-refresher".to_string())
+    .spawn(|| { /* ... */ })
+    .expect("spawn failed");</code></pre>
+                    <p>With named threads, <code>thread list</code> produces output that is immediately understandable:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>* thread #1: name = 'main'
+  thread #2: name = 'cache-refresher'
+  thread #3: name = 'log-writer'
+  thread #4: name = 'request-handler-0'</code></pre>
+                    <p>Without names, the list is a wall of thread numbers and OS IDs, which is much harder to reason about.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-7-deadlocks-and-inspection">
+                    <h3 id="level-7-deadlocks-and-inspection">Deadlocks and inspection</h3>
+                    <p>When a program hangs, the debugger can confirm a deadlock. The technique:</p>
+                    <ol>
+                        <li>Run the program. When it hangs, interrupt the debugger (usually with <kbd>Ctrl</kbd>+<kbd>C</kbd>).</li>
+                        <li>Run <code>thread list</code> to see the threads.</li>
+                        <li>Run <code>thread backtrace all</code> to see where each thread is.</li>
+                        <li>Look for threads blocked in lock acquisition functions such as <code>Mutex::lock</code>, <code>RwLock::read</code>, or <code>RwLock::write</code>.</li>
+                        <li>Identify which thread holds the lock that another thread is waiting for.</li>
+                    </ol>
+                    <p>The debugger does not diagnose the deadlock for you, but it provides the evidence. From the backtraces, the cycle of dependencies becomes visible.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-7-rust-2024-notes">
+                    <h3 id="level-7-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Rust 2024 stabilizes <code>std::thread::scope</code> more prominently, which allows threads to borrow data from the enclosing scope. Scoped threads behave like ordinary threads under the debugger: they appear in <code>thread list</code>, and their names (if set) appear alongside their IDs. The guarantee that scoped threads finish before the enclosing scope ends makes their behavior slightly more predictable, which is helpful in debugging.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-8-async-rust">
+                <h2 id="level-8-async-rust">Level 8 — Async Rust</h2>
+                <p>Practice:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>async fn
+.await
+Tokio tasks
+runtime threads</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Distinguish application execution from executor machinery.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-8-what-to-practice">
+                    <h3 id="level-8-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to become comfortable with the shape of an async backtrace. Practice with a small Tokio program:</p>
+                    <ol>
+                        <li>Write an async function that awaits a <code>tokio::time::sleep</code> and then does some work.</li>
+                        <li>Set a breakpoint inside the function.</li>
+                        <li>Run. Inspect the backtrace with <code>bt</code>.</li>
+                        <li>Identify which frames belong to your own crate, which to the Tokio runtime, and which to the OS thread.</li>
+                        <li>Inspect the local variables in the function. Note that the async state machine’s fields include the state and any captured values.</li>
+                        <li>Continue. The task may suspend and resume. When the breakpoint hits again, inspect the state to see how it changed.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-8-what-mastery-looks-like">
+                    <h3 id="level-8-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 8 when:</p>
+                    <ul>
+                        <li>You can read an async backtrace and separate application frames from runtime frames without confusion.</li>
+                        <li>You know that <code>thread list</code> shows OS threads, not tasks. A single thread may execute many tasks.</li>
+                        <li>You set breakpoints at application-level boundaries rather than trying to step through runtime machinery.</li>
+                        <li>You know that stepping into an <code>async fn</code> call does not enter the function body; it returns a future.</li>
+                        <li>You can name tasks (using <code>tokio::task::Builder</code> or equivalent) so their identity is visible in logs and the debugger.</li>
+                        <li>You recognize that a panicking task is caught by the runtime in many configurations and appears as an <code>Err</code> from the <code>JoinHandle</code>.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-8-the-state-machine-mental-model">
+                    <h3 id="level-8-the-state-machine-mental-model">The state-machine mental model</h3>
+                    <p>The key insight for async debugging is that an <code>async fn</code> is compiled into a state machine. Each <code>.await</code> is a potential suspension point, and the compiled code stores the state between suspensions.</p>
+                    <p>When you stop inside an async function, the frame you see is the <code>poll</code> method of the state machine, not a conventional function call. The state machine’s fields include:</p>
+                    <ul>
+                        <li>The current state (a variant representing where in the function execution is).</li>
+                        <li>Any values that need to survive across suspension points.</li>
+                        <li>The future being awaited, if the function is currently suspended.</li>
+                    </ul>
+                    <p>Understanding this structure is what makes async backtraces readable. Once you see the state machine, the runtime frames between application frames become predictable.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-8-when-to-switch-to-logging">
+                    <h3 id="level-8-when-to-switch-to-logging">When to switch to logging</h3>
+                    <p>Async code is often the point where logging becomes more valuable than the debugger. The reasons:</p>
+                    <ul>
+                        <li>Many tasks may be in flight, and the debugger only shows the ones currently being polled.</li>
+                        <li>A single task may suspend and resume many times, and following it through all those resumptions in the debugger is impractical.</li>
+                        <li>The runtime may migrate a task between threads, making the thread identity unstable.</li>
+                    </ul>
+                    <p>A practical workflow for async debugging: use breakpoints to inspect the state at a specific point, and use logging to understand the flow across many points. Neither tool alone is sufficient; together they cover both perspectives.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-8-rust-2024-notes">
+                    <h3 id="level-8-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Rust 2024 stabilizes async closures and <code>gen</code> blocks. Both compile into state machines similar to <code>async fn</code>. The debugging techniques you practice at Level 8 apply equally to async closures and <code>gen</code> blocks: identify the state machine’s <code>poll</code> method, separate application frames from runtime frames, and set breakpoints at application boundaries.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-9-advanced-runtime-investigation">
+                <h2 id="level-9-advanced-runtime-investigation">Level 9 — Advanced Runtime Investigation</h2>
+                <p>Learn:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>expression
+memory read
+image lookup
+breakpoint commands</code></pre>
+                <p>Goal:</p>
+                <blockquote>
+                    <p>Investigate cases where ordinary source-level debugging is insufficient.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="level-9-what-to-practice">
+                    <h3 id="level-9-what-to-practice">What to practice</h3>
+                    <p>The goal at this level is to add the advanced tools to your repertoire for cases where the standard ones are not enough. Practice with programs that involve FFI, unsafe code, or unfamiliar libraries:</p>
+                    <ol>
+                        <li>Write a small Rust program that calls a C function through FFI. The C function takes a pointer and a length.</li>
+                        <li>At a breakpoint before the FFI call, inspect the arguments with <code>frame variable</code>.</li>
+                        <li>Use <code>memory region</code> on the pointer to confirm it is in a valid region.</li>
+                        <li>Use <code>memory read</code> to inspect the bytes at the pointer.</li>
+                        <li>Set a breakpoint on the C function. If it is not resolvable by name, use <code>image lookup --name</code>.</li>
+                        <li>Attach commands to a breakpoint with <code>breakpoint command add</code> to automatically inspect state at each hit.</li>
+                        <li>Use <code>expression</code> for simple derived values, such as computing the total length of a pointer plus an offset.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-9-what-mastery-looks-like">
+                    <h3 id="level-9-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 9 when:</p>
+                    <ul>
+                        <li>You can inspect memory at a pointer and interpret the bytes in the correct format.</li>
+                        <li>You can verify a pointer’s validity with <code>memory region</code> before dereferencing it.</li>
+                        <li>You can find symbols with <code>image lookup</code> when a name-based breakpoint does not resolve.</li>
+                        <li>You can attach commands to a breakpoint to automate repetitive inspections.</li>
+                        <li>You use <code>expression</code> for simple derived values, but you understand its limits and prefer <code>frame variable</code> for inspection.</li>
+                        <li>You can follow a Rust-to-C boundary through the backtrace and inspect the arguments on both sides.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-9-when-advanced-tools-are-necessary">
+                    <h3 id="level-9-when-advanced-tools-are-necessary">When advanced tools are necessary</h3>
+                    <p>The advanced tools come into play in a few specific situations:</p>
+                    <ul>
+                        <li><strong>FFI</strong>: the debugger cannot rely on Rust source for the C side, so memory inspection and symbol lookup become necessary.</li>
+                        <li><strong>Unsafe code</strong>: the invariants are not checked by the compiler, so inspecting pointers, lengths, and raw memory is the only way to verify them.</li>
+                        <li><strong>Libraries without debug info</strong>: source-level inspection is limited, so you fall back to assembly and memory inspection.</li>
+                        <li><strong>Repetitive observations</strong>: when a breakpoint fires many times and you want the same inspection at each, breakpoint commands automate it.</li>
+                    </ul>
+                    <p>Each of these situations corresponds to a scenario where the ordinary tools are insufficient. The advanced tools fill the gap.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-9-combining-advanced-tools-with-miri-and-sanitizers">
+                    <h3 id="level-9-combining-advanced-tools-with-miri-and-sanitizers">Combining advanced tools with Miri and sanitizers</h3>
+                    <p>LLDB is not the only advanced tool. Miri and sanitizers (ASan, TSan, MSan, UBSan) complement the debugger for unsafe code:</p>
+                    <ul>
+                        <li><strong>Miri</strong> detects undefined behavior in unsafe code by interpreting the program at the MIR level. Use Miri to find the bug, then LLDB to inspect the state at the moment it occurs.</li>
+                        <li><strong>AddressSanitizer</strong> detects memory errors such as use-after-free and buffer overflow. Use ASan to catch the error, then LLDB to inspect the state.</li>
+                        <li><strong>ThreadSanitizer</strong> detects data races. Use TSan to confirm a race, then LLDB to inspect the racing threads.</li>
+                    </ul>
+                    <p>At this level, learn to combine LLDB with these tools rather than relying on the debugger alone for unsafe and FFI debugging.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-9-rust-2024-notes">
+                    <h3 id="level-9-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>Rust 2024 requires <code>unsafe extern</code> for all external blocks. This makes the boundary between Rust and foreign code more explicit in the source, which helps you know where to set breakpoints and what to inspect. The FFI arguments are passed the same way as before; only the source syntax has changed.</p>
+                    <p>The new unsafe attributes (<code>#[unsafe(no_mangle)]</code>, <code>#[unsafe(export_name = "...")]</code>) affect symbol names. Use <code>image lookup</code> to confirm the exact name under which a function appears in the binary.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="level-10-debugging-as-problem-solving">
+                <h2 id="level-10-debugging-as-problem-solving">Level 10 — Debugging as Problem Solving</h2>
+                <p>Stop thinking:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Which LLDB command should I use?</code></pre>
+                <p>Start thinking:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>What fact do I need to establish?</code></pre>
+                <p>Then choose the command.</p>
+
+                <section tabindex="0" aria-labelledby="level-10-what-to-practice">
+                    <h3 id="level-10-what-to-practice">What to practice</h3>
+                    <p>At this level, the practice is no longer about individual commands. It is about the discipline of debugging as a whole:</p>
+                    <ol>
+                        <li>Take a real bug in a project you maintain or contribute to.</li>
+                        <li>Write down the observation, the hypothesis, and the prediction before touching the debugger.</li>
+                        <li>Choose the tool that fits the question, not the tool you enjoy using.</li>
+                        <li>Apply the first-wrong-state rule: trace values backward from the symptom until you find the first divergence.</li>
+                        <li>Keep a notebook of the investigation.</li>
+                        <li>Convert the confirmed hypothesis into a regression test.</li>
+                    </ol>
+                    <p>Repeat with several bugs. The goal is not to use more commands, but to use fewer commands more precisely. The best debugging sessions use few breakpoints but ask sharp questions.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-10-what-mastery-looks-like">
+                    <h3 id="level-10-what-mastery-looks-like">What mastery looks like</h3>
+                    <p>You have mastered Level 10 when:</p>
+                    <ul>
+                        <li>You approach a bug by first asking what kind of question it is, then choosing the tool.</li>
+                        <li>You can articulate a hypothesis, a prediction, and an experiment before you set a breakpoint.</li>
+                        <li>You find the first wrong state reliably, without wandering through the program.</li>
+                        <li>You can use the debugger alongside logging, tests, Miri, and profiling, choosing each when it fits.</li>
+                        <li>You document your investigations, and your documentation is useful months later.</li>
+                        <li>You turn every fixed bug into a regression test.</li>
+                        <li>You recognize the situations where the debugger is not the right tool, and you switch to logging, tests, profiling, or Git history without hesitation.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-10-the-question-that-matters">
+                    <h3 id="level-10-the-question-that-matters">The question that matters</h3>
+                    <p>At Level 10, the fundamental question is:</p>
+                    <blockquote>
+                        <p>What fact do I need to establish?</p>
+                    </blockquote>
+                    <p>Everything else follows from this question. Once the fact is clear, the tool is often obvious. If the fact is “what value does this variable hold?”, use <code>frame variable</code>. If the fact is “when did this value change?”, use a watchpoint. If the fact is “which branch was taken?”, break before the branch. If the fact is “how often does this happen?”, use logging. If the fact is “does this violate the semantics of unsafe Rust?”, use Miri.</p>
+                    <p>The command is the last thing to choose, not the first. Commands are the vocabulary; the fact is the sentence.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-10-beyond-commands">
+                    <h3 id="level-10-beyond-commands">Beyond commands</h3>
+                    <p>At this level, the debugger becomes an instrument rather than a puzzle. You no longer think about which command to type; you think about the fact you want to establish, and the command follows. This is the same shift that happens in any skill: from thinking about the mechanics of the tool to thinking about the problem the tool is helping to solve.</p>
+                    <p>It is the shift from playing scales to playing music. Both are necessary, and the scales come first. But at some point, the scales become automatic, and the music becomes the point.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-10-rust-2024-notes">
+                    <h3 id="level-10-rust-2024-notes">Rust 2024 notes at this level</h3>
+                    <p>At Level 10, the specific edition matters less than the discipline. Rust 2024 introduces new rules around <code>unsafe extern</code>, unsafe attributes, <code>static mut</code>, and new language features (async closures, <code>gen</code> blocks). Each of these changes the surface of the code that appears in the debugger, but none of them changes the fundamental questions you ask or the fundamental facts you need to establish. The edition is a source-level detail; the discipline is what makes the session productive.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-shape-of-the-path">
+                <h2 id="the-shape-of-the-path">The shape of the path</h2>
+                <p>The ten levels are not a test. They are a map. Most developers do not move through them in strict order, and most are comfortable at different levels for different kinds of code. That is fine. The point is to know which level you are at for a given situation and to practice the level above it deliberately.</p>
+
+                <section tabindex="0" aria-labelledby="typical-time-at-each-level">
+                    <h3 id="typical-time-at-each-level">Typical time at each level</h3>
+                    <p>A rough sense of how much practice each level requires:</p>
+                    <ul>
+                        <li><strong>Levels 1–3</strong>: A few days of practice each. These are the basics of launching, stepping, and inspecting.</li>
+                        <li><strong>Levels 4–5</strong>: A week or two each. Reading backtraces and inspecting Rust types become second nature with repetition.</li>
+                        <li><strong>Levels 6–7</strong>: A few weeks each. Conditions, watchpoints, and threads require deliberate practice with realistic programs.</li>
+                        <li><strong>Level 8</strong>: A month or more. Async debugging is the hardest level for most developers because the mental model is unfamiliar.</li>
+                        <li><strong>Level 9</strong>: Ongoing. Memory inspection, symbol lookup, and breakpoint commands are learned as needed for specific problems.</li>
+                        <li><strong>Level 10</strong>: Continual. Debugging as problem solving is a lifelong practice, not a milestone.</li>
+                    </ul>
+                    <p>These are not deadlines. They are rough expectations. Some developers move faster, some slower. What matters is deliberate practice at each level.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="signs-of-fluency">
+                    <h3 id="signs-of-fluency">Signs of fluency</h3>
+                    <p>You can tell you are fluent at a level when you no longer think about the commands at that level. They become part of your automatic vocabulary. When you reach for a watchpoint, you do not think “is it <code>watchpoint set variable</code> or <code>watchpoint set expression</code>?”; you know, and your fingers type it while your mind is on the problem.</p>
+                    <p>This automaticity is what frees up mental resources for the higher-level skills: hypothesis formation, experiment design, and interpretation of evidence. The goal of the progressive path is to push the mechanics below the level of conscious attention, so that debugging becomes about the problem, not about the tool.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="revisiting-levels">
+                    <h3 id="revisiting-levels">Revisiting levels</h3>
+                    <p>Fluency is not permanent. If you have not used the debugger for a few months, you may find yourself back at Level 2 or Level 3 for a session or two. This is normal. The commands return quickly, and the higher-level skills are not lost.</p>
+                    <p>When returning after a break, spend a session or two on a small program, practicing the early levels. The investment of an hour to sharpen the basics pays off many times over in the sessions that follow.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-arc-of-the-path">
+                    <h3 id="the-arc-of-the-path">The arc of the path</h3>
+                    <p>Looking across the ten levels, a clear arc appears:</p>
+                    <ol>
+                        <li><strong>Levels 1–3</strong>: The fundamentals. Stop, step, inspect.</li>
+                        <li><strong>Levels 4–5</strong>: The Rust-specific skills. Backtraces, types, enums, <code>Option</code>, <code>Result</code>.</li>
+                        <li><strong>Levels 6–7</strong>: The narrowing skills. Conditions, watchpoints, threads.</li>
+                        <li><strong>Level 8</strong>: The async skills. State machines, runtimes, task management.</li>
+                        <li><strong>Levels 9–10</strong>: The advanced skills. Memory, FFI, and the discipline of debugging as problem solving.</li>
+                    </ol>
+                    <p>The arc moves from “operating the debugger” to “using the debugger as an instrument.” The early levels are about learning to use the tool; the later levels are about knowing when and why to use it.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-the-learning-path">
+                <h2 id="rust-2024-notes-on-the-learning-path">Rust 2024 notes on the learning path</h2>
+                <p>The Rust 2024 edition does not change the structure of the learning path. It changes some source-level details that appear at each level:</p>
+
+                <section tabindex="0" aria-labelledby="levels-1-to-3-rust-2024">
+                    <h3 id="levels-1-to-3-rust-2024">Levels 1–3 and Rust 2024</h3>
+                    <p>Launching, stepping, and inspecting work the same as before. The debug information format is compatible with LLDB; the pretty-printers are the same. No changes are needed for these levels.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="levels-4-to-5-rust-2024">
+                    <h3 id="levels-4-to-5-rust-2024">Levels 4–5 and Rust 2024</h3>
+                    <p>Backtraces and value inspection look the same as before, with one small addition: functions exposed with <code>#[unsafe(no_mangle)]</code> appear under their exact source names, which can make certain frames easier to identify. Enum layouts, struct field layouts, and <code>Option</code>/<code>Result</code> representations are unchanged.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="levels-6-to-7-rust-2024">
+                    <h3 id="levels-6-to-7-rust-2024">Levels 6–7 and Rust 2024</h3>
+                    <p>Conditions and watchpoints are unaffected by the edition. Threads behave the same way. Scoped threads, stabilized more prominently in Rust 2024, are just threads under the debugger; their guarantees make their behavior slightly more predictable.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="level-8-rust-2024">
+                    <h3 id="level-8-rust-2024">Level 8 and Rust 2024</h3>
+                    <p>Async closures and <code>gen</code> blocks are new in Rust 2024, but they use the same underlying state-machine model as <code>async fn</code>. The debugging techniques you practice at Level 8 apply to all three. The main difference is that the compiler-generated names for async closures and <code>gen</code> blocks may include additional markers, but the structure is the same.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="levels-9-to-10-rust-2024">
+                    <h3 id="levels-9-to-10-rust-2024">Levels 9–10 and Rust 2024</h3>
+                    <p>The advanced tools work the same way, but the source you inspect has changed. <code>unsafe extern</code> blocks make the FFI boundary more explicit, which is a small improvement for FFI debugging. The new unsafe attributes change symbol names, which affects symbol lookup. The restriction on <code>static mut</code> changes how global state appears in the debugger, but not the fundamental technique.</p>
+                    <p>At Level 10, the edition fades into the background. What matters is the discipline.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch22">
+                <h2 id="summary-ch22">Summary</h2>
+                <p>In this chapter, we laid out a ten-level path for learning Rust debugging with LLDB:</p>
+                <ul>
+                    <li><strong>Level 1 — Stop and Continue</strong>: launch a binary, set a breakpoint, run, continue, quit.</li>
+                    <li><strong>Level 2 — Navigate Execution</strong>: <code>next</code>, <code>step</code>, <code>finish</code>. The three directions of source-level navigation.</li>
+                    <li><strong>Level 3 — Inspect State</strong>: <code>frame variable</code> and <code>frame info</code>. Reading local state and comparing against expectations.</li>
+                    <li><strong>Level 4 — Understand the Call Stack</strong>: <code>bt</code>, <code>frame select</code>, <code>up</code>, <code>down</code>. Reading backtraces and navigating between frames.</li>
+                    <li><strong>Level 5 — Investigate Rust Values</strong>: structs, enums, <code>Option</code>, <code>Result</code>, references, <code>Vec</code>, <code>String</code>, <code>HashMap</code>. Becoming fluent with the pretty-printers’ view of Rust types.</li>
+                    <li><strong>Level 6 — Conditional Investigation</strong>: conditions and watchpoints. Stopping only when the interesting state occurs.</li>
+                    <li><strong>Level 7 — Threads</strong>: listing threads, selecting threads, reading multithreaded backtraces, recognizing deadlocks.</li>
+                    <li><strong>Level 8 — Async Rust</strong>: async functions, <code>.await</code>, Tokio tasks, runtime threads. Separating application execution from executor machinery.</li>
+                    <li><strong>Level 9 — Advanced Runtime Investigation</strong>: <code>expression</code>, <code>memory read</code>, <code>image lookup</code>, breakpoint commands. Investigating cases where source-level debugging is not enough.</li>
+                    <li><strong>Level 10 — Debugging as Problem Solving</strong>: shifting from “which command?” to “what fact do I need to establish?”</li>
+                </ul>
+                <p>Each level builds on the previous ones. Each level has a defined goal and a clear sign of mastery. The path is not a race; it is a progression of skills that compound over time.</p>
+                <p>The unifying principle: fluency at each level frees mental resources for the next. The goal is not to know all the commands; the goal is to make the commands automatic, so that debugging becomes about the problem, not about the tool.</p>
+                <p>In the next chapter, we consolidate the core questions and the minimal command set that summarize everything in this manual.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-21.html">← Chapter 21</a>
+            <a class="nav-next" href="./chapter-23.html">Chapter 23 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

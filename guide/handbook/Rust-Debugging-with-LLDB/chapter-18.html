@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 18: Debugging as Experimental Science – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch18-heading">
+            <h1 id="ch18-heading">Chapter 18: Debugging as Experimental Science</h1>
+
+            <p>The previous chapter described debugging strategy at the level of individual decisions: which breakpoint, which value, which hypothesis. This chapter takes a step back and describes the larger activity that those decisions add up to. Debugging, at its best, is experimental science applied to running software. The object of study is a program. The method is controlled observation. The goal is a verified explanation of behavior.</p>
+            <p>Thinking about debugging in this way changes how a session feels. Instead of a struggle against a bug, debugging becomes a series of small experiments. Each experiment either confirms a hypothesis or rejects it. Either outcome is progress. The bug is not defeated by a clever guess; it is cornered by a sequence of specific observations that narrow the space of possibilities.</p>
+            <p>This chapter is about that frame: the experimental loop, the relationship between debugging and logging, the role of the debugger in a broader investigation, and the discipline of turning observations into a durable understanding of a program’s behavior.</p>
+
+            <section tabindex="0" aria-labelledby="debugging-as-experimental-science-section">
+                <h2 id="debugging-as-experimental-science-section">Debugging as experimental science</h2>
+                <p>A strong debugging session resembles an experiment.</p>
+                <p>Start with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Observation:
+The parser returns None.
+</code></pre>
+                <p>Hypothesis:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>The input path is empty.
+</code></pre>
+                <p>Experiment:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>breakpoint set --name parse_config
+run
+frame variable input
+</code></pre>
+                <p>Result:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>input is correct.
+</code></pre>
+                <p>Hypothesis rejected.</p>
+                <p>New hypothesis:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>The configuration lookup fails.
+</code></pre>
+                <p>Next experiment:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>breakpoint set --name find_config
+continue
+</code></pre>
+                <p>This is much more effective than randomly stepping through the program.</p>
+
+                <section tabindex="0" aria-labelledby="the-scientific-method-in-microcosm">
+                    <h3 id="the-scientific-method-in-microcosm">The scientific method in microcosm</h3>
+                    <p>The debugging loop is the scientific method compressed into minutes. It has the same structure as any controlled experiment:</p>
+                    <ul>
+                        <li><strong>Observation</strong>: something happened that we want to explain.</li>
+                        <li><strong>Hypothesis</strong>: a specific, testable explanation of the observation.</li>
+                        <li><strong>Prediction</strong>: what we expect to see if the hypothesis is true.</li>
+                        <li><strong>Experiment</strong>: a breakpoint, an inspection, a step, or a watchpoint that tests the prediction.</li>
+                        <li><strong>Observation of result</strong>: what actually happened in the experiment.</li>
+                        <li><strong>Conclusion</strong>: whether the hypothesis was confirmed or rejected.</li>
+                        <li><strong>Next hypothesis</strong>: based on the conclusion, the next specific question to test.</li>
+                    </ul>
+                    <p>The parallel is not decorative. A debugging session that follows this structure converges quickly. A debugging session that ignores it wanders. The difference is not intelligence; it is method.</p>
+                    <p>The great advantage of the debugger over other tools is that it makes the experimental step extremely cheap. Setting a breakpoint, running to it, and inspecting a value takes seconds. Because experiments are cheap, the method can be applied many times in a single session, and each application narrows the search space.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="why-the-experiment-framing-matters">
+                    <h3 id="why-the-experiment-framing-matters">Why the experiment framing matters</h3>
+                    <p>It is easy to think of debugging as a hunt for a “bug”—as if the bug were a physical object somewhere in the source that just needs to be found. This framing is misleading. A bug is not an object. It is a behavior of the running program that differs from expectation. The purpose of debugging is not to find the bug as an object but to produce an explanation that accounts for the behavior.</p>
+                    <p>Under the hunt framing, a session fails when the bug is not “found.” Under the experiment framing, a session succeeds as long as it produces a verified conclusion, even if that conclusion is “the bug is not where I thought it was.” Each rejected hypothesis is progress.</p>
+                    <p>The experiment framing also makes debugging less personal. When a hypothesis is rejected, it is the hypothesis that is rejected, not the programmer. This matters because debugging sessions are often long and frustrating, and the personal framing makes them more so.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-role-of-failure-in-an-experiment">
+                    <h3 id="the-role-of-failure-in-an-experiment">The role of failure in an experiment</h3>
+                    <p>In experimental science, a failed experiment is not a failed hypothesis. It is a fact. It constrains the space of possible explanations.</p>
+                    <p>The same is true in debugging. A rejected hypothesis is not a wasted session; it is evidence. It eliminates one explanation and leaves the remaining space smaller. As long as hypotheses are specific enough to be testable, each rejection narrows the search.</p>
+                    <p>What makes a debugging session wasteful is not rejection; it is vagueness. A vague hypothesis such as “something is wrong in the parser” cannot be tested because it does not make a specific prediction. An hour spent in vague exploration has less value than a minute spent on a specific hypothesis that gets rejected.</p>
+                    <p>This is why the discipline of writing down hypotheses is so useful. It forces each hypothesis to be specific enough to write down, and thus specific enough to test.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="bias-and-the-debugger">
+                    <h3 id="bias-and-the-debugger">Bias and the debugger</h3>
+                    <p>Human beings are not neutral observers. When debugging, several biases can interfere with the investigation:</p>
+                    <ul>
+                        <li><strong>Confirmation bias</strong>: the tendency to look for evidence that supports a hypothesis and to overlook evidence against it. The debugger helps here by producing evidence whether or not it supports the hypothesis. But the risk remains: it is possible to see the value you expect to see rather than the value that is actually there.</li>
+                        <li><strong>Anchoring</strong>: the tendency to fix on the first hypothesis and to return to it even after it has been rejected. When a hypothesis is rejected, it should be set aside. Returning to it without new evidence wastes time.</li>
+                        <li><strong>Availability</strong>: the tendency to consider hypotheses that come easily to mind—the code you just looked at, the bug you saw last week, the error message you read recently. The most likely hypothesis is not always the one that comes first.</li>
+                        <li><strong>Overconfidence</strong>: the tendency to trust your intuition about where the bug is. Intuition is useful as a source of hypotheses, but it is not evidence. Only the program is evidence.</li>
+                    </ul>
+                    <p>The debugger does not eliminate these biases, but it provides a mechanism to counter them. By insisting that each hypothesis be tested against actual runtime state, the debugger keeps the investigation grounded in evidence rather than in prior belief.</p>
+                    <p>A practical countermeasure: after every confirmed hypothesis, ask what the evidence would look like if the hypothesis were false. If the evidence would look the same, the inspection did not actually test the hypothesis.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-versus-logging-section">
+                <h2 id="debugging-versus-logging-section">Debugging versus logging</h2>
+                <p>Logging answers:</p>
+                <blockquote>
+                    <p>What happened over time?</p>
+                </blockquote>
+                <p>LLDB answers:</p>
+                <blockquote>
+                    <p>What is happening here, right now?</p>
+                </blockquote>
+                <p>Tests answer:</p>
+                <blockquote>
+                    <p>Can I reproduce this behavior reliably?</p>
+                </blockquote>
+                <p>Compiler diagnostics answer:</p>
+                <blockquote>
+                    <p>Why does this Rust program violate the language rules?</p>
+                </blockquote>
+                <p>Use them together.</p>
+
+                <section tabindex="0" aria-labelledby="when-logging-is-the-better-tool">
+                    <h3 id="when-logging-is-the-better-tool">When logging is the better tool</h3>
+                    <p>Logging is better than the debugger in several situations:</p>
+                    <ul>
+                        <li><strong>Long-running execution</strong>: if the bug occurs after minutes or hours of execution, running under the debugger for that entire time is impractical. Logging captures the relevant events as they happen.</li>
+                        <li><strong>High event density</strong>: if an event occurs millions of times, a breakpoint will fire millions of times. Logging can sample the events without pausing the program.</li>
+                        <li><strong>Timing-sensitive behavior</strong>: stopping at a breakpoint can change the timing of the program, hiding a race condition. Logging has less impact on timing.</li>
+                        <li><strong>Production systems</strong>: you cannot attach a debugger to a running server without affecting its behavior. Logging is the only way to observe it.</li>
+                        <li><strong>Historical record</strong>: log output can be archived and analyzed after the fact. A debugging session only exists while it is happening.</li>
+                    </ul>
+                    <p>The debugger and logging are not rivals. They are complementary tools, and mature developers use both.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-the-debugger-is-the-better-tool">
+                    <h3 id="when-the-debugger-is-the-better-tool">When the debugger is the better tool</h3>
+                    <p>The debugger is better than logging in its own set of situations:</p>
+                    <ul>
+                        <li><strong>Inspection of complex state</strong>: a log message can only show what the developer thought to log. The debugger can inspect any value in the frame, including values that were not anticipated.</li>
+                        <li><strong>Stepping through logic</strong>: when the bug is in the flow of control, not in a value, stepping is the only way to follow it.</li>
+                        <li><strong>Reproducible bugs on the developer’s machine</strong>: if the bug can be reproduced locally in a controlled environment, the debugger is usually faster than iterative logging.</li>
+                        <li><strong>Examination of a specific moment</strong>: for a bug that manifests as a single wrong value at a specific point, the debugger gives a direct view. Logging would require adding a message at just the right place.</li>
+                    </ul>
+                    <p>A useful heuristic: if you know the value you need, logging is often sufficient. If you do not know which value you need, the debugger is the tool that lets you find out.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-debug-then-log-cycle">
+                    <h3 id="the-debug-then-log-cycle">The debug-then-log cycle</h3>
+                    <p>A common workflow combines the two tools:</p>
+                    <ol>
+                        <li>Reproduce the bug under the debugger.</li>
+                        <li>Identify the specific value or state that is wrong.</li>
+                        <li>Add a log message that captures this value.</li>
+                        <li>Run the program normally, without the debugger, and collect the logs.</li>
+                        <li>Analyze the logs to see the pattern across many runs.</li>
+                        <li>If the pattern is still unclear, return to the debugger with a more specific question.</li>
+                    </ol>
+                    <p>The debugger tells you what to log; logging tells you how often it happens. Each step of the cycle refines the question.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="logging-in-rust">
+                    <h3 id="logging-in-rust">Logging in Rust</h3>
+                    <p>Rust’s standard logging tools are the <code>log</code> crate and a backend such as <code>env_logger</code>. The <code>log</code> crate provides macros for each level:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use log::{error, warn, info, debug, trace};
+
+fn process(value: u32) {
+    debug!("processing value {}", value);
+    if value &gt; 100 {
+        warn!("value {} is unusually large", value);
+    }
+    // ...
+    trace!("processing complete");
+}
+</code></pre>
+                    <p>The behavior of the logger is controlled by an environment variable at runtime:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>RUST_LOG=debug cargo run
+RUST_LOG=my_crate=trace cargo run
+</code></pre>
+                    <p>This makes logging very flexible during debugging: you can leave a rich set of log statements in the code, and choose at runtime how verbose the output is. This is often more efficient than adding and removing <code>println!</code> statements for each investigation.</p>
+                    <p>An important point about Rust 2024: the <code>log</code> crate and <code>env_logger</code> work the same way as in previous editions. The only changes are the underlying language features, not the logging interface itself.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-good-logs-look-like">
+                    <h3 id="what-good-logs-look-like">What good logs look like</h3>
+                    <p>A good log message has several properties:</p>
+                    <ul>
+                        <li><strong>It is at the right level</strong>: <code>error!</code> for problems that affect the user, <code>warn!</code> for things that look wrong but do not fail, <code>info!</code> for lifecycle events, <code>debug!</code> for values that are useful when investigating, <code>trace!</code> for very detailed step-by-step output.</li>
+                        <li><strong>It has enough context</strong>: “processing value 42” is less useful than “processing value 42 for user alice”. The extra context is what lets you correlate the log with a specific request or task.</li>
+                        <li><strong>It uses structured fields</strong>: the <code>tracing</code> crate extends the logging model with structured fields, which are easier to query and analyze later.</li>
+                        <li><strong>It does not flood</strong>: a log message inside a tight loop, at debug level, will produce a flood of output. Use trace level or remove the message for production builds.</li>
+                    </ul>
+                    <p>Good logs are the foundation of post-mortem debugging. When a bug cannot be reproduced, the logs are often the only evidence available.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="combining-tools-effectively">
+                    <h3 id="combining-tools-effectively">Combining tools effectively</h3>
+                    <p>A mature debugging workflow uses all the tools available, each for what it does best:</p>
+                    <ul>
+                        <li><strong>Compiler diagnostics</strong> for static questions about types, ownership, and lifetimes.</li>
+                        <li><strong>Unit tests</strong> to reproduce bugs in a controlled, minimal environment.</li>
+                        <li><strong>Debugger</strong> for direct inspection of runtime state at a specific moment.</li>
+                        <li><strong>Logging</strong> for long-running or high-frequency observations.</li>
+                        <li><strong>Miri and sanitizers</strong> for detecting undefined behavior in unsafe code.</li>
+                        <li><strong>Benchmarks</strong> for measuring performance and detecting regressions.</li>
+                        <li><strong>Profiling</strong> for understanding where time is spent and where allocations occur.</li>
+                    </ul>
+                    <p>The workflow is not “use the debugger for everything.” It is “use the right tool for the question.” Often, the fastest path is to switch tools mid-investigation: use the debugger to identify what to log, use the logs to identify when the bug occurs, use a test to reproduce it, and use the debugger again to inspect the specific moment.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-experimental-loop-in-practice">
+                <h2 id="the-experimental-loop-in-practice">The experimental loop in practice</h2>
+                <p>The debugging loop can be written as a short sequence. Applying it repeatedly is what makes a debugging session productive.</p>
+
+                <section tabindex="0" aria-labelledby="the-shape-of-the-loop">
+                    <h3 id="the-shape-of-the-loop">The shape of the loop</h3>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>1. Observe
+2. Hypothesize
+3. Predict
+4. Experiment
+5. Compare
+6. Conclude
+7. Repeat
+</code></pre>
+                    <p>Each step has a specific purpose:</p>
+                    <ul>
+                        <li><strong>Observe</strong>: notice something that differs from expectation. This can be an unexpected output, an unexpected state, a wrong value, a hang, or a crash.</li>
+                        <li><strong>Hypothesize</strong>: propose a specific explanation for the observation. The hypothesis must be specific enough to test.</li>
+                        <li><strong>Predict</strong>: state what you expect to see if the hypothesis is true. The prediction is what the experiment will test.</li>
+                        <li><strong>Experiment</strong>: choose a breakpoint, an inspection, a watchpoint, or a step that will either confirm or refute the prediction.</li>
+                        <li><strong>Compare</strong>: look at the result and compare it against the prediction.</li>
+                        <li><strong>Conclude</strong>: state whether the hypothesis is confirmed or rejected. Record the conclusion.</li>
+                        <li><strong>Repeat</strong>: use the conclusion as input to the next hypothesis.</li>
+                    </ul>
+                    <p>The loop can complete in seconds for a simple question, or in hours for a complex one. What matters is that each iteration of the loop narrows the space of possibilities.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="from-observation-to-hypothesis">
+                    <h3 id="from-observation-to-hypothesis">From observation to hypothesis</h3>
+                    <p>The transition from observation to hypothesis is the most creative step. It is where the skill of the debugger shows.</p>
+                    <p>An observation is a fact: “the program prints ‘no config’ when I run it with a valid config file.” A hypothesis is a specific, testable explanation for that fact.</p>
+                    <p>Several hypotheses could explain the same observation:</p>
+                    <ul>
+                        <li>The config file path is wrong.</li>
+                        <li>The config file is not being read.</li>
+                        <li>The config file is read but not parsed.</li>
+                        <li>The config file is parsed but discarded.</li>
+                        <li>The output is correct, but the file’s contents are not what I expect.</li>
+                    </ul>
+                    <p>Each hypothesis suggests a specific experiment. The first suggests inspecting the path. The second suggests inspecting the result of the read. The third suggests inspecting the result of the parse. The fourth suggests inspecting the flow of control after the parse. The fifth suggests inspecting the file itself.</p>
+                    <p>To find the hypothesis most likely to be fruitful, ask: which explanation would, if true, produce the observation most directly? Start with that one. The debugger will tell you quickly whether you were right.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="from-prediction-to-experiment">
+                    <h3 id="from-prediction-to-experiment">From prediction to experiment</h3>
+                    <p>A hypothesis without a prediction cannot be tested. The prediction is what makes the experiment meaningful.</p>
+                    <p>Consider the hypothesis “the config file path is wrong.” The prediction is: “if I inspect the path variable, it will not match the expected path.” This prediction can be tested by a single inspection.</p>
+                    <p>Consider the vaguer hypothesis “something is wrong with the config loading.” There is no specific prediction here. The experiment is unspecified. The result will be interpreted based on what is found, rather than compared against a stated expectation.</p>
+                    <p>The discipline of stating the prediction before the experiment is what keeps the loop from degenerating into aimless inspection.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-prediction-as-a-double-check">
+                    <h3 id="the-prediction-as-a-double-check">The prediction as a double check</h3>
+                    <p>The prediction serves a second purpose: it catches sloppy hypotheses. If you cannot state what you expect to see, the hypothesis is not yet specific enough to test. Refine it until you can.</p>
+                    <p>Example of a hypothesis without a clear prediction:</p>
+                    <blockquote>
+                        <p>“The config loading is broken.”</p>
+                    </blockquote>
+                    <p>Refined into two hypotheses with clear predictions:</p>
+                    <blockquote>
+                        <p>“The config path variable will be empty.” (Prediction: inspecting it shows <code>""</code>.)</p>
+                    </blockquote>
+                    <blockquote>
+                        <p>“The config file open will fail.” (Prediction: inspecting the result of the open call shows <code>Err</code>.)</p>
+                    </blockquote>
+                    <p>Each refined hypothesis has a clear experiment and a clear result. Each iteration of the loop is meaningful.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-the-loop-does-not-converge">
+                    <h3 id="when-the-loop-does-not-converge">When the loop does not converge</h3>
+                    <p>Sometimes, the loop seems to go on forever. Each hypothesis is rejected, but no progress is visible. Several causes are common:</p>
+                    <ul>
+                        <li><strong>Wrong frame</strong>: the inspection is looking at the wrong function or the wrong invocation. Verify the location with <code>bt</code> and <code>frame info</code>.</li>
+                        <li><strong>Wrong binary</strong>: the debugger is running an old build of the program. Verify the path and the modification time.</li>
+                        <li><strong>Wrong assumption about source</strong>: the code being debugged does not match the source that is being read. This can happen with macros, generated code, or stale source files.</li>
+                        <li><strong>Wrong assumption about behavior</strong>: the hypothesis is not specific enough to be tested reliably, and the results are being interpreted loosely.</li>
+                        <li><strong>The observation itself is wrong</strong>: the bug does not reproduce the way it was thought to. Re-verify the observation before continuing.</li>
+                    </ul>
+                    <p>When the loop stalls, step outside it. Re-examine the observation. Re-verify the environment. A few minutes spent confirming the basic facts is often faster than continuing to iterate on a flawed foundation.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-rust-debugging-loop">
+                <h2 id="the-rust-debugging-loop">The Rust debugging loop</h2>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>1. Reproduce
+2. Stop
+3. Locate
+4. Inspect
+5. Trace
+6. Hypothesize
+7. Test
+8. Fix
+9. Reproduce again
+10. Add a regression test
+</code></pre>
+                <p>The final step matters.</p>
+                <p>A bug that has been fixed but cannot be reproduced by a test is easier to reintroduce.</p>
+
+                <section tabindex="0" aria-labelledby="why-each-step-is-necessary">
+                    <h3 id="why-each-step-is-necessary">Why each step is necessary</h3>
+                    <p>Each step in the Rust debugging loop has a purpose:</p>
+                    <ul>
+                        <li><strong>Reproduce</strong>: if the bug cannot be reproduced, no debugging session can find it. Reproduction can be manual, scripted, or via a failing test.</li>
+                        <li><strong>Stop</strong>: pause the program at a specific point. Without a stop, there is nothing to inspect.</li>
+                        <li><strong>Locate</strong>: know where you are. Without location, the inspection has no context.</li>
+                        <li><strong>Inspect</strong>: see the state. Without inspection, there is no evidence.</li>
+                        <li><strong>Trace</strong>: understand how you got here. The path of execution is often as important as the current state.</li>
+                        <li><strong>Hypothesize</strong>: form a specific explanation. This is the creative step.</li>
+                        <li><strong>Test</strong>: run an experiment that confirms or rejects the hypothesis.</li>
+                        <li><strong>Fix</strong>: change the code based on the verified conclusion. A fix without a verified cause is a guess.</li>
+                        <li><strong>Reproduce again</strong>: confirm that the original symptom no longer occurs. This catches fixes that only appeared to work.</li>
+                        <li><strong>Add a regression test</strong>: capture the bug in a test that will catch its return. This is what makes the fix durable.</li>
+                    </ul>
+                    <p>Skipping steps often costs more than it saves. Skipping reproduction leads to debugging a bug that is not there. Skipping verification leads to fixes that do not work. Skipping the regression test leads to bugs that return.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="reproduce-what-makes-a-good-reproduction">
+                    <h3 id="reproduce-what-makes-a-good-reproduction">Reproduce: what makes a good reproduction</h3>
+                    <p>A good reproduction has several properties:</p>
+                    <ul>
+                        <li><strong>Deterministic</strong>: it produces the bug reliably, not intermittently. If the bug is intermittent, the reproduction should acknowledge this and describe the conditions under which it occurs.</li>
+                        <li><strong>Minimal</strong>: it uses the smallest possible input, configuration, and code that still triggers the bug. Minimal reproductions are easier to debug and easier to convert into tests.</li>
+                        <li><strong>Self-contained</strong>: it does not depend on external systems or state that is not part of the reproduction. Dependencies should be documented or replaced with stubs.</li>
+                        <li><strong>Fast</strong>: it runs in seconds, not minutes. Fast reproductions can be run many times during a debugging session.</li>
+                    </ul>
+                    <p>A failing test is often the best reproduction because it is deterministic, minimal, self-contained, and fast. When a bug report includes a failing test, debugging becomes much more direct.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="fix-what-a-good-fix-looks-like">
+                    <h3 id="fix-what-a-good-fix-looks-like">Fix: what a good fix looks like</h3>
+                    <p>A good fix has several properties:</p>
+                    <ul>
+                        <li><strong>Addresses the verified cause</strong>, not a symptom. If the cause is unknown, the fix is a guess.</li>
+                        <li><strong>Minimal</strong>: it changes as little as possible. Large fixes introduce new bugs and make the diff hard to review.</li>
+                        <li><strong>Consistent with existing patterns</strong>: if the codebase uses a particular pattern for the same kind of problem, the fix should follow it.</li>
+                        <li><strong>Tested</strong>: it comes with a regression test that fails without the fix and passes with it.</li>
+                        <li><strong>Documented</strong> if the fix addresses a subtle issue that could recur.</li>
+                    </ul>
+                    <p>A common mistake is to make the fix large because the investigation touched many places. But the investigation may have narrowed the bug to a single line. If so, the fix should be a single line.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="reproduce-again-why-this-step-matters">
+                    <h3 id="reproduce-again-why-this-step-matters">Reproduce again: why this step matters</h3>
+                    <p>After applying a fix, run the original reproduction again. Confirm that the bug no longer occurs. This seems obvious, but it is often skipped under the assumption that the fix obviously works.</p>
+                    <p>Two failure modes are caught by this step:</p>
+                    <ul>
+                        <li><strong>Fixes that hide the symptom without addressing the cause</strong>: the symptom disappears from one path but reappears from another. Running the original reproduction catches this if the reproduction exercises the other path.</li>
+                        <li><strong>Fixes that introduce new bugs</strong>: the original bug is fixed but a new one appears. The original reproduction no longer triggers the bug, but a modified reproduction does.</li>
+                    </ul>
+                    <p>A good practice: run the original reproduction, run the full test suite, and run any regression tests that were added. Only after all pass should the fix be considered done.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="add-a-regression-test-why-this-step-matters">
+                    <h3 id="add-a-regression-test-why-this-step-matters">Add a regression test: why this step matters</h3>
+                    <p>The final step is the one that makes the debugging work durable. A bug that has been fixed but not tested is a bug that can return. The test is the artifact that prevents its return.</p>
+                    <p>A good regression test:</p>
+                    <ul>
+                        <li><strong>Reproduces the original bug</strong>: it fails without the fix and passes with it.</li>
+                        <li><strong>Is specific</strong>: it tests the exact condition that triggered the bug, not a broader condition that might pass for other reasons.</li>
+                        <li><strong>Is fast and deterministic</strong>: it can be run as part of the regular test suite.</li>
+                        <li><strong>Has a clear name</strong>: a name that describes the condition being tested, so that future readers understand what it is for.</li>
+                    </ul>
+                    <p>In Rust, the natural place for a regression test is either in the <code>mod tests</code> block for a unit-level bug, or in the <code>tests/</code> directory for an integration-level bug. Both are appropriate; the choice depends on the scope of the bug.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="from-debugging-to-code-understanding">
+                <h2 id="from-debugging-to-code-understanding">From debugging to code understanding</h2>
+                <p>LLDB is not only a bug-fixing tool.</p>
+                <p>It can teach you how a Rust program actually executes.</p>
+                <p>Take an unfamiliar function.</p>
+                <p>Set a breakpoint.</p>
+                <p>Then observe:</p>
+                <pre tabindex="0" aria-label="Code sample" role="region"><code>arguments
+locals
+calls
+returns
+branches
+state changes
+errors
+threads
+</code></pre>
+                <p>You are building a runtime model.</p>
+                <p>This complements static source-code investigation.</p>
+                <p>Static search asks:</p>
+                <blockquote>
+                    <p>What could happen?</p>
+                </blockquote>
+                <p>The debugger asks:</p>
+                <blockquote>
+                    <p>What did happen during this execution?</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="the-runtime-model">
+                    <h3 id="the-runtime-model">The runtime model</h3>
+                    <p>A runtime model is a mental picture of how a program behaves when it runs. It is different from a reading of the source. The source shows what the program could do; the runtime model shows what it actually does in the cases you have observed.</p>
+                    <p>Building a runtime model involves several activities:</p>
+                    <ul>
+                        <li><strong>Following an execution path</strong>: pick a specific operation and trace it from entry to output. Record the functions it passes through and the values that flow between them.</li>
+                        <li><strong>Mapping the major components</strong>: identify which functions belong to which subsystem. The runtime model groups functions by responsibility.</li>
+                        <li><strong>Identifying the data flow</strong>: for each important type, note where it is created, transformed, stored, and consumed. The data flow often reveals the architecture better than the call graph.</li>
+                        <li><strong>Noting the boundaries</strong>: identify where the program crosses a boundary (file, network, thread, FFI). Boundaries are the places where assumptions change.</li>
+                        <li><strong>Recording the surprises</strong>: when the runtime behavior differs from what the source suggested, record the surprise. These are the places where the runtime model will need revision.</li>
+                    </ul>
+                    <p>The runtime model is a living document. It is refined each time the program is debugged, and each refinement makes future debugging faster.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="using-breakpoints-to-learn">
+                    <h3 id="using-breakpoints-to-learn">Using breakpoints to learn</h3>
+                    <p>A breakpoint is not only a way to inspect a known value. It is a way to discover what is happening at a point you do not understand.</p>
+                    <p>An example learning workflow:</p>
+                    <ol>
+                        <li>Pick an entry point you understand: <code>main</code>, a public API function, a message handler.</li>
+                        <li>Set a breakpoint at the entry.</li>
+                        <li>Run the program and observe what happens next. Which function is called? What arguments are passed?</li>
+                        <li>Set a breakpoint at the next function.</li>
+                        <li>Repeat until you have a picture of the primary execution path.</li>
+                    </ol>
+                    <p>This is sometimes called “tracing” the program. It is slower than reading source, but it produces a runtime model that reading cannot. The runtime model includes information about which branches are taken, which callbacks fire, and which values actually appear at runtime—information that the source alone does not show.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-difference-between-reading-and-observing">
+                    <h3 id="the-difference-between-reading-and-observing">The difference between reading and observing</h3>
+                    <p>Reading source and observing execution are complementary activities, and they answer different questions.</p>
+                    <p>Reading source answers:</p>
+                    <ul>
+                        <li>What could happen?</li>
+                        <li>What types are involved?</li>
+                        <li>What are the public interfaces?</li>
+                        <li>What is the ownership structure?</li>
+                        <li>What conditions are checked?</li>
+                    </ul>
+                    <p>Observing execution answers:</p>
+                    <ul>
+                        <li>What did happen in this run?</li>
+                        <li>Which branches were taken?</li>
+                        <li>Which values actually appeared?</li>
+                        <li>Which callbacks fired?</li>
+                        <li>Which errors were produced?</li>
+                    </ul>
+                    <p>Neither alone is sufficient. Reading without observing leaves uncertainty about which paths actually run. Observing without reading leaves uncertainty about why the observed behavior is possible.</p>
+                    <p>The most productive debugging sessions alternate between the two: read a piece of code, observe its execution, return to the source with new questions, and continue.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-model-as-a-debugging-tool">
+                    <h3 id="the-model-as-a-debugging-tool">The model as a debugging tool</h3>
+                    <p>Once you have a runtime model, debugging becomes much faster. When a bug appears, you already know where the relevant code is likely to be, and you can go directly to the right place.</p>
+                    <p>The model also makes surprises more visible. When the runtime behavior does not match the model, that mismatch is itself a signal. It often means the model is incomplete or wrong, and correcting it is a step toward understanding the bug.</p>
+                    <p>This is why experienced developers sometimes debug faster than beginners even when both are equally unfamiliar with the specific bug. The experienced developer has a richer runtime model of the system, built up over many sessions. The model tells them where to look, and it makes unexpected behavior more noticeable.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="static-plus-dynamic-investigation">
+                <h2 id="static-plus-dynamic-investigation">Static plus dynamic investigation</h2>
+                <p>A strong Rust investigation combines:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>ripgrep
+    ↓
+find symbols and source locations
+
+ast-grep
+    ↓
+find structural patterns
+
+Cargo
+    ↓
+understand packages and dependencies
+
+Rust compiler
+    ↓
+understand static constraints
+
+LLDB
+    ↓
+observe runtime behavior
+
+Git
+    ↓
+understand historical intent
+</code></pre>
+                <p>No single tool provides the whole picture.</p>
+
+                <section tabindex="0" aria-labelledby="ripgrep-for-finding">
+                    <h3 id="ripgrep-for-finding"><code>ripgrep</code> for finding</h3>
+                    <p><code>ripgrep</code> (<code>rg</code>) is the fastest way to answer “where does this name appear?” It handles symbol searches, error message searches, configuration searches, and test searches. It is the tool you reach for before every session, to build a map of where the code lives.</p>
+                    <p>In a Rust codebase, common <code>rg</code> invocations include:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rg 'fn main'
+rg 'pub fn'
+rg 'impl TraitName for'
+rg 'enum MyEnum'
+rg 'trait MyTrait'
+rg 'Err\('
+rg 'unwrap\(\)'
+rg 'expect\('
+</code></pre>
+                    <p>Each search produces a list of locations. The list is not a conclusion; it is input to the next step of the investigation.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="ast-grep-for-structure">
+                    <h3 id="ast-grep-for-structure"><code>ast-grep</code> for structure</h3>
+                    <p><code>ast-grep</code> searches for patterns in the syntax tree rather than in the raw text. It answers questions such as:</p>
+                    <ul>
+                        <li>Which functions return a specific type?</li>
+                        <li>Which structs contain a specific field?</li>
+                        <li>Which implementations provide a specific trait?</li>
+                        <li>Which calls are made inside a specific kind of block?</li>
+                    </ul>
+                    <p>For Rust, <code>ast-grep</code> complements <code>rg</code> by finding relationships that are structural rather than textual. The two tools work well together: <code>rg</code> finds the candidates, and <code>ast-grep</code> narrows them by structure.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cargo-for-packages">
+                    <h3 id="cargo-for-packages">Cargo for packages</h3>
+                    <p>Cargo answers questions about the build:</p>
+                    <ul>
+                        <li>Which packages exist in this workspace?</li>
+                        <li>Which dependencies does each package have?</li>
+                        <li>Which features are enabled?</li>
+                        <li>Which binaries and libraries does each package produce?</li>
+                        <li>Which profile is being used?</li>
+                    </ul>
+                    <p>These questions often arise when the bug involves an unexpected dependency, a feature that changes behavior, or a binary that is not the one being debugged. Cargo’s output (<code>cargo metadata</code>, <code>cargo tree</code>, <code>cargo build --verbose</code>) provides the answers.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="rust-compiler-for-static-rules">
+                    <h3 id="rust-compiler-for-static-rules">Rust compiler for static rules</h3>
+                    <p>The compiler answers questions about types, ownership, and lifetimes. It is the only tool that can answer questions about why a program does not compile. When a bug involves type errors, borrow checker errors, or lifetime issues, the compiler is the first tool to use.</p>
+                    <p>In Rust 2024, the compiler also enforces the new edition rules (unsafe extern, unsafe attributes, and so on). Errors related to these are also compiler-level and should be addressed before any runtime debugging begins.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="lldb-for-runtime">
+                    <h3 id="lldb-for-runtime">LLDB for runtime</h3>
+                    <p>LLDB answers questions about runtime state: which value, which branch, which thread, which call path. It is the tool for questions the compiler cannot answer because they depend on a specific execution.</p>
+                    <p>The division of labor is clear: static questions go to static tools; dynamic questions go to LLDB. When a session starts with LLDB and the question turns out to be static, the answer is not in LLDB. When a session starts with the compiler and the question turns out to be dynamic, the compiler cannot help. Recognizing the kind of question is the first step.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="git-for-history">
+                    <h3 id="git-for-history">Git for history</h3>
+                    <p>Git answers questions about how the code got to its current state:</p>
+                    <ul>
+                        <li>When was this line added?</li>
+                        <li>What was the commit message?</li>
+                        <li>Who made the change?</li>
+                        <li>What else changed in the same commit?</li>
+                    </ul>
+                    <p>These questions are especially useful when a bug appears after a recent change. <code>git bisect</code> can find the exact commit that introduced a bug, using a script that tests whether the bug is present at each commit. This is a form of automated experimental investigation, in the same spirit as the debugging loop.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="combining-tools-in-one-session">
+                    <h3 id="combining-tools-in-one-session">Combining tools in one session</h3>
+                    <p>A single debugging session might use all of these tools in sequence:</p>
+                    <ol>
+                        <li>Read the source with <code>rg</code> to find the relevant function.</li>
+                        <li>Check the types and ownership with the compiler.</li>
+                        <li>Set a breakpoint with LLDB to observe the runtime state.</li>
+                        <li>Use the debugger to identify a specific value that is wrong.</li>
+                        <li>Check the history with <code>git log</code> to see whether the value was recently changed.</li>
+                        <li>Add a failing test that reproduces the bug.</li>
+                        <li>Fix the bug and confirm with the test.</li>
+                    </ol>
+                    <p>The tools are not rivals. Each answers a question the others cannot.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-debugging-notebook-revisited">
+                <h2 id="the-debugging-notebook-revisited">The debugging notebook revisited</h2>
+                <p>The debugging notebook, introduced in the previous chapter, is the record of the experimental loop. Each entry is one iteration of the loop.</p>
+
+                <section tabindex="0" aria-labelledby="a-longer-worked-example">
+                    <h3 id="a-longer-worked-example">A longer worked example</h3>
+                    <p>Consider a bug in a small HTTP server. The server accepts requests, parses them, and returns responses. A user reports that some requests return “500 Internal Server Error” when they should return “200 OK”.</p>
+                    <p>A notebook of the investigation might look like this:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Observation:
+  Some requests return 500 when they should return 200.
+  The pattern is not obvious from the logs.
+
+Hypothesis 1:
+  The handler panics for specific inputs.
+Prediction:
+  Panics appear in the log with a stack trace.
+Experiment:
+  Check the server logs for panic traces.
+Result:
+  No panic traces.
+Conclusion:
+  Hypothesis rejected.
+
+Hypothesis 2:
+  The request parser returns Err for some inputs.
+Prediction:
+  A breakpoint on the parse function will show Err for failing requests.
+Experiment:
+  Break at parse, run the failing request.
+Result:
+  parse returns Ok with the expected structure.
+Conclusion:
+  Hypothesis rejected.
+
+Hypothesis 3:
+  The response serializer fails for some responses.
+Prediction:
+  A breakpoint in the serializer will show Err.
+Experiment:
+  Break at serialize, run the failing request.
+Result:
+  serialize returns Err(TooLarge) for responses above 4 KB.
+Conclusion:
+  Hypothesis confirmed. The serializer has a size limit that was not accounted for.
+
+Fix:
+  Increase the serializer buffer size, or stream the response.
+
+Regression test:
+  A test that sends a response above 4 KB and asserts that it is returned successfully.
+
+Verify:
+  The failing request now returns 200.
+</code></pre>
+                    <p>Each entry in the notebook is a complete iteration of the loop. The notebook shows the full investigation, including the rejected hypotheses, which are as informative as the confirmed one.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-the-notebook-shows">
+                    <h3 id="what-the-notebook-shows">What the notebook shows</h3>
+                    <p>Several things stand out when the notebook is viewed as a whole:</p>
+                    <ul>
+                        <li><strong>The investigation is a sequence of specific hypotheses</strong>, not a vague exploration.</li>
+                        <li><strong>Rejected hypotheses are recorded</strong>, so future investigators know what has already been ruled out.</li>
+                        <li><strong>Each experiment is tied to a specific prediction</strong>, so the results are interpretable.</li>
+                        <li><strong>The fix follows from the confirmed hypothesis</strong>, not from a guess.</li>
+                        <li><strong>The regression test is derived from the confirmed hypothesis</strong>, which ensures it tests the right thing.</li>
+                    </ul>
+                    <p>This is what a well-conducted experimental investigation looks like. It is not a talent; it is a discipline.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="from-notebook-to-postmortem">
+                    <h3 id="from-notebook-to-postmortem">From notebook to postmortem</h3>
+                    <p>For production systems, the notebook becomes part of the postmortem. When a bug affects users, the postmortem records what happened, why it happened, and how it was fixed. A good notebook makes the postmortem almost automatic: it contains the timeline, the hypotheses, the evidence, and the fix.</p>
+                    <p>For personal use, the notebook is a record of your debugging habits. Reviewing it after a few months reveals patterns: which kinds of bugs you tend to find quickly, which ones take longer, which tools you reach for first. This kind of self-observation is a powerful way to improve your debugging over time.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-experimental-debugging">
+                <h2 id="rust-2024-notes-on-experimental-debugging">Rust 2024 notes on experimental debugging</h2>
+                <p>A few Rust 2024 specifics affect the experimental loop.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-op-in-unsafe-fn-and-inspection">
+                    <h3 id="unsafe-op-in-unsafe-fn-and-inspection"><code>unsafe_op_in_unsafe_fn</code> and inspection</h3>
+                    <p>The Rust 2024 edition requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies. This is helpful for the experimental loop because it makes the boundaries between safe and unsafe code explicit. When a hypothesis involves an unsafe operation, the opening of the <code>unsafe</code> block is a natural experiment location.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-and-the-ffi-boundary">
+                    <h3 id="unsafe-extern-and-the-ffi-boundary"><code>unsafe extern</code> and the FFI boundary</h3>
+                    <p>Because all <code>extern</code> blocks are now <code>unsafe extern</code>, the FFI boundary is more explicit in source. When a hypothesis involves a foreign call, the source shows exactly where the boundary is. The experiment is to set a breakpoint just before the call and inspect what is passed across.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-and-global-state">
+                    <h3 id="static-mut-and-global-state"><code>static mut</code> and global state</h3>
+                    <p>The restriction on <code>static mut</code> references means global state investigations use interior-mutability primitives. When a hypothesis involves global state, the experiment is to inspect the wrapper type (Mutex, Atomic, UnsafeCell) at a breakpoint. The value inside the wrapper is the runtime state of the global.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="async-closures-and-inspection">
+                    <h3 id="async-closures-and-inspection">Async closures and inspection</h3>
+                    <p>Rust 2024 stabilizes async closures. When a hypothesis involves an async closure, the experiment is to break at the source line inside the closure, inspect the captured variables, and step through the awaited operations. The frame structure is the same as for <code>async fn</code>: application frames interleaved with runtime machinery.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-miri">
+                    <h3 id="edition-2024-and-miri">Edition 2024 and Miri</h3>
+                    <p>Miri supports the Rust 2024 edition and is often ahead of the stable compiler in enforcing new semantics. For hypotheses involving undefined behavior, Miri is often a better tool than LLDB, because it can detect violations that do not manifest as runtime symptoms. The experimental loop can use both: Miri for detecting the violation, and LLDB for inspecting the state at the moment of violation.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch18">
+                <h2 id="summary-ch18">Summary</h2>
+                <p>In this chapter, we framed debugging as experimental science:</p>
+                <ul>
+                    <li><strong>The experimental loop</strong>: observe, hypothesize, predict, experiment, compare, conclude, repeat. Each iteration of the loop narrows the space of possibilities.</li>
+                    <li><strong>Hypothesis quality</strong>: a good hypothesis is specific, testable, and falsifiable. Vague hypotheses cannot be tested reliably.</li>
+                    <li><strong>Bias in debugging</strong>: confirmation bias, anchoring, availability, and overconfidence all interfere with the investigation. The debugger provides a mechanism to counter them by grounding conclusions in runtime evidence.</li>
+                    <li><strong>Debugging versus logging</strong>: logging answers “what happened over time,” the debugger answers “what is happening right now.” Each tool has situations where it is the better choice. Mature workflows use both.</li>
+                    <li><strong>The Rust debugging loop</strong>: reproduce, stop, locate, inspect, trace, hypothesize, test, fix, reproduce again, add a regression test. The final step is what makes the fix durable.</li>
+                    <li><strong>Runtime models</strong>: debuggers are not only for bug fixing. They are also for building a mental picture of how a program behaves when it runs. This picture is what makes future debugging faster.</li>
+                    <li><strong>Static plus dynamic tools</strong>: ripgrep, ast-grep, Cargo, the Rust compiler, LLDB, and Git each answer different questions. Combining them produces a stronger investigation than any single tool.</li>
+                    <li><strong>The debugging notebook</strong>: record observations, hypotheses, predictions, experiments, and conclusions. The notebook is the durable artifact of the investigation, and it becomes the source material for regression tests and postmortems.</li>
+                    <li><strong>Rust 2024 specifics</strong>: the experimental loop is unaffected by the edition, but the new rules around <code>unsafe extern</code>, unsafe attributes, <code>unsafe_op_in_unsafe_fn</code>, and <code>static mut</code> change what appears in the source and in the debugger.</li>
+                </ul>
+                <p>The unifying theme: debugging is a discipline, not a talent. The tools are the same for everyone; the method is what separates a productive session from a frustrating one. An experimental framing makes the method explicit and reproducible.</p>
+                <p>In the next chapter, we consider the limits of the debugger: when it is not the right tool, and how to recognize the situations where other approaches—logging, tests, sanitizers, static analysis—are more appropriate.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-17.html">← Chapter 17</a>
+            <a class="nav-next" href="./chapter-19.html">Chapter 19 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

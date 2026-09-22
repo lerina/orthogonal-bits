@@ -96,6 +96,16 @@
   .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
   .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
   .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+  .pagenav{ margin-top: 30px; display:flex; justify-content:center; align-items:center; gap: 18px; flex-wrap: wrap; }
+  .pagenav a, .pagenav span.disabled{
+    display:inline-flex; align-items:center; gap: 8px;
+    border: 1px solid var(--rule); padding: 10px 18px;
+    font-size: 12px; letter-spacing: 0.08em; text-decoration:none;
+  }
+  .pagenav a{ color: var(--riso-yellow); border-color: var(--riso-yellow); }
+  .pagenav a:hover, .pagenav a:focus{ background: var(--riso-yellow); color: var(--paper); }
+  .pagenav span.disabled{ color: var(--ink-dim); }
+  .pagenav .pagecount{ font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
 
   @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
 </style>
@@ -694,6 +704,13 @@ EDIT</pre>
     <footer class="panel back" data-fold="END">
       <div class="glyph">D I A L &nbsp; · &nbsp; F I R S T &nbsp; D E S C E N T</div>
       <p class="closer">Four nights, twenty-six sections, and by the end Dial had stopped calling it a manual out loud. The sponsor never asked for it back. On the Line, that's usually the only graduation anyone gets — nobody tells you the training's over. You just notice, one ordinary night, that you're not reading the file anymore. You're just working, and the file turned out to be how you learned to.</p>
+      
+      
+      <nav class="pagenav" aria-label="Page navigation">
+        <a href="./index.html">&larr; THE SIGNAL RUNNER INDEX</a>
+        <span class="pagecount">PAGE 1 OF 3</span>
+        <a href="dial02-mission-protocol.html">NEXT: THE MISSION PROTOCOL &rarr;</a>
+      </nav>
     </footer>
 
   </div>

@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 6: The Essential Commands – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch6-heading">
+            <h1 id="ch6-heading">Chapter 6: The Essential Commands</h1>
+
+            <p>The previous chapter gave you one complete debugging session. This chapter gives you the vocabulary to run many. It focuses on the small set of commands you will use in nearly every session, and it explains the grammar that ties them together.</p>
+            <p>You do not need to memorize every command in LLDB. The debugger has hundreds of them, and most are specialized. What matters is fluency with the small core: the commands that start the program, stop it, move it forward, and inspect what is there.</p>
+
+            <section tabindex="0" aria-labelledby="the-first-commands-to-learn">
+                <h2 id="the-first-commands-to-learn">The first commands to learn</h2>
+                <p>Learn these first:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>run
+breakpoint set
+continue
+next
+step
+finish
+frame variable
+bt
+quit</code></pre>
+                <p>Their common short forms are:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>r
+b
+c
+n
+s
+finish
+frame variable
+bt
+q</code></pre>
+                <p>LLDB supports convenient aliases for many common debugger commands.</p>
+                <p>For a screen-reader workflow, the full command names are often easier to remember semantically. When you hear “breakpoint set” you know what you are doing. When you hear “b” you have to translate. When you type “breakpoint set” and the debugger echoes it back, you can confirm what you intended. The typed characters are the same length either way for most commands; only the mental overhead differs.</p>
+                <p>In practice, most developers end up mixing the two: full names for commands they use infrequently, short forms for commands they type many times in a session. Either style is fine. Choose the one that keeps you oriented.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="lldb-command-grammar">
+                <h2 id="lldb-command-grammar">LLDB command grammar</h2>
+                <p>LLDB commands usually follow this shape:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>noun verb --option value</code></pre>
+                <p>Examples:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --name main
+breakpoint set --file src/main.rs --line 8
+thread backtrace
+frame variable
+watchpoint set variable config</code></pre>
+                <p>Many commands have short forms:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>b main
+c
+n
+s
+bt</code></pre>
+                <p>But full names are often easier to remember and easier to hear with a screen reader.</p>
+                <p>The noun-verb structure is not a coincidence. LLDB organizes its commands as a tree. The first word is a category. The second word is the operation within that category. This is why <code>help</code> works so well: you can explore the tree, one level at a time, and let the debugger teach you its own vocabulary.</p>
+                <p>Options are named consistently across commands. Wherever a command takes a target, you can usually find <code>--file</code>, <code>--line</code>, <code>--name</code>, <code>--address</code>. This consistency means that learning one command in depth gives you leverage on many others.</p>
+
+                <section tabindex="0" aria-labelledby="help-is-part-of-the-interface">
+                    <h3 id="help-is-part-of-the-interface">Help is part of the interface</h3>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>help</code></pre>
+                    <p>For a specific command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>help breakpoint set
+help frame variable
+help watchpoint</code></pre>
+                    <p>LLDB’s help system is detailed. You do not need to memorize every option.</p>
+                    <p>When you use <code>help</code>, you get a compact reference: a one-line description, the syntax, the available options, and often a note about the short form and any related commands. For a screen-reader user, this is often more useful than reading a large manual page, because the help output is structured and predictable.</p>
+                    <p>A common workflow is: you know roughly what you want to do, you type <code>help</code> followed by a keyword, and you scan the output for the option you need. Over time, the ones you use most often become second nature.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="command-completion">
+                    <h3 id="command-completion">Command completion</h3>
+                    <p>Start typing a command and use completion to discover subcommands:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint <TAB></code></pre>
+                    <p>Conceptually, LLDB exposes a command tree:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint
+    set
+    list
+    delete
+    modify
+    command
+
+frame
+    info
+    variable
+    select
+
+thread
+    list
+    select
+    backtrace</code></pre>
+                    <p>This is useful because the debugger itself can teach you its vocabulary.</p>
+                    <p>Completion works not only for commands but also for some option values. For example, typing part of a filename after <code>--file</code> can trigger filename completion. This is especially helpful when you have several source files with similar names.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="repeat-with-enter">
+                    <h3 id="repeat-with-enter">Repeat with Enter</h3>
+                    <p>Pressing Enter on an empty command line repeats the previous command. This is useful for paging through a backtrace:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt 5</code></pre>
+                    <p>Then press Enter to see more.</p>
+                    <p>Be careful: an empty Enter is still a command.</p>
+                    <p>For a screen-reader workflow, this repeat behavior is a double-edged tool. It makes it easy to page forward without retyping. But it also means that a stray Enter can trigger a command you did not intend. If you need a moment to think, it is safer to type a command that does nothing, such as <code>help</code> with no argument, or simply to accept the repetition as long as you remember where the last command left off.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="start-the-program">
+                <h2 id="start-the-program">Start the program</h2>
+                <p>Inside LLDB:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>run</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>r</code></pre>
+                <p>The program starts.</p>
+                <p>If it finishes immediately, you may see something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Process exited with status = 0</code></pre>
+                <p>That means the debugger worked.</p>
+                <p>There was simply nothing that caused execution to stop.</p>
+                <p>You can pass arguments to the program using <code>--</code> as a separator. Everything after <code>--</code> is passed to the program itself, not to LLDB:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) run -- input.json --verbose</code></pre>
+                <p>The program sees <code>input.json</code> and <code>--verbose</code> as its arguments. Without the separator, LLDB would try to interpret those tokens itself and produce a syntax error.</p>
+                <p>You can also set arguments persistently before running:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) settings set target.run-args input.json --verbose
+(lldb) run</code></pre>
+                <p>This is useful when you will run the program many times during a session and want to avoid retyping the arguments.</p>
+                <p><strong>Rust 2024 note</strong>: If your Rust program uses <code>std::env::args()</code>, the arguments after <code>--</code> will appear as you expect. The debugger does not interfere with the process argument vector once the program has been launched.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="set-your-first-breakpoint">
+                <h2 id="set-your-first-breakpoint">Set your first breakpoint</h2>
+                <p>A breakpoint tells LLDB:</p>
+                <blockquote>
+                    <p>Stop execution here.</p>
+                </blockquote>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --name add</code></pre>
+                <p>Short form:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>b add</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>run</code></pre>
+                <p>Execution stops when <code>add</code> is entered.</p>
+                <p>LLDB officially supports setting breakpoints by function name and by file and line.</p>
+                <p>When a name-based breakpoint succeeds, LLDB prints the address it resolved to. When it fails, LLDB prints <code>no locations (pending)</code>. Pending breakpoints are not useless. They are waiting for a matching symbol to load, which can happen later, for example when a dynamically loaded library is opened. But for most cases, a pending breakpoint on a user function indicates that the name did not match any symbol.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="break-at-a-rust-source-line">
+                <h2 id="break-at-a-rust-source-line">Break at a Rust source line</h2>
+                <p>You can specify a file and line:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --file src/main.rs --line 8</code></pre>
+                <p>Short form:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set -f src/main.rs -l 8</code></pre>
+                <p>This is useful when you already know the suspicious location.</p>
+                <p>For Rust code, source-line breakpoints have several advantages over name-based breakpoints:</p>
+                <ul>
+                    <li>They are unaffected by name mangling.</li>
+                    <li>They are unambiguous when multiple functions share a name in different modules.</li>
+                    <li>They target a specific line, which is often exactly what you want.</li>
+                    <li>They work correctly inside closures, iterator chains, and generic functions, where a name-based breakpoint might match multiple instantiations.</li>
+                </ul>
+                <p>The main limitation is that you need to know the line number in advance. If the code is in flux, or if you want to break at a function whose location you have forgotten, a name-based breakpoint is faster.</p>
+                <p>A useful habit is to combine the two: start with a name-based breakpoint to confirm the function is reachable, then add source-line breakpoints for specific lines inside it.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="list-breakpoints">
+                <h2 id="list-breakpoints">List breakpoints</h2>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint list</code></pre>
+                <p>This answers:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>What breakpoints exist?
+
+Are they enabled?
+
+Did LLDB resolve them?
+
+Where are they located?</code></pre>
+                <p>The distinction between a breakpoint being created and having a resolved location is important.</p>
+                <p>A breakpoint can exist before LLDB can resolve it to executable code.</p>
+                <p>When you have many breakpoints, the list output can become long. To focus on one:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint list 3</code></pre>
+                <p>This shows only breakpoint 3. A common workflow is to list all breakpoints when you are setting them up, then list individual ones when you want to check their status mid-session.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="delete-a-breakpoint">
+                <h2 id="delete-a-breakpoint">Delete a breakpoint</h2>
+                <p>Delete one breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint delete 1</code></pre>
+                <p>Delete all breakpoints:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint delete</code></pre>
+                <p>Be careful with the second form.</p>
+                <p>It removes the entire breakpoint set.</p>
+                <p>If you are unsure what is currently set, list first:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint list
+breakpoint delete 3</code></pre>
+                <p>For a screen-reader workflow, the pattern of “list, then delete by ID” is safer than “delete all and re-add.” It avoids the risk of accidentally removing breakpoints you still want, and it produces less output than re-creating a set of breakpoints after a mass deletion.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="continue">
+                <h2 id="continue">Continue</h2>
+                <p>When stopped:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>continue</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>c</code></pre>
+                <p>Execution resumes until:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>another breakpoint
+a signal
+a crash
+program termination</code></pre>
+                <p>or another debugger stop condition occurs.</p>
+                <p>The <code>continue</code> command is how you get from one interesting point to the next. In a session with several breakpoints, you will use <code>continue</code> many times, pausing at each breakpoint to inspect the state.</p>
+                <p>If the program exits while you continue, LLDB will report the exit status:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Process 12345 exited with status = 0 (0x00000000)</code></pre>
+                <p>After that, you can run again from the beginning. The breakpoints remain in place unless you delete them.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="step-over">
+                <h2 id="step-over">Step over</h2>
+                <p>Suppose execution is stopped here:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = add(x, y);</code></pre>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>next</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>n</code></pre>
+                <p>LLDB executes the current source line without entering the called function.</p>
+                <p>This is:</p>
+                <blockquote>
+                    <p>Execute this line and stay at this level.</p>
+                </blockquote>
+            </section>
+
+            <section tabindex="0" aria-labelledby="step-into">
+                <h2 id="step-into">Step into</h2>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>step</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>s</code></pre>
+                <p>When the current line calls another function, LLDB attempts to enter that function.</p>
+                <p>For:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = add(x, y);</code></pre>
+                <p><code>step</code> takes you into:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn add(...)</code></pre>
+                <p>This is:</p>
+                <blockquote>
+                    <p>Show me what happens inside this call.</p>
+                </blockquote>
+            </section>
+
+            <section tabindex="0" aria-labelledby="step-out">
+                <h2 id="step-out">Step out</h2>
+                <p>If you are inside a function and have seen enough:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>finish</code></pre>
+                <p>This runs until the current function returns.</p>
+                <p>Conceptually:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>main
+  ↓
+add
+  ↓
+finish
+  ↓
+main</code></pre>
+                <p>LLDB documents this as <code>thread step-out</code>.</p>
+                <p>When <code>finish</code> returns, LLDB prints the return value of the function that just completed, if it can determine it. This is a fast way to see what a function produced without stepping through its entire body.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-most-important-difference">
+                <h2 id="the-most-important-difference">The most important difference</h2>
+                <p>These three commands answer different questions:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>next</code></pre>
+                <blockquote>
+                    <p>What happens on the next line at this level?</p>
+                </blockquote>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>step</code></pre>
+                <blockquote>
+                    <p>What happens inside this function call?</p>
+                </blockquote>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>finish</code></pre>
+                <blockquote>
+                    <p>What happens after this function returns?</p>
+                </blockquote>
+                <p>Learning this distinction is more important than memorizing dozens of LLDB commands.</p>
+
+                <section tabindex="0" aria-labelledby="the-three-step-commands-in-context">
+                    <h3 id="the-three-step-commands-in-context">The three step commands in context</h3>
+                    <p>The distinction between <code>next</code>, <code>step</code>, and <code>finish</code> is the core of source-level navigation.</p>
+                    <p>Suppose you are here:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = add(x, y);</code></pre>
+
+                    <h4><code>next</code></h4>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next</code></pre>
+                    <p>Executes the line. If the line calls <code>add</code>, LLDB does not enter <code>add</code>. It stays in <code>main</code>.</p>
+                    <p>Use when:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>you trust add
+you want to see what happens after the call
+you want to avoid stepping through library code</code></pre>
+
+                    <h4><code>step</code></h4>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>step</code></pre>
+                    <p>Executes the line. If the line calls <code>add</code>, LLDB enters <code>add</code>.</p>
+                    <p>Use when:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>you suspect the bug is inside add
+you need to inspect add’s arguments
+you need to see how add transforms its input</code></pre>
+
+                    <h4><code>finish</code></h4>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>finish</code></pre>
+                    <p>Runs until the current function returns.</p>
+                    <p>Use when:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>you have seen enough inside the function
+you want to know what it returns
+you want to return to the caller</code></pre>
+
+                    <p>The mental model:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next   → stay at this level
+step   → go down one level
+finish → go up one level</code></pre>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="where-am-i">
+                <h2 id="where-am-i">Where am I?</h2>
+                <p>When the debugger stops, ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Where is execution?</code></pre>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>thread backtrace</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>bt</code></pre>
+                <p>A backtrace shows the call stack.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0  parse_config
+frame #1  load_application
+frame #2  main</code></pre>
+                <p>Read this as:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>main
+→ load_application
+→ parse_config</code></pre>
+                <p>The current location is the first frame.</p>
+                <p>LLDB’s official tutorial uses <code>thread backtrace</code> to inspect the current call stack.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="read-the-current-frame">
+                <h2 id="read-the-current-frame">Read the current frame</h2>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame info</code></pre>
+                <p>This gives information about the current stack frame.</p>
+                <p>You want to know:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Which function?
+
+Which source file?
+
+Which line?
+
+Which module?</code></pre>
+                <p>This is the first orientation step after every unexpected stop.</p>
+                <p>The output typically includes the frame number, the function name, the file and line, and sometimes the source line itself. In compact form, it is one line:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: first_session`first_session::main at src/main.rs:6</code></pre>
+                <p>For a screen-reader workflow, this line is a compact orientation point that you can read on every stop without overwhelming output.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="read-local-variables">
+                <h2 id="read-local-variables">Read local variables</h2>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                <p>This displays variables available in the current frame.</p>
+                <p>For a specific variable:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable result</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config</code></pre>
+                <p>This is one of the most important LLDB commands for Rust.</p>
+                <p>LLDB’s <code>frame variable</code> command is designed specifically for inspecting arguments and local variables in the current frame.</p>
+                <p>Unlike <code>expression</code>, it does not evaluate anything. It reads the current storage and formats it using debug information. This means it is fast, safe, and reliable. It does not call user code, so it does not have side effects or risk of deadlock.</p>
+                <p>When you have a long function with many locals, requesting only the variable you care about is much more efficient than dumping all of them. For a screen-reader workflow, this focused approach is often the difference between a usable session and an overwhelming one.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspect-rust-values">
+                <h2 id="inspect-rust-values">Inspect Rust values</h2>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let user = User {
+    name: String::from("Alice"),
+    age: 30,
+};</code></pre>
+                <p>At a breakpoint:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable user</code></pre>
+                <p>You may see a structured representation of the value.</p>
+                <p>For a field:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable user.name</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable user.age</code></pre>
+                <p>This lets you investigate one piece of a larger Rust value without dumping everything.</p>
+                <p>When the Rust pretty-printers are active, a <code>String</code> field will render as the string contents, not as a length/pointer/capacity triple. A <code>Vec&lt;T&gt;</code> will render as its elements, not as a raw heap pointer. An <code>Option&lt;T&gt;</code> will render as <code>Some(...)</code> or <code>None</code>, not as a discriminant byte plus a union.</p>
+                <p>If the pretty-printers are not active, you will see the raw layout instead. In that case, launch the debugger via <code>rust-lldb</code> instead of plain <code>lldb</code>.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="inspect-nested-values">
+                <h2 id="inspect-nested-values">Inspect nested values</h2>
+                <p>Suppose:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>config.server.port</code></pre>
+                <p>You can ask LLDB for:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable config.server.port</code></pre>
+                <p>This is especially useful with configuration structures.</p>
+                <p>Instead of dumping:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Config</code></pre>
+                <p>inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>config.server
+config.server.port
+config.server.host</code></pre>
+                <p>The goal is controlled output.</p>
+                <p>For screen-reader use, smaller results are usually easier to process.</p>
+                <p>Nested field access also helps when a struct is large. If a struct has thirty fields and you only care about one, <code>frame variable config.server.port</code> gives you exactly that one value, in one line, without any surrounding noise.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="arguments">
+                <h2 id="arguments">Arguments</h2>
+                <p>Function arguments are part of the current frame.</p>
+                <p>For:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn parse(input: &amp;str, strict: bool)</code></pre>
+                <p>use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                <p>or inspect them individually:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable input
+frame variable strict</code></pre>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>What entered this function?
+
+Is it already wrong?
+
+Or does it become wrong here?</code></pre>
+                <p>This is a fundamental debugging question.</p>
+                <p>The answer determines the direction of the next investigation. If the argument is already wrong on entry, the bug is upstream, in the caller. If the argument is correct on entry, the bug is either inside this function or downstream, after the function passes the value on.</p>
+                <p>Arguments are especially useful as debugging landmarks because they are always present at the entry of a function. Even if some locals have been optimized away, the arguments are usually accessible. This makes a breakpoint at a function entry a reliable observation point.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-few-extra-commands-worth-knowing">
+                <h2 id="a-few-extra-commands-worth-knowing">A few extra commands worth knowing</h2>
+                <p>Beyond the core set, three additional commands are worth introducing early because they appear frequently in real sessions.</p>
+
+                <section tabindex="0" aria-labelledby="image-lookup">
+                    <h3 id="image-lookup"><code>image lookup</code></h3>
+                    <p>When a name-based breakpoint does not resolve, <code>image lookup</code> shows you what symbols actually exist:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>image lookup --name parse_config</code></pre>
+                    <p>This searches the loaded binaries for any symbol matching the name. If it finds one, it prints the symbol’s address and source location. If it finds many, it prints all of them. This tells you whether the symbol exists at all, and if so, under what name.</p>
+                    <p>For Rust programs, this is often the fastest way to diagnose a breakpoint that refuses to resolve. The output shows the mangled symbol form, so you can see exactly how the compiler encoded the function.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="frame-select">
+                    <h3 id="frame-select"><code>frame select</code></h3>
+                    <p>When you are stopped and you want to inspect a different frame in the call stack, use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame select 2</code></pre>
+                    <p>Now <code>frame variable</code> shows the locals of frame 2 instead of frame 0. This is essential when you want to inspect state in a caller, not in the current function.</p>
+                    <p>A common pattern is: stop at a failure, look at the current frame, see that the failure is caused by bad input from the caller, use <code>bt</code> to find the caller’s frame number, then <code>frame select</code> to that frame and inspect its locals.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="settings-show">
+                    <h3 id="settings-show"><code>settings show</code></h3>
+                    <p>LLDB has a large configuration space. When something behaves unexpectedly, it is often useful to inspect the current settings:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>settings show target.run-args
+settings show stop-line-count-before
+settings show stop-disassembly-count</code></pre>
+                    <p>This is not something you need often, but it is valuable when the debugger behaves in a way that does not match the defaults you expect. For example, <code>stop-line-count-before</code> controls how many lines of source LLDB shows before the current line when it stops.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-symbols">
+                <h2 id="rust-2024-notes-on-symbols">Rust 2024 notes on symbols</h2>
+                <p>In Rust 2024, a few syntactic changes affect the symbols that appear in the debugger:</p>
+                <ul>
+                    <li><strong><code>#[unsafe(no_mangle)]</code> symbols appear under their exact source name</strong>, because <code>no_mangle</code> tells the compiler not to mangle the symbol. If you are debugging FFI code that uses <code>#[unsafe(no_mangle)]</code>, a name-based breakpoint on the unmangled name will resolve. This is often easier than name-based breakpoints on ordinary Rust functions.</li>
+                    <li><strong><code>unsafe extern "C"</code> blocks</strong> introduce extern symbols. When you break on a symbol declared inside an <code>unsafe extern</code> block, the symbol name comes from the external library, not from the Rust source. Use <code>image lookup</code> to find the exact symbol form.</li>
+                    <li><strong>Ordinary Rust functions remain mangled</strong>. Name-based breakpoints on ordinary functions generally work, because LLDB understands the mangling scheme. But for heavily generic or heavily nested code, source-line breakpoints are more predictable.</li>
+                </ul>
+                <p>None of these change the fundamental command set. They change which technique is best for a given case.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-core-in-one-place">
+                <h2 id="the-core-in-one-place">The core in one place</h2>
+                <p>If you take nothing else from this chapter, take this:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --name FN
+breakpoint set --file FILE --line LINE
+breakpoint list
+run
+continue
+next
+step
+finish
+bt
+frame info
+frame variable
+frame variable NAME
+frame select N
+quit</code></pre>
+                <p>That is enough to perform a large amount of practical Rust debugging. Every other command in LLDB is an extension of this core.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch6">
+                <h2 id="summary-ch6">Summary</h2>
+                <p>In this chapter, we covered the essential LLDB commands for Rust debugging:</p>
+                <ul>
+                    <li><strong>Command grammar</strong>: LLDB commands follow a noun-verb structure, with options that are named consistently across commands.</li>
+                    <li><strong>Help and completion</strong>: <code>help</code> and command completion let the debugger teach you its own vocabulary.</li>
+                    <li><strong>Starting and stopping</strong>: <code>run</code> and <code>continue</code> move the program forward, while <code>breakpoint set</code> stops it at chosen locations.</li>
+                    <li><strong>The three step commands</strong>: <code>next</code> stays at the current level, <code>step</code> descends into a call, and <code>finish</code> ascends back to the caller.</li>
+                    <li><strong>Orientation</strong>: <code>frame info</code> tells you where you are, <code>bt</code> tells you how you got there.</li>
+                    <li><strong>Inspection</strong>: <code>frame variable</code> reads existing state without evaluating expressions. It is the safest, most reliable way to look at Rust values.</li>
+                    <li><strong>Supporting commands</strong>: <code>image lookup</code>, <code>frame select</code>, and <code>settings show</code> are useful when the core commands do not quite cover the situation.</li>
+                </ul>
+                <p>With this vocabulary in hand, the next chapters will apply it to specific classes of problems: breakpoints in depth, frames and backtraces, inspecting Rust values, and the specific shapes of Option, Result, and panic debugging.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-05.html">← Chapter 5</a>
+            <a class="nav-next" href="./chapter-07.html">Chapter 7 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

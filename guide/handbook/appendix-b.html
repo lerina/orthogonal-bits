@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appendix B: Answers and Solutions – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="appendix-b-heading">
+            <h1 id="appendix-b-heading">Appendix B: Answers and Solutions (Online)</h1>
+
+            <p>Welcome to <em>Appendix B</em>!</p>
+            <p>Throughout this handbook, each chapter has ended with a set of review questions and, in most cases, hands-on assignments designed to reinforce the concepts you’ve just learned. This appendix is the companion that provides the answers and solutions to those exercises.</p>
+
+            <section tabindex="0" aria-labelledby="about-this-appendix">
+                <h2 id="about-this-appendix">About this appendix</h2>
+                <p>Learning Rust is an active process, and the exercises in this book were designed with that in mind. Whether you are a self-taught developer working through the book on your own, part of a study group, or a student in a classroom setting, having access to reference solutions can be incredibly helpful. This appendix is intended to serve that purpose.</p>
+                <p>Before we go further, a small but important note:</p>
+                <p><strong>Try to solve the exercises yourself before checking the answers.</strong> The most valuable part of an exercise is not the final code snippet, but the process of reasoning through the problem and wrestling with the compiler. There is a real difference between reading a solution and understanding a solution, and that difference almost always comes from having attempted the problem first, even if you did not succeed.</p>
+                <p>If you do find yourself stuck, treat the answers here as a guide rather than a destination. Compare your approach with the one shown, and ask yourself what you might have missed. This is where the deepest learning happens.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="what-you-will-find-in-this-appendix">
+                <h2 id="what-you-will-find-in-this-appendix">What you will find in this appendix</h2>
+                <p>This appendix mirrors the structure of the book. For each chapter that contained review questions or assignments, you will find:</p>
+                <ul>
+                    <li><strong>Chapter summaries of the exercises</strong>: A brief reminder of what each question or assignment asked, so you don’t have to flip back and forth.</li>
+                    <li><strong>Answer explanations</strong>: For conceptual questions, the answers include not just a short response but a brief explanation of the reasoning behind it, connecting back to the material covered in the chapter.</li>
+                    <li><strong>Complete solution code</strong>: For programming assignments, full code listings are provided, complete with explanatory comments. Where relevant, alternative solutions are also shown, so you can see that there is often more than one idiomatic way to solve a problem in Rust.</li>
+                    <li><strong>Notes on common mistakes</strong>: Many solutions include a short note about the pitfalls that readers often encounter while attempting that particular exercise, along with how to avoid them.</li>
+                </ul>
+                <p>The chapters covered in this appendix include:</p>
+                <ul>
+                    <li><em>Chapter 1: Getting Started with Rust</em> – Review questions on Rust’s key features, the Cargo toolchain, and typical use cases.</li>
+                    <li><em>Chapter 2: Rust Syntax and Functions</em> – Questions on variables, mutability, data types, structs, enums, control flow, and error handling, along with small variable and struct exercises.</li>
+                    <li><em>Chapter 3: Functions in Rust</em> – Questions on defining functions, ownership in function parameters, and closures, plus assignments involving triangle area calculations and closures.</li>
+                    <li><em>Chapter 4: Ownership, Borrowing, and References</em> – Conceptual questions on ownership and borrowing, plus assignments demonstrating ownership transfer and the interaction between immutable and mutable borrows.</li>
+                    <li><em>Chapter 5: Composite Types in Rust and the Module System</em> – Questions on structs, enums, and tuples, and two substantial assignments: an order management system and a geometric shapes program that uses tuple structs and enums together.</li>
+                    <li><em>Chapter 6: Introduction to Error Handling</em> – Questions on <code>Result</code>, <code>Option</code>, <code>panic!</code>, and the <code>?</code> operator, plus assignments on file reading with error handling, a division function using <code>thiserror</code>, and finding elements with <code>Option</code>.</li>
+                    <li><em>Chapter 7: Polymorphism and Lifetimes</em> – Questions on traits, generics, the orphan rule, and lifetimes, plus a “Universal Media Player” assignment that combines traits, generics, and lifetimes.</li>
+                    <li><em>Chapter 8: Object-Oriented Programming in Rust</em> – Questions on encapsulation, static versus dynamic dispatch, supertraits, and object safety, plus two assignments: a private bank account and a basic traits exercise with animal sounds.</li>
+                    <li><em>Chapter 9: Thinking Functionally in Rust</em> – Questions on lazy iterators, adapters versus consumers, closures, and the <code>Fn</code> trait family, plus two assignments: a data filtering task and a custom Fibonacci iterator.</li>
+                    <li><em>Chapter 10: Testing in Rust</em> – Questions on unit, integration, and documentation tests, plus a full assignment to build and test a simple <code>task_manager</code> library, complete with unit and integration test suites.</li>
+                    <li><em>Chapter 11: Smart Pointers and Memory Management</em> – Questions on <code>Box</code>, <code>Rc</code>, <code>Arc</code>, <code>RefCell</code>, and <code>Mutex</code>, plus an assignment that shares a <code>Document</code> between two components using <code>Rc&lt;T&gt;</code>.</li>
+                    <li><em>Chapter 12: Managing System Resources</em> – Questions on file I/O, TCP servers and clients, timeouts, and TLS, plus a file copy utility and a simple key-value TCP server assignment.</li>
+                    <li><em>Chapter 13: Concurrency and Parallelism</em> – Questions on threads, <code>Arc</code>/<code>Mutex</code>, channels, and <code>Send</code>/<code>Sync</code>, plus a “Concurrent File Word Counter” assignment that uses threads and channels together.</li>
+                    <li><em>Chapter 14: Rust for Web Development</em> – Questions on Axum, extractors, <code>sqlx</code>, connection pools, and CORS, plus an assignment that extends the Todo API with a <code>/status</code> endpoint and an <code>/echo/:message</code> path parameter handler.</li>
+                    <li><em>Chapter 15: System Programming in Rust</em> – Questions on <code>unsafe</code>, raw pointers, FFI, and build scripts, plus an “Enhanced CLI File Analyzer” assignment that requires argument parsing and file processing.</li>
+                    <li><em>Chapter 16: Dockerization and Deployment</em> – Questions on Docker images, multi-stage builds, Docker Compose, and container registries, plus two assignments: Dockerizing an existing Rust application and creating a multi-container setup with Docker Compose.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="an-example-of-what-to-expect">
+                <h2 id="an-example-of-what-to-expect">An example of what to expect</h2>
+                <p>To give you a flavor of the depth offered in the full online appendix, here is an abbreviated example: the solution to the first question from Chapter 1, along with a partial answer to Assignment 2.2 from Chapter 2.</p>
+
+                <section tabindex="0" aria-labelledby="example-chapter-1-question-1">
+                    <h3 id="example-chapter-1-question-1">Example: Chapter 1, Question 1</h3>
+                    <p><em>Question: “What key features of Rust make it stand out among other programming languages?”</em></p>
+                    <p><strong>Answer:</strong> Rust stands out primarily because of the combination of performance, memory safety, and concurrency, all achieved without a garbage collector. The most distinctive features are:</p>
+                    <ul>
+                        <li><strong>Ownership and borrowing</strong>: Rust’s compile-time ownership model eliminates many classes of memory bugs (use-after-free, double free, dangling pointers) that plague C and C++. Every value has a single owner, and ownership can be moved or borrowed via references. This is enforced by the borrow checker, which guarantees that references are always valid.</li>
+                        <li><strong>Zero-cost abstractions</strong>: High-level constructs such as iterators, closures, and generics compile down to code that is as efficient as hand-written C, so you don’t pay a runtime penalty for abstraction.</li>
+                        <li><strong>Fearless concurrency</strong>: The same ownership rules apply to threads. The <code>Send</code> and <code>Sync</code> traits, checked at compile time, ensure that data races cannot occur in safe Rust. This makes concurrent and parallel code dramatically safer than in most languages.</li>
+                        <li><strong>Pattern matching and enums with data</strong>: Rust’s <code>match</code> expression and its data-carrying enums (such as <code>Option</code> and <code>Result</code>) make it possible to express complex state and error handling cleanly, with the compiler verifying exhaustiveness.</li>
+                        <li><strong>Excellent tooling</strong>: Cargo, Rustup, and rustfmt provide a first-class developer experience out of the box, something that many systems languages lack.</li>
+                    </ul>
+                    <p>Together, these features make Rust well suited to a very wide range of applications, from operating systems and embedded devices to command-line tools and web services.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="example-chapter-2-assignment-2-2">
+                    <h3 id="example-chapter-2-assignment-2-2">Example: Chapter 2, Assignment 2.2 (partial)</h3>
+                    <p><em>Assignment: “Create a struct to represent a rectangle with width and height. Implement a method to calculate the area of the rectangle.”</em></p>
+                    <p><strong>Solution:</strong></p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+struct Rectangle {
+    width: f64,
+    height: f64,
+}
+
+impl Rectangle {
+    /// Computes and returns the area of the rectangle.
+    fn area(&amp;self) -> f64 {
+        self.width * self.height
+    }
+}
+
+fn main() {
+    let rect = Rectangle { width: 8.5, height: 4.0 };
+    println!("The rectangle is {:#?}", rect);
+    println!("Its area is {:.2} square units.", rect.area());
+}</code></pre>
+                    <p><strong>Notes on the solution:</strong></p>
+                    <ul>
+                        <li>We use <code>f64</code> for width and height, which gives us the ability to represent decimal dimensions. If only whole-number dimensions were needed, <code>u32</code> would work just as well and would let us derive <code>Copy</code>.</li>
+                        <li>The <code>area</code> method takes <code>&amp;self</code> because it only needs to read the fields. It does not mutate the rectangle, so a mutable borrow would be overly restrictive.</li>
+                        <li>We derive <code>Debug</code> so we can print the struct with <code>{:#?}</code>. This is a small but useful habit for development and debugging.</li>
+                        <li>The method returns <code>f64</code> directly; there is no need to use <code>return</code>, since Rust treats the last expression in a block as its return value.</li>
+                    </ul>
+                    <p>In the full appendix, this same assignment is accompanied by a second variant that uses <code>u32</code> fields and a discussion of when each numeric type is preferable.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="accessing-the-full-appendix">
+                <h2 id="accessing-the-full-appendix">Accessing the full appendix</h2>
+                <p>As with Appendix A, the complete version of this appendix is provided online. It contains every question and every assignment from all sixteen chapters, together with their explanations, complete code solutions, and additional notes on alternative approaches and common mistakes.</p>
+                <p>You can access the full appendix here:</p>
+                <p><strong><a href="https://packt.link/1YSwm">https://packt.link/1YSwm</a></strong></p>
+                <p>We recommend bookmarking this link and consulting it whenever you want to verify a solution, see how someone else might have approached a problem, or explore a slightly different design.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="how-to-use-this-appendix-effectively">
+                <h2 id="how-to-use-this-appendix-effectively">How to use this appendix effectively</h2>
+                <p>A few brief recommendations:</p>
+                <ul>
+                    <li><strong>Attempt every exercise first.</strong> Even a rough, incomplete attempt will make the answer far more meaningful.</li>
+                    <li><strong>Compare, don’t just copy.</strong> Compare your solution with the one given. Ask yourself what each does differently, and whether one might be more idiomatic or more efficient.</li>
+                    <li><strong>Try the alternatives.</strong> Where the appendix presents more than one solution, try implementing both. Exploring alternative designs is one of the best ways to deepen your Rust skills.</li>
+                    <li><strong>Revisit later.</strong> A question that seemed trivial early in your journey may reveal new depth once you have more experience. Don’t hesitate to come back to the appendix after you’ve finished more chapters.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-final-word">
+                <h2 id="a-final-word">A final word</h2>
+                <p>Learning Rust is a journey, and the exercises in this book are the stepping stones along the path. If you have worked through them, you have already come much further than most readers of any programming book typically do. Take a moment to be proud of that.</p>
+                <p>Whether you aced every exercise or struggled through them, the important thing is that you kept going. That determination is what turns a curious reader into a competent Rust programmer.</p>
+                <p>We wish you the very best as you continue your Rust journey. Now, go build something wonderful!</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./appendix-a.html">← Appendix A</a>
+            <a class="nav-next" href="./index.html">Table of Contents →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

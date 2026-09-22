@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 17: Breakpoint Strategy and the First Wrong State – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch17-heading">
+            <h1 id="ch17-heading">Chapter 17: Breakpoint Strategy and the First Wrong State</h1>
+
+            <p>You now have the full vocabulary of Rust debugging with LLDB: breakpoints, stepping, frames, backtraces, value inspection, conditional breakpoints, watchpoints, threads, async, tests, unsafe, FFI. What remains is strategy: knowing where to put the breakpoint, and what question to ask when you get there.</p>
+            <p>This chapter is about that strategy. It is the difference between a debugging session that produces clarity and one that produces a long list of stops without a conclusion. The tools are the same; the discipline is different.</p>
+            <p>Two ideas thread through everything here:</p>
+            <ul>
+                <li><strong>Breakpoint strategy</strong>: the choice of where to stop is the most important decision in a debugging session.</li>
+                <li><strong>The first wrong state</strong>: a bug is often best understood by finding the first place where reality diverges from expectation, not by examining the symptom.</li>
+            </ul>
+            <p>The rest of the chapter is these two ideas, expanded.</p>
+
+            <section tabindex="0" aria-labelledby="breakpoint-strategy">
+                <h2 id="breakpoint-strategy">Breakpoint strategy</h2>
+                <p>Avoid setting twenty breakpoints immediately.</p>
+                <p>Start with one.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --name parse_config</code></pre>
+                <p>Run.</p>
+                <p>Inspect.</p>
+                <p>Then ask:</p>
+                <blockquote>
+                    <p>What do I know now?</p>
+                </blockquote>
+                <p>If necessary, add another breakpoint.</p>
+                <p>This creates a controlled investigation.</p>
+
+                <section tabindex="0" aria-labelledby="the-single-breakpoint-discipline">
+                    <h3 id="the-single-breakpoint-discipline">The single-breakpoint discipline</h3>
+                    <p>The most common mistake in debugging is to approach it as a bulk activity. The urge is to set many breakpoints, run once, and “see everything.” In practice, this produces a flood of output that is difficult to interpret and does not correspond to a specific question.</p>
+                    <p>A better approach: each breakpoint is the answer to a question. Before setting it, state the question. For example:</p>
+                    <ul>
+                        <li>“What value does <code>parse_config</code> receive?”</li>
+                        <li>“Which branch is taken at this <code>if</code>?”</li>
+                        <li>“What is the state of <code>cache</code> when <code>handle_request</code> is entered?”</li>
+                    </ul>
+                    <p>Then place the breakpoint that answers that question. Run. Inspect. Close that question. Then decide whether you have another one.</p>
+                    <p>This discipline scales. In a session with twenty breakpoints and no specific questions, the session becomes a matter of reading the debugger’s output passively. In a session with three breakpoints and three questions, the session becomes a matter of answering those questions directly.</p>
+                    <p>The single-breakpoint discipline does not mean never using more than one breakpoint. It means: add a breakpoint when it answers a question you have. Otherwise, resist the urge.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="breakpoint-at-entry">
+                    <h3 id="breakpoint-at-entry">Breakpoint at entry</h3>
+                    <p>A useful pattern is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>break at function entry
+→ inspect arguments
+→ step
+→ inspect state
+→ continue</code></pre>
+                    <p>This answers:</p>
+                    <blockquote>
+                        <p>What does this function receive, and what does it do with it?</p>
+                    </blockquote>
+                    <p>The entry breakpoint is the workhorse of debugging. Because arguments are always present at function entry, and because the entry point is easy to identify from source, this pattern is reliable in almost any context.</p>
+                    <p>A refinement: if a function is called many times and you only care about one call, use a conditional breakpoint at entry. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name handle_request
+(lldb) breakpoint modify 1 --condition 'request.id == 42'</code></pre>
+                    <p>Now the entry breakpoint fires only for the call you care about. This is often the cleanest way to observe a specific invocation of a heavily-used function.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="breakpoint-at-state-change">
+                    <h3 id="breakpoint-at-state-change">Breakpoint at state change</h3>
+                    <p>A more advanced pattern is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>break before mutation
+→ inspect old state
+→ step
+→ inspect new state</code></pre>
+                    <p>This answers:</p>
+                    <blockquote>
+                        <p>Exactly where did the state change?</p>
+                    </blockquote>
+                    <p>This is often more useful than breaking at the eventual failure.</p>
+                    <p>Consider a bug where a counter has the wrong value at the end of a program. There are two ways to investigate:</p>
+                    <ol>
+                        <li>Set a breakpoint where the counter is read (near the symptom), and try to figure out why it has the wrong value.</li>
+                        <li>Set a watchpoint on the counter, and let the debugger stop you the moment the value becomes wrong.</li>
+                    </ol>
+                    <p>The second approach is usually faster. It identifies the exact transition where reality diverged from expectation, and it does so without requiring you to guess where the bug is.</p>
+                    <p>A practical technique: even without a watchpoint, you can simulate one with a breakpoint before a suspected mutation. Inspect the old value, step to the line after the mutation, inspect the new value. If the new value is wrong, you have found the transition.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="breakpoint-at-the-boundary">
+                    <h3 id="breakpoint-at-the-boundary">Breakpoint at the boundary</h3>
+                    <p>Many bugs become easier when debugging at boundaries.</p>
+                    <p>Examples:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>input
+→ parser
+
+parser
+→ domain object
+
+domain object
+→ database
+
+database
+→ response
+
+response
+→ user interface</code></pre>
+                    <p>Set breakpoints at the boundaries.</p>
+                    <p>Inspect what enters and what leaves.</p>
+                    <p>This is a practical form of causal debugging.</p>
+                    <p>Why boundaries are useful:</p>
+                    <ul>
+                        <li><strong>They are stable</strong>: the source line where a component calls another component changes less often than the internal logic of either component.</li>
+                        <li><strong>They have clear contracts</strong>: at a boundary, the expected input and output are usually easy to describe. Comparing the actual values with the expected values is direct.</li>
+                        <li><strong>They localize the bug</strong>: if the value entering a component is correct and the value leaving it is wrong, the bug is inside the component. If the value entering is already wrong, the bug is upstream.</li>
+                    </ul>
+                    <p>A typical boundary investigation for a bug in a parser pipeline:</p>
+                    <ol>
+                        <li>Break at the entry to <code>parse</code>. Inspect the raw input.</li>
+                        <li>Break at the exit from <code>parse</code>. Inspect the parsed result.</li>
+                        <li>If the raw input is correct and the parsed result is wrong, the bug is inside <code>parse</code>.</li>
+                        <li>If the raw input is already wrong, the bug is in the code that produced it.</li>
+                    </ol>
+                    <p>Two breakpoints, two inspections, one conclusion. This is a much better use of the debugger than stepping through the parser line by line.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="how-many-breakpoints">
+                    <h3 id="how-many-breakpoints">How many breakpoints?</h3>
+                    <p>A practical guideline: one breakpoint per unanswered question. If you have three questions, three breakpoints. If you have one, one. If a breakpoint no longer answers a question, delete it.</p>
+                    <p>During a long session, it is common to accumulate breakpoints that no longer serve a purpose. The list grows, and it becomes hard to remember what each one was for. Periodically run:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint list</code></pre>
+                    <p>and remove the breakpoints that no longer correspond to an active question. This keeps the session focused and the output manageable.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-first-wrong-state">
+                <h2 id="the-first-wrong-state">The first wrong state</h2>
+                <p>A powerful rule:</p>
+                <blockquote>
+                    <p><strong>Find the first point where reality differs from your expectation.</strong></p>
+                </blockquote>
+                <p>Suppose the final output is wrong.</p>
+                <p>Do not start at the output.</p>
+                <p>Trace:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>output
+← transformation
+← intermediate state
+← input</code></pre>
+                <p>At each boundary ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Is this value correct?</code></pre>
+                <p>Eventually:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>correct
+correct
+correct
+wrong</code></pre>
+                <p>The transition is the important location.</p>
+                <p>That is where you investigate.</p>
+
+                <section tabindex="0" aria-labelledby="why-this-rule-works">
+                    <h3 id="why-this-rule-works">Why this rule works</h3>
+                    <p>The first wrong state rule works because it turns a vague question (“Why is the output wrong?”) into a sequence of specific questions (“Is this value correct?”). Each specific question is answerable by a single inspection. The sequence of answers eventually localizes the bug to a small region of code.</p>
+                    <p>The rule also protects against a common failure mode: starting the investigation at the symptom. The symptom is usually far from the cause. A function at the end of a long pipeline may report the wrong value because its input was wrong, not because its logic is wrong. Tracing the value backward from the symptom reveals where the wrongness enters the pipeline.</p>
+                    <p>A simple illustration: suppose a JSON parser returns a malformed result. The symptom is in the parser. But the input to the parser might be truncated because an upstream reader stopped too early. Investigating the parser directly would miss this; tracing the input backward from the parser reveals the truncation.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-example">
+                    <h3 id="a-worked-example">A worked example</h3>
+                    <p>Consider a program that reads a configuration file, parses it, and uses the parsed value:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn read_config(path: &amp;str) -&gt; Result&lt;String, std::io::Error&gt; {
+    std::fs::read_to_string(path)
+}
+
+fn parse_config(raw: &amp;str) -&gt; Result&lt;Config, ParseError&gt; {
+    // Parses `raw` into a Config
+}
+
+fn main() {
+    let raw = read_config("config.toml").expect("read failed");
+    let config = parse_config(&amp;raw).expect("parse failed");
+    println!("port: {}", config.port);
+}</code></pre>
+                    <p>Suppose the program prints the wrong port. Several places could be responsible:</p>
+                    <ul>
+                        <li><code>read_config</code> returned the wrong contents.</li>
+                        <li><code>parse_config</code> parsed the contents incorrectly.</li>
+                        <li>The config file itself has the wrong value.</li>
+                    </ul>
+                    <p>Following the first-wrong-state rule:</p>
+                    <ol>
+                        <li>Set a breakpoint after the <code>read_config</code> call. Inspect <code>raw</code>. If <code>raw</code> does not contain the expected text, the bug is in <code>read_config</code> or in the file.</li>
+                        <li>If <code>raw</code> is correct, set a breakpoint after the <code>parse_config</code> call. Inspect <code>config.port</code>. If it is wrong, the bug is in <code>parse_config</code>.</li>
+                        <li>If both values are correct, the bug is in the <code>println!</code> or later.</li>
+                    </ol>
+                    <p>Two breakpoints, two inspections, one conclusion. The bug is localized without stepping through the entire program.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-shape-of-a-first-wrong-state-investigation">
+                    <h3 id="the-shape-of-a-first-wrong-state-investigation">The shape of a first-wrong-state investigation</h3>
+                    <p>Every first-wrong-state investigation follows the same shape:</p>
+                    <ol>
+                        <li><strong>Identify the value</strong> whose wrongness you want to explain. This is usually a value that appears in the wrong output or a value that is checked incorrectly.</li>
+                        <li><strong>Identify the chain of production</strong> for that value. Where does it come from? Who wrote it? What upstream values contributed to it?</li>
+                        <li><strong>Set breakpoints along the chain</strong>, at the points where the value is produced or transformed.</li>
+                        <li><strong>Inspect the value at each point</strong>, comparing against your expectation.</li>
+                        <li><strong>Find the first point</strong> where the value is already wrong. That point is the origin.</li>
+                    </ol>
+                    <p>The chain can be long, but the investigation converges. Each step is a specific question with a specific answer, and the chain terminates when the wrongness enters.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="correct-means-what-you-said-it-should-be">
+                    <h3 id="correct-means-what-you-said-it-should-be">“Correct” means what you said it should be</h3>
+                    <p>A subtle but important point: “correct” only has meaning when you have stated what you expect. An inspection that produces a value, without a stated expectation, is not evidence about correctness. It is just a value.</p>
+                    <p>Before each inspection, say out loud what you expect the value to be. For example:</p>
+                    <ul>
+                        <li>“I expect <code>raw</code> to be the content of <code>config.toml</code>, which is <code>port = 8080</code>.”</li>
+                        <li>“I expect <code>config.port</code> to be 8080.”</li>
+                        <li>“I expect <code>connection_count</code> to be three at this point.”</li>
+                    </ul>
+                    <p>Then inspect. The inspection confirms or refutes the expectation. If it confirms, move on. If it refutes, you have found a transition.</p>
+                    <p>This discipline is what makes the first-wrong-state rule work. Without stated expectations, the rule has no teeth.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="handling-multiple-candidates">
+                    <h3 id="handling-multiple-candidates">Handling multiple candidates</h3>
+                    <p>Sometimes, a value can be produced by more than one code path. For example, a config might be loaded from a file, from environment variables, or from a default. If the value is wrong, you first need to know which path produced it.</p>
+                    <p>One technique: set breakpoints at each producing path. Run the program. The breakpoint that fires is the path that produced the value. Now you have localized the investigation to a single path.</p>
+                    <p>Another technique: add a temporary field or marker to the value that records its origin. This is a source change, but it converts a runtime question (“which path?”) into a static one (“the value says it came from here”). Both techniques are valid; the choice depends on the complexity of the program.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-the-first-wrong-state-is-not-the-bug">
+                    <h3 id="when-the-first-wrong-state-is-not-the-bug">When the first wrong state is not the bug</h3>
+                    <p>There is an important caveat: the first wrong state is not necessarily the bug. It is the first observable divergence from expectation. The actual bug may be earlier, in a value that was not checked, or in an assumption that was never validated.</p>
+                    <p>For example, if a program produces a wrong output because of an incorrect comparison, the first wrong state may be the result of the comparison. But the actual bug may be in the definition of the comparison, in the types being compared, or in the source of one of the compared values.</p>
+                    <p>To continue past the first wrong state:</p>
+                    <ol>
+                        <li>Once you have found a first wrong state, ask: what produced this value? </li>
+                        <li>Set breakpoints on the producers of that value.</li>
+                        <li>Repeat the investigation upstream.</li>
+                    </ol>
+                    <p>In practice, this means that a first-wrong-state investigation often proceeds in two phases: first, from the symptom back to the first observable divergence; second, from that divergence back to the deeper cause.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="branching-and-looping">
+                <h2 id="branching-and-looping">Branching and looping</h2>
+                <p>Two control-flow patterns deserve special attention because they are so common in real code: branches and loops. Each has a specific debugging discipline.</p>
+
+                <section tabindex="0" aria-labelledby="debugging-a-wrong-branch">
+                    <h3 id="debugging-a-wrong-branch">Debugging a wrong branch</h3>
+                    <p>Suppose:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>if config.debug {
+    enable_debug();
+} else {
+    enable_normal();
+}</code></pre>
+                    <p>You want to know:</p>
+                    <blockquote>
+                        <p>Which branch executes?</p>
+                    </blockquote>
+                    <p>Break before the <code>if</code>.</p>
+                    <p>Inspect:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>config.debug</code></pre>
+                    <p>Then:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next</code></pre>
+                    <p>Now observe where execution goes.</p>
+                    <p>You have directly answered the question.</p>
+                    <p>No guessing.</p>
+
+                    <section tabindex="0" aria-labelledby="why-this-is-a-common-bug">
+                        <h4 id="why-this-is-a-common-bug">Why this is a common bug</h4>
+                        <p>Wrong-branch bugs are common because the branch condition often depends on a value that was computed earlier. If that value is wrong, the branch takes the wrong path, and the symptom appears far from the branch.</p>
+                        <p>For example, a config flag might be set by an environment variable that was misspelled, or by a parse that defaulted to the wrong value. The branch itself is correct; the input to the branch is wrong.</p>
+                        <p>This is why breaking before the branch and inspecting the condition value is often the fastest way to investigate a wrong-branch bug. If the value matches the branch, the bug is downstream; if the value does not match the branch, the bug is upstream in the value’s production.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="branches-with-multiple-conditions">
+                        <h4 id="branches-with-multiple-conditions">Branches with multiple conditions</h4>
+                        <p>Real branches often have multiple conditions:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>if config.debug &amp;&amp; cache.is_empty() &amp;&amp; !force_refresh {
+    enable_debug();
+} else {
+    enable_normal();
+}</code></pre>
+                        <p>When inspecting, ask about each sub-condition separately:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config.debug
+(bool) config.debug = true
+
+(lldb) frame variable cache
+(...) cache = size=0 { }
+
+(lldb) frame variable force_refresh
+(bool) force_refresh = false</code></pre>
+                        <p>Each inspection narrows down which part of the condition is causing the wrong branch. The debugger’s expression evaluator can also compute the entire condition, but inspecting sub-conditions individually is often clearer and less error-prone.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-loops">
+                    <h3 id="debugging-loops">Debugging loops</h3>
+                    <p>Suppose:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>for item in items {
+    process(item);
+}</code></pre>
+                    <p>Set a breakpoint inside the loop.</p>
+                    <p>At each stop:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable item</code></pre>
+                    <p>Then:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next</code></pre>
+                    <p>You can observe:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>iteration 1
+iteration 2
+iteration 3
+...</code></pre>
+                    <p>If the failure occurs only for one item, use a conditional breakpoint or inspect the iteration state.</p>
+
+                    <section tabindex="0" aria-labelledby="loops-that-run-too-many-times">
+                        <h4 id="loops-that-run-too-many-times">Loops that run too many times</h4>
+                        <p>If a loop runs more iterations than expected, three questions arise:</p>
+                        <ul>
+                            <li>Is the collection larger than expected?</li>
+                            <li>Is the loop condition wrong?</li>
+                            <li>Is something inside the loop modifying the collection or the condition?</li>
+                        </ul>
+                        <p>Inspect the collection before the loop:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable items
+(...) items = size=N { ... }
+</code></pre>
+                        <p>If <code>N</code> matches the expected size, the issue is likely the loop condition or a modification inside the loop. If <code>N</code> is larger than expected, the issue is upstream, in the code that produced the collection.</p>
+                        <p>Modifications inside the loop are less common in Rust because the borrow checker usually prevents them, but they can happen with interior mutability, with channels that feed new items, or with raw pointers in unsafe code. In those cases, inspect the collection at each iteration to see whether it grows.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="loops-that-produce-wrong-values">
+                        <h4 id="loops-that-produce-wrong-values">Loops that produce wrong values</h4>
+                        <p>If a loop produces the wrong output but the collection is correct, the bug is in the loop body. Two strategies:</p>
+                        <ol>
+                            <li><strong>Narrow to a specific iteration</strong>: Use a conditional breakpoint such as <code>item.id == 42</code> to focus on the problematic iteration. Then step through the loop body for that iteration only.</li>
+                            <li><strong>Watch an accumulator</strong>: If the loop accumulates a value, set a watchpoint on the accumulator. The watchpoint will fire on each iteration, showing you the progression. If the value becomes wrong at some iteration, the watchpoint shows you exactly when.</li>
+                        </ol>
+                        <p>The second strategy is often faster when the loop runs many iterations, because it avoids the need to identify the problematic iteration in advance.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="loops-with-early-exit">
+                        <h4 id="loops-with-early-exit">Loops with early exit</h4>
+                        <p>Loops with <code>break</code> or <code>return</code> inside are a common source of surprise. The loop exits earlier than expected, and the code after the loop sees a partially processed state.</p>
+                        <p>To debug:</p>
+                        <ol>
+                            <li>Set a breakpoint on the <code>break</code> or <code>return</code> line.</li>
+                            <li>Run the program.</li>
+                            <li>If the breakpoint fires, the loop is exiting early. Inspect the surrounding state to understand why.</li>
+                            <li>If the breakpoint does not fire, the loop is exiting by reaching the end of the collection or by a condition you did not anticipate.</li>
+                        </ol>
+                        <p>For loops with <code>return</code>, the return value is often the key evidence. Inspect it at the return site to see what the loop decided.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="state-machines-and-enums">
+                <h2 id="state-machines-and-enums">State machines and enums</h2>
+                <p>Rust enums are often used to represent state machines. Debugging state machines has a specific shape, and enums in the debugger provide exactly the evidence you need.</p>
+
+                <section tabindex="0" aria-labelledby="debugging-state-machines">
+                    <h3 id="debugging-state-machines">Debugging state machines</h3>
+                    <p>Rust enums are often used to represent state:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>enum State {
+    Idle,
+    Loading,
+    Ready,
+    Failed,
+}</code></pre>
+                    <p>When stopped:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable state</code></pre>
+                    <p>Ask:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Which variant?
+
+How did execution reach this variant?
+
+Which transition happens next?</code></pre>
+                    <p>Then place breakpoints at transition points.</p>
+                    <p>This is especially useful for parsers, protocols, UI state, and asynchronous systems.</p>
+                    <p>The pattern for debugging a state machine:</p>
+                    <ol>
+                        <li>Set a breakpoint in the code that transitions between states.</li>
+                        <li>At each stop, inspect the current state and the event that triggered the transition.</li>
+                        <li>If the state is wrong, trace backward to find the transition that set it.</li>
+                        <li>If the state is correct but the transition is wrong, the bug is in the transition logic itself.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-enums">
+                    <h3 id="debugging-enums">Debugging enums</h3>
+                    <p>Enums are particularly valuable debugging landmarks.</p>
+                    <p>If the program unexpectedly enters:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Failed</code></pre>
+                    <p>trace the transition:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Ready
+→ operation
+→ Failed</code></pre>
+                    <p>Then inspect the data carried by the variant.</p>
+                    <p>The important question becomes:</p>
+                    <blockquote>
+                        <p>What event caused the state transition?</p>
+                    </blockquote>
+
+                    <section tabindex="0" aria-labelledby="variants-with-data">
+                        <h4 id="variants-with-data">Variants with data</h4>
+                        <p>When a variant carries data, the debugger shows the data along with the variant. This is often enough to identify the bug:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable result
+(Result) result = Failed(ConnectionError { code: 1001, message: "timeout" })</code></pre>
+                        <p>The variant <code>Failed</code> carries a <code>ConnectionError</code> with a specific code and message. This is often a direct clue to the origin of the failure. The message “timeout” suggests the failing operation was a network call, and the code <code>1001</code> can be traced to the source of that error.</p>
+                        <p>This is one of the best arguments for using data-carrying enums in Rust: they make the runtime state of the program self-describing, and the debugger exposes that state directly.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="nested-enums">
+                        <h4 id="nested-enums">Nested enums</h4>
+                        <p>Enums can contain other enums. For example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Response {
+    Success(Data),
+    Error(ErrorKind),
+}
+
+enum ErrorKind {
+    Network(NetworkError),
+    Parse(ParseError),
+    Auth(AuthError),
+}</code></pre>
+                        <p>In the debugger, a <code>Response::Error(ErrorKind::Network(...))</code> is shown with both levels of nesting:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>(Response) response = Error(Network(ConnectionRefused { host: "api.example.com" }))</code></pre>
+                        <p>The nesting tells you the category and the specific error in a single view. This is often enough to identify the cause without further investigation.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="comparing-enum-states-across-time">
+                        <h4 id="comparing-enum-states-across-time">Comparing enum states across time</h4>
+                        <p>When debugging a state machine, it is useful to see how the state evolves. There are two techniques:</p>
+                        <ul>
+                            <li><strong>Break at each transition</strong>: Set a breakpoint at the transition function. At each stop, inspect the state. This gives you a sequence of states across time.</li>
+                            <li><strong>Log the transitions</strong>: If the state machine runs many transitions quickly, logging each transition (with a temporary <code>println!</code> or a proper logger) is often more practical than breakpoints. The logs give you the full sequence, and the debugger can then be used for a specific transition that looks suspicious.</li>
+                        </ul>
+                        <p>The choice depends on the density of transitions. For a handful of transitions, breakpoints are fine. For a stream of transitions, logging is better.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="hypothesis-driven-debugging">
+                <h2 id="hypothesis-driven-debugging">Hypothesis-driven debugging</h2>
+                <p>Do not randomly step through code.</p>
+                <p>State a hypothesis.</p>
+                <p>Example:</p>
+                <blockquote>
+                    <p>I think <code>Config::load()</code> returns <code>None</code> because the path is empty.</p>
+                </blockquote>
+                <p>Then test it.</p>
+                <p>Set a breakpoint.</p>
+                <p>Inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>path</code></pre>
+                <p>If the path is correct:</p>
+                <blockquote>
+                    <p>Hypothesis rejected.</p>
+                </blockquote>
+                <p>Create the next hypothesis.</p>
+                <p>This produces:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Hypothesis
+→ breakpoint
+→ observation
+→ confirmed/rejected
+→ next hypothesis</code></pre>
+                <p>That is debugging.</p>
+
+                <section tabindex="0" aria-labelledby="the-shape-of-a-good-hypothesis">
+                    <h3 id="the-shape-of-a-good-hypothesis">The shape of a good hypothesis</h3>
+                    <p>A good hypothesis has three properties:</p>
+                    <ol>
+                        <li><strong>Specific</strong>: it names a specific value, a specific function, or a specific transition.</li>
+                        <li><strong>Testable</strong>: it makes a prediction that can be confirmed or refuted by a single inspection.</li>
+                        <li><strong>Falsifiable</strong>: it can be wrong. A hypothesis that cannot be wrong is not a hypothesis; it is an assumption.</li>
+                    </ol>
+                    <p>Weak hypothesis:</p>
+                    <blockquote>
+                        <p>“The parser is broken.”</p>
+                    </blockquote>
+                    <p>Strong hypothesis:</p>
+                    <blockquote>
+                        <p>“The parser returns <code>Err(EmptyInput)</code> because the input string is empty.”</p>
+                    </blockquote>
+                    <p>The strong version predicts specific values: the error variant and the input state. One breakpoint and one inspection confirm or refute it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-a-hypothesis-is-rejected">
+                    <h3 id="when-a-hypothesis-is-rejected">When a hypothesis is rejected</h3>
+                    <p>A rejected hypothesis is not a failure. It is progress. You now know one thing that is not the cause, and you have narrowed the search space.</p>
+                    <p>The risk is to spend too much time on a hypothesis that is very unlikely. A useful rule: if a hypothesis requires more than two or three inspections to test, it is too vague. Break it into smaller, more specific hypotheses that are easier to test.</p>
+                    <p>Another useful rule: when a hypothesis is rejected, immediately state the next one. Do not leave a session without an active hypothesis. An active hypothesis keeps the investigation focused and prevents aimless stepping.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-a-hypothesis-is-confirmed">
+                    <h3 id="when-a-hypothesis-is-confirmed">When a hypothesis is confirmed</h3>
+                    <p>A confirmed hypothesis is not necessarily the answer. It is a step. The confirmed hypothesis often raises a new question: what caused the value that the hypothesis predicted?</p>
+                    <p>For example, if the hypothesis “the input is empty” is confirmed, the next question is: “why is the input empty?” The investigation continues upstream.</p>
+                    <p>The process ends when the confirmed hypothesis is itself the cause: no further upstream investigation is possible, and the code can be changed to fix the behavior.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="hypothesis-driven-versus-exploratory-debugging">
+                    <h3 id="hypothesis-driven-versus-exploratory-debugging">Hypothesis-driven versus exploratory debugging</h3>
+                    <p>Hypothesis-driven debugging is efficient when you have a specific idea about what might be wrong. It is less useful when you have no idea, and you need to explore the program to understand it.</p>
+                    <p>For exploratory debugging, use a different approach:</p>
+                    <ul>
+                        <li>Start with a breakpoint at a boundary and follow the execution path.</li>
+                        <li>Inspect key values at each stop, building a picture of the program’s behavior.</li>
+                        <li>When something looks surprising, form a hypothesis and switch to hypothesis-driven mode.</li>
+                    </ul>
+                    <p>Both approaches have their place. The mistake is to use one when the other is appropriate: to hypothesize when you do not yet understand the program, or to explore when you already have a specific idea.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="documenting-the-investigation">
+                <h2 id="documenting-the-investigation">Documenting the investigation</h2>
+                <p>For complex bugs, a written record of the investigation helps.</p>
+
+                <section tabindex="0" aria-labelledby="the-debugging-notebook">
+                    <h3 id="the-debugging-notebook">The debugging notebook</h3>
+                    <p>For difficult bugs, record four things:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Observation:
+What actually happened?
+
+Hypothesis:
+What do I think causes it?
+
+Evidence:
+What did LLDB show?
+
+Next experiment:
+What will I inspect next?</code></pre>
+                    <p>Example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Observation:
+Config is None after load_config().
+
+Hypothesis:
+The config path is wrong.
+
+Evidence:
+path = "/home/user/project/config.toml"
+
+Next experiment:
+Break inside find_config().</code></pre>
+                    <p>This keeps the investigation externalized.</p>
+
+                    <section tabindex="0" aria-labelledby="why-externalize">
+                        <h4 id="why-externalize">Why externalize</h4>
+                        <p>Debugging has a short-term memory problem. Each inspection produces a value that is meaningful in the context of the investigation, but the context fades as the session grows. After twenty inspections, it becomes easy to forget which values were confirmed, which hypotheses were rejected, and what question is currently open.</p>
+                        <p>Writing down the observation, hypothesis, evidence, and next step keeps the context external. It also forces you to articulate hypotheses clearly, which often reveals that a hypothesis is not as specific as it should be.</p>
+                        <p>A notebook can be as simple as a text file, a note in an editor, or a sticky note. The format matters less than the habit.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="what-to-record">
+                        <h4 id="what-to-record">What to record</h4>
+                        <p>For each step of the investigation:</p>
+                        <ul>
+                            <li><strong>The specific value you inspected</strong>. Not “checked the config” but “inspected <code>config.timeout</code>, got 30”.</li>
+                            <li><strong>The expected value</strong>. Not just what you got, but what you expected. The comparison is where meaning comes from.</li>
+                            <li><strong>The hypothesis you were testing</strong>. This keeps the inspection from being random.</li>
+                            <li><strong>Whether the hypothesis was confirmed or rejected</strong>. This is the actual conclusion of the step.</li>
+                            <li><strong>The next step</strong>. Every step should end with a clear next action, even if that action is “give up on this hypothesis.”</li>
+                        </ul>
+                        <p>With these elements, the notebook becomes a compact record of the investigation that you can return to later, share with a colleague, or convert into a regression test.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-notebook-as-a-hypothesis-ledger">
+                    <h3 id="the-notebook-as-a-hypothesis-ledger">The notebook as a hypothesis ledger</h3>
+                    <p>One pattern that works especially well: keep a running list of hypotheses and mark them as confirmed or rejected. The list becomes a ledger of what you have learned.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Hypotheses:
+  [rejected] The path is empty.
+  [rejected] The file does not exist.
+  [confirmed] The file exists but is empty.
+  [open] The empty file is the wrong path.</code></pre>
+                    <p>At the end of the session, the ledger tells the whole story of the investigation. It also shows which hypotheses remain open, which is often the clue for the next session.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="from-notebook-to-regression-test">
+                    <h3 id="from-notebook-to-regression-test">From notebook to regression test</h3>
+                    <p>Once the bug is fixed, the notebook provides the material for a regression test. The confirmed hypothesis and the evidence become the test’s assertion. The reproduction steps become the test’s setup.</p>
+                    <p>For example, if the notebook says:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Hypothesis (confirmed):
+  read_config("") returns Err(MissingPath).
+
+Evidence:
+  input = ""
+  result = Err(MissingPath)</code></pre>
+                    <p>Then the regression test is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn read_config_empty_path_returns_missing_path_error() {
+    let result = read_config("");
+    assert!(matches!(result, Err(ConfigError::MissingPath)));
+}</code></pre>
+                    <p>The notebook reduces the work of writing the regression test to transcription. This is one of the ways debugging produces durable value beyond the immediate fix.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-breakpoint-strategy">
+                <h2 id="rust-2024-notes-on-breakpoint-strategy">Rust 2024 notes on breakpoint strategy</h2>
+                <p>A few Rust 2024 specifics affect how the strategies in this chapter are applied.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-blocks-as-natural-boundaries">
+                    <h3 id="unsafe-blocks-as-natural-boundaries"><code>unsafe</code> blocks as natural boundaries</h3>
+                    <p>Rust 2024 requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies. This creates natural boundaries in the source: the transition from safe to unsafe code is now marked explicitly. When investigating a bug that involves unsafe code, the opening of an <code>unsafe</code> block is a natural breakpoint: the state just before the unsafe operation begins is often what determines whether the operation is sound.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks-as-boundaries">
+                    <h3 id="unsafe-extern-blocks-as-boundaries"><code>unsafe extern</code> blocks as boundaries</h3>
+                    <p>Similarly, all <code>extern</code> blocks are now <code>unsafe extern</code>. The boundary between Rust and foreign code is more explicit in the source. When debugging an FFI bug, the call site of a foreign function is a natural breakpoint. The arguments and pointers passed to the call are the values you want to inspect.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="static-mut-restrictions-affect-global-state-investigations">
+                    <h3 id="static-mut-restrictions-affect-global-state-investigations"><code>static mut</code> restrictions affect global-state investigations</h3>
+                    <p>Because Rust 2024 disallows references to <code>static mut</code>, global-state investigations must now go through raw pointers or interior-mutability primitives. When you inspect global state at a breakpoint, you will see the wrapper type (<code>Mutex</code>, <code>AtomicUsize</code>, <code>UnsafeCell</code>) rather than a bare reference. The value inside the wrapper is what you want to inspect, and it is often accessible as a field of the wrapper in the debugger.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-enum-layouts">
+                    <h3 id="edition-2024-and-enum-layouts">Edition 2024 and enum layouts</h3>
+                    <p>Rust 2024 does not change the layout of enums. Enums still render as their variant plus the associated data. The strategies for debugging state machines remain the same. If anything, the edition’s tightening of rules around unsafe and FFI makes the state machines in those contexts slightly easier to inspect, because the boundaries are more explicit.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-core-of-strategic-debugging">
+                <h2 id="the-core-of-strategic-debugging">The core of strategic debugging</h2>
+                <p>Two ideas summarize the strategic content of this chapter:</p>
+                <ol>
+                    <li><strong>Each breakpoint answers a question.</strong> If you cannot state the question, do not set the breakpoint. If a breakpoint no longer answers a question, delete it.</li>
+                    <li><strong>Find the first wrong state.</strong> Trace values backward from the symptom, comparing them against expectations at each step. The first place where reality diverges is where the investigation continues.</li>
+                </ol>
+                <p>These two ideas, applied consistently, are what separate a debugging session that converges from one that wanders. The commands are the same in both cases. The strategy is what makes the difference.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch17">
+                <h2 id="summary-ch17">Summary</h2>
+                <p>In this chapter, we moved from mechanics to strategy:</p>
+                <ul>
+                    <li><strong>Breakpoint strategy</strong>: each breakpoint answers a specific question. Start with one, add others only when the previous ones are answered. Use entry breakpoints, state-change breakpoints, and boundary breakpoints depending on the question.</li>
+                    <li><strong>First wrong state</strong>: trace values backward from the symptom, comparing against expectations at each step. The first point where reality diverges is where the investigation continues.</li>
+                    <li><strong>Branch and loop debugging</strong>: for branches, break before the branch and inspect the condition. For loops, use conditional breakpoints or watchpoints on accumulators. For loops with early exit, break on the exit site.</li>
+                    <li><strong>State machines and enums</strong>: enums are debugger landmarks. Inspect the variant and its data at each transition. Data-carrying enums make the runtime state self-describing.</li>
+                    <li><strong>Hypothesis-driven debugging</strong>: state a specific, testable hypothesis, test it with one inspection, and update the hypothesis based on the result. Avoid vague or unfalsifiable hypotheses.</li>
+                    <li><strong>The debugging notebook</strong>: write down observations, hypotheses, evidence, and next steps. The notebook externalizes context and becomes the source material for a regression test once the bug is fixed.</li>
+                    <li><strong>Rust 2024 specifics</strong>: explicit <code>unsafe</code> blocks and <code>unsafe extern</code> blocks provide natural boundaries for breakpoints; <code>static mut</code> restrictions change what global state looks like in the debugger; enum layouts are unchanged.</li>
+                </ul>
+                <p>The unifying principle: debugging is a controlled investigation. Each step is a question, an observation, and a conclusion. When this discipline is maintained, the debugger becomes a tool for producing clarity rather than for producing output.</p>
+                <p>In the next chapter, we develop the investigation further, treating debugging as an experimental science: the debugging loop, the role of logging, and how to build a durable understanding of a program’s behavior.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-16.html">← Chapter 16</a>
+            <a class="nav-next" href="./chapter-18.html">Chapter 18 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

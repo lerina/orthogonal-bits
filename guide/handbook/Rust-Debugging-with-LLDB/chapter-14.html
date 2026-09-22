@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 14: Debugging Tests, Examples, and Workspace Binaries – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch14-heading">
+            <h1 id="ch14-heading">Chapter 14: Debugging Tests, Examples, and Workspace Binaries</h1>
+
+            <p>So far, we have debugged what we might call the “main” executable: the binary produced by a project’s <code>src/main.rs</code>. But Cargo produces many other executables as well: test binaries, example binaries, benchmark binaries, and one binary per package in a workspace. Any of these can be debugged directly, and often the smallest one is the easiest to investigate.</p>
+            <p>This chapter is about debugging those smaller executables. We will see how to find them, how to launch them under LLDB, and how to use the fact that a test or an example is a minimal, self-contained reproduction of a bug.</p>
+
+            <section tabindex="0" aria-labelledby="why-smaller-executables-matter">
+                <h2 id="why-smaller-executables-matter">Why smaller executables matter</h2>
+                <p>A common mistake in debugging is to always debug the largest binary. The main binary may contain thousands of lines of startup code, configuration loading, logging setup, and other machinery that has nothing to do with the bug. Every breakpoint in that binary is a breakpoint in a busy environment.</p>
+                <p>A test binary, by contrast, contains exactly one test and the code that test exercises. Its startup is minimal. Its execution is deterministic. Its output is usually a single pass/fail line. When a bug can be reproduced in a test, the test binary is almost always the best place to debug it.</p>
+                <p>The same is true of examples. An example binary contains exactly the code needed to demonstrate a specific feature. If the example reproduces a bug, it is often a much cleaner environment than the full application.</p>
+                <p>The general principle:</p>
+                <blockquote>
+                    <p>Debug the smallest executable that reproduces the problem.</p>
+                </blockquote>
+                <p>Everything in this chapter is a consequence of that principle.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-tests">
+                <h2 id="debugging-tests">Debugging tests</h2>
+                <p>Rust tests are ordinary executable code from the debugger's perspective.</p>
+                <p>Build tests without running them:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test --no-run</code></pre>
+                <p>Then identify the test executable.</p>
+                <p>You can use Cargo's test output and artifacts to locate the executable.</p>
+                <p>Launch it with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb path/to/test-executable</code></pre>
+                <p>Alternatively, use Cargo's debugger support when available in your environment.</p>
+                <p>The important idea is:</p>
+                <blockquote>
+                    <p>A test is a small executable specification that can be debugged directly.</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="debugging-tests-expanded-workflow">
+                    <h3 id="debugging-tests-expanded-workflow">Debugging tests: expanded workflow</h3>
+                    <p>Build tests without running them:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test --no-run</code></pre>
+                    <p>Cargo will print the test executables. If you need machine-readable output:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test --no-run --message-format=json</code></pre>
+                    <p>Look for <code>executable</code> paths.</p>
+                    <p>Then launch one:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb path/to/test-executable</code></pre>
+                    <p>Inside LLDB:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --name test_name
+run
+frame variable
+bt</code></pre>
+                    <p>A test is just an executable. Debugging one test is usually easier than debugging the whole workspace.</p>
+                    <p>If you know the test name:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test test_name</code></pre>
+                    <p>If it fails, debug the executable that contains that test.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="how-cargo-outputs-test-executables">
+                    <h3 id="how-cargo-outputs-test-executables">How Cargo outputs test executables</h3>
+                    <p>When you run <code>cargo test --no-run</code>, Cargo compiles one test binary per test target and reports the path of each. A simple output looks like this:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>   Compiling my_crate v0.1.0 (/path/to/my_crate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.23s
+  Executable unittests src/lib.rs (target/debug/deps/my_crate-4a5b6c7d8e9f0a1b)
+  Executable tests/integration.rs (target/debug/deps/integration-1a2b3c4d5e6f7a8b)</code></pre>
+                    <p>Each line beginning with <code>Executable</code> names the test target and the path of the compiled binary. You can launch either of them under LLDB.</p>
+                    <p>The naming convention is important to notice: <code>my_crate-4a5b6c7d8e9f0a1b</code>. The hexadecimal suffix is a hash that Cargo uses to distinguish between different builds of the same target. If you change your source, the hash may change, and the binary path changes with it. Always re-run <code>cargo test --no-run</code> before launching, so you have the current path.</p>
+                    <p>A practical note: the JSON output is more stable for scripting. The <code>executable</code> field in each JSON record is the path you want. If you are building a shell alias or an editor integration, this is the field to parse.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unit-tests-vs-integration-tests">
+                    <h3 id="unit-tests-vs-integration-tests">Unit tests vs. integration tests</h3>
+                    <p>Rust has two kinds of tests that produce separate binaries:</p>
+                    <ul>
+                        <li><strong>Unit tests</strong>: located inside the crate, in <code>mod tests</code> blocks within <code>src/</code>. They are compiled into a single test binary, typically named after the crate with a hash suffix.</li>
+                        <li><strong>Integration tests</strong>: located in the <code>tests/</code> directory at the crate root. Each file in <code>tests/</code> produces its own test binary, named after the file.</li>
+                    </ul>
+                    <p>Both kinds are debugged the same way, but they have different properties:</p>
+                    <ul>
+                        <li><strong>Unit tests</strong> have access to the crate's private items, so they can test internal functions directly. Their binary usually contains many tests.</li>
+                        <li><strong>Integration tests</strong> only have access to the crate's public API. Each binary is typically smaller than the unit-test binary, because it exercises a narrower surface area.</li>
+                    </ul>
+                    <p>For debugging, this means:</p>
+                    <ul>
+                        <li>To debug a unit test, launch the unit-test binary and set a breakpoint on the specific test function.</li>
+                        <li>To debug an integration test, launch the binary corresponding to the integration test file.</li>
+                    </ul>
+                    <p>In both cases, the workflow is the same as debugging any other executable. The only difference is that you have chosen a smaller executable that contains exactly the code you care about.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="how-test-functions-are-compiled">
+                    <h3 id="how-test-functions-are-compiled">How test functions are compiled</h3>
+                    <p>Understanding a small detail about how tests are compiled helps when setting breakpoints.</p>
+                    <p>A Rust test function such as:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[test]
+fn test_addition() {
+    assert_eq!(2 + 2, 4);
+}</code></pre>
+                    <p>is compiled into a function that the test harness will call. The test harness itself is generated by Cargo and drives all the test functions in a single binary. It parses command-line arguments (which tests to run, whether to shuffle, and so on), invokes the selected tests, and prints a summary.</p>
+                    <p>From the debugger's perspective:</p>
+                    <ul>
+                        <li>If you break on <code>test_addition</code>, you will stop when that specific test is invoked.</li>
+                        <li>If you break on the harness function (which has a compiler-generated name), you will stop before any test runs. This is rarely what you want.</li>
+                        <li>If you run the binary without arguments, all tests will run. To run just one, pass the test name as an argument (see below).</li>
+                    </ul>
+                    <p>The practical rule: always break on the specific test function you want, and always pass the test name as an argument when launching under LLDB.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="passing-test-names-to-the-test-binary">
+                    <h3 id="passing-test-names-to-the-test-binary">Passing test names to the test binary</h3>
+                    <p>When you launch a test binary, you can pass it the name of the test you want to run. This is the same mechanism <code>cargo test test_name</code> uses internally, but without the Cargo wrapper.</p>
+                    <p>Inside LLDB, use the <code>--</code> separator to pass arguments to the test binary:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) settings set target.run-args test_addition --exact --nocapture
+(lldb) run</code></pre>
+                    <p>The arguments after the target name are passed to the test harness. In this example:</p>
+                    <ul>
+                        <li><code>test_addition</code> is the test name.</li>
+                        <li><code>--exact</code> tells the harness to match the name exactly rather than as a substring.</li>
+                        <li><code>--nocapture</code> tells the harness not to swallow <code>println!</code> output, so you see it in the terminal.</li>
+                    </ul>
+                    <p>Common test-harness flags you may want to pass:</p>
+                    <ul>
+                        <li><code>--exact</code>: exact name match.</li>
+                        <li><code>--nocapture</code>: do not capture test output.</li>
+                        <li><code>--test-threads=1</code>: run tests sequentially (useful for debugging concurrency-related tests).</li>
+                        <li><code>--ignored</code>: also run tests marked <code>#[ignore]</code>.</li>
+                        <li><code>--list</code>: list all tests without running them (useful before debugging to confirm the test name).</li>
+                    </ul>
+                    <p>By combining a specific test name with <code>--exact</code> and <code>--test-threads=1</code>, you get a minimal, deterministic environment for debugging.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-a-single-test">
+                    <h3 id="debugging-a-single-test">Debugging a single test</h3>
+                    <p>Start with:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test test_name</code></pre>
+                    <p>If it fails, determine:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>which package?
+which test target?
+which test executable?</code></pre>
+                    <p>Then debug that executable.</p>
+                    <p>This is usually easier than debugging the entire workspace.</p>
+                    <p>A practical sequence:</p>
+                    <ol>
+                        <li>Run <code>cargo test --no-run</code> and note the executable that contains <code>test_name</code>.</li>
+                        <li>Launch that executable under LLDB.</li>
+                        <li>Set a breakpoint on <code>test_name</code>.</li>
+                        <li>Set the run-args to include <code>test_name --exact</code>.</li>
+                        <li>Run. The program will execute only the one test and stop at the breakpoint.</li>
+                    </ol>
+                    <p>This sequence gives you the smallest possible environment for the bug: one test, one binary, one process.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-integration-tests">
+                    <h3 id="debugging-integration-tests">Debugging integration tests</h3>
+                    <p>Integration tests live under:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>tests/</code></pre>
+                    <p>Each integration-test file can produce its own test executable.</p>
+                    <p>The workflow is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test --no-run
+→ identify executable
+→ rust-lldb executable
+→ breakpoint
+→ run</code></pre>
+                    <p>The exact executable path can vary with the project and target configuration.</p>
+                    <p>Use Cargo's build output rather than guessing the path.</p>
+
+                    <section tabindex="0" aria-labelledby="integration-tests-as-alternative-entry-points">
+                        <h4 id="integration-tests-as-alternative-entry-points">Integration tests as alternative entry points</h4>
+                        <p>An important property of integration tests: they are separate crates. Each integration-test file is compiled as its own crate that depends on your library. From the debugger's perspective, this means:</p>
+                        <ul>
+                            <li>The integration-test binary does not contain your library's private functions.</li>
+                            <li>It does contain your library's public API, plus the test code from the integration-test file.</li>
+                            <li>Its <code>main</code> function is generated by Cargo's test harness, not by you.</li>
+                        </ul>
+                        <p>This makes integration tests excellent for debugging bugs that involve the public API, because they reproduce the way a real user would use your library. They are less useful for debugging private internals, because those are simply not present in the binary.</p>
+                        <p>If your bug is in a private function, you have two options:</p>
+                        <ol>
+                            <li>Write a unit test that exercises the private function, and debug the unit-test binary.</li>
+                            <li>Expose the private function temporarily (via a feature flag or a <code>pub(crate)</code> visibility change) and debug through an integration test.</li>
+                        </ol>
+                        <p>The first is usually preferable, because it does not require source changes to the library itself.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="helper-modules-in-integration-tests">
+                        <h4 id="helper-modules-in-integration-tests">Helper modules in integration tests</h4>
+                        <p>Integration tests often share helper code. Cargo's convention is to place shared helpers in <code>tests/common/mod.rs</code>, and each integration-test file uses <code>mod common;</code> to include them.</p>
+                        <p>From a debugging perspective, this means the helper module's functions are compiled into each integration-test binary that uses them. Breakpoints on helper functions resolve to the binary that contains them. If you have several integration-test binaries, and a helper is used by more than one, you will need to launch the specific binary you care about, or set a breakpoint in each.</p>
+                        <p>Because integration tests compile separately, the same helper may exist in multiple binaries. This is a place where name-based breakpoints can fire in unexpected places if you are not careful about which binary is loaded.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="test-output-and-llbd">
+                    <h3 id="test-output-and-llbd">Test output and LLDB</h3>
+                    <p>By default, the Rust test harness captures output from passing tests and shows it only for failing tests. This is convenient in a normal <code>cargo test</code> run, but under LLDB it can hide output you want to see.</p>
+                    <p>Two useful flags:</p>
+                    <ul>
+                        <li><code>--nocapture</code>: prints all output, even from passing tests. Useful when you want to see what <code>println!</code> is producing without stopping the debugger.</li>
+                        <li><code>--test-threads=1</code>: runs tests sequentially. Useful when debugging tests that share resources, or when you want deterministic output ordering.</li>
+                    </ul>
+                    <p>Combined:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) settings set target.run-args test_name --exact --nocapture --test-threads=1
+(lldb) run</code></pre>
+                    <p>This gives you a clean, deterministic run of one test, with all its output visible.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tests-and-panics">
+                    <h3 id="tests-and-panics">Tests and panics</h3>
+                    <p>A failing test in Rust typically fails by panicking on an assertion. Under LLDB, a panic stops the debugger, and the workflow is the same as for any other panic: find the first frame belonging to your own crate, select it, and inspect its state.</p>
+                    <p>One difference: test functions often have small, focused bodies. The panic site is usually close to the test's entry. This makes tests particularly good for debugging panics, because the state at the panic point is often the state the test just constructed.</p>
+                    <p>For <code>assert_eq!</code> failures, the panic message includes the left and right values:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread 'test_addition' panicked at src/lib.rs:8:5:
+assertion `left == right` failed
+  left: 5
+ right: 4</code></pre>
+                    <p>Under LLDB, you can inspect those values directly. Set a breakpoint in the test function, run, and inspect the locals at the assertion. This lets you see not just the values but also their provenance: how they were computed.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-tests-with-external-dependencies">
+                    <h3 id="debugging-tests-with-external-dependencies">Debugging tests with external dependencies</h3>
+                    <p>Some tests require external services: a database, a network connection, a file on disk. Debugging such tests requires that the external dependency be available during the debug session.</p>
+                    <p>Two approaches:</p>
+                    <ul>
+                        <li><strong>Spin up the dependency before launching LLDB</strong>: Start the database, ensure the network service is reachable, and place the needed files. Then launch the test binary under LLDB as usual.</li>
+                        <li><strong>Use a test double</strong>: Replace the external dependency with an in-process stub. This is often more reliable for debugging, because it removes the variability of the external service.</li>
+                    </ul>
+                    <p>The second approach is more work initially but pays off during debugging, because the test becomes fully deterministic. When a bug depends on a specific response from the external service, the stub can be programmed to return exactly that response, and the debug session becomes reproducible.</p>
+                    <p>A common pattern in Rust: define a trait for the external dependency, implement the real version for production and a stub version for tests. The test binary then uses the stub. Breakpoints inside the stub reveal what the test expected the dependency to do; breakpoints inside the production code reveal how it responded to the stub's data.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-examples">
+                <h2 id="debugging-examples">Debugging examples</h2>
+                <p>Cargo examples can be built with:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --example example_name</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/examples/example_name</code></pre>
+                <p>This is useful when the example reproduces an API or integration problem more simply than the main application.</p>
+
+                <section tabindex="0" aria-labelledby="when-examples-are-better-than-tests">
+                    <h3 id="when-examples-are-better-than-tests">When examples are better than tests</h3>
+                    <p>An example is a small program that demonstrates one aspect of a library. Unlike a test, an example has a <code>main</code> function, so it can be run directly. It is not run as part of <code>cargo test</code> unless you ask for it explicitly.</p>
+                    <p>Examples are useful for debugging when:</p>
+                    <ul>
+                        <li>The bug appears when using the library in a specific way that a test does not cover.</li>
+                        <li>You want to step through the library's behavior in a real use case rather than in a test.</li>
+                        <li>The example is already a minimal reproduction of a bug reported by a user.</li>
+                        <li>You want a debugging session with a <code>main</code> function that you fully control, rather than with a test harness that you do not.</li>
+                    </ul>
+                    <p>Because an example has a <code>main</code>, it behaves like any other binary. You can set a breakpoint on <code>main</code> and step through the example from the beginning, which is not possible with a test binary in the same way.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="how-cargo-builds-examples">
+                    <h3 id="how-cargo-builds-examples">How Cargo builds examples</h3>
+                    <p>Examples live in the <code>examples/</code> directory at the crate root. Each file in <code>examples/</code> is compiled as a separate binary, named after the file. Cargo places them in:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>target/debug/examples/</code></pre>
+                    <p>The file name is the example name. For example, <code>examples/parse_config.rs</code> becomes <code>target/debug/examples/parse_config</code>.</p>
+                    <p>Build a single example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --example parse_config</code></pre>
+                    <p>Build all examples:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --examples</code></pre>
+                    <p>Run an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo run --example parse_config</code></pre>
+                    <p>Debug an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/examples/parse_config</code></pre>
+                    <p>Examples can take command-line arguments in the same way as a main binary. Pass them after <code>--</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) settings set target.run-args input.json --verbose
+(lldb) run</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="examples-as-debugging-scaffolds">
+                    <h3 id="examples-as-debugging-scaffolds">Examples as debugging scaffolds</h3>
+                    <p>One of the best uses of examples is as a temporary debugging scaffold. When a bug is reported against a library you maintain, and the report includes a reproduction script, the fastest way to debug is often to turn the reproduction into an example. Then you have a binary that reproduces the bug, in a controlled environment, with full debug information.</p>
+                    <p>The steps:</p>
+                    <ol>
+                        <li>Create a new file in <code>examples/</code> with the reproduction code.</li>
+                        <li>Build it: <code>cargo build --example bug_repro</code>.</li>
+                        <li>Launch it under LLDB.</li>
+                        <li>Set breakpoints, step through, inspect state.</li>
+                        <li>When done, either delete the example or keep it as a regression test (renamed to reflect its purpose).</li>
+                    </ol>
+                    <p>This pattern is so common in the Rust ecosystem that many crates ship with an <code>examples/</code> directory full of files that were originally created for debugging a specific issue.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="examples-with-features">
+                    <h3 id="examples-with-features">Examples with features</h3>
+                    <p>If your crate defines Cargo features, an example can specify which features to enable:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --example parse_config --features tracing</code></pre>
+                    <p>This is important when the bug appears only under certain feature combinations. By building the example with the exact feature set that reproduces the bug, you get the smallest binary that exhibits the problem.</p>
+                    <p>In the debugger, the example looks the same as any other binary. The features affect which code is compiled in, but not how the debugger interacts with it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-examples-in-a-workspace">
+                    <h3 id="debugging-examples-in-a-workspace">Debugging examples in a workspace</h3>
+                    <p>In a workspace, examples belong to a specific package. To build the examples of a specific package:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build -p my_package --examples</code></pre>
+                    <p>To build a specific example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build -p my_package --example parse_config</code></pre>
+                    <p>The resulting binary is still placed under <code>target/debug/examples/</code> at the workspace root, unless the workspace has custom target directory configuration.</p>
+                    <p>When debugging in a workspace, be precise about which package's example you are building. Two packages in the same workspace may have examples with the same name, and Cargo will disambiguate with a suffix or refuse to build until you specify the package explicitly.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-binaries-in-a-workspace">
+                <h2 id="debugging-binaries-in-a-workspace">Debugging binaries in a workspace</h2>
+                <p>For a workspace:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build -p package_name</code></pre>
+                <p>Then identify the binary produced by that package.</p>
+                <p>Run:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/binary_name</code></pre>
+                <p>The key is to debug the smallest executable that reproduces the problem.</p>
+
+                <section tabindex="0" aria-labelledby="understanding-workspace-structure">
+                    <h3 id="understanding-workspace-structure">Understanding workspace structure</h3>
+                    <p>A Cargo workspace is a collection of packages that share a single <code>Cargo.lock</code> and a single <code>target/</code> directory. Each package can have its own binaries, libraries, tests, and examples. When you build the workspace as a whole, Cargo produces all the artifacts under the workspace's <code>target/</code> directory.</p>
+                    <p>A typical workspace has multiple members:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[workspace]
+members = [
+    "crates/server",
+    "crates/client",
+    "crates/common",
+]</code></pre>
+                    <p>Each member is a full crate with its own <code>Cargo.toml</code>. The <code>server</code> crate might have a binary target, the <code>client</code> crate might have a library and an example, and the <code>common</code> crate might be a pure library shared between them.</p>
+                    <p>From the debugger's perspective, this means there are many possible executables. To debug one, you need to know:</p>
+                    <ul>
+                        <li>Which package you want to debug.</li>
+                        <li>Which binary within that package you want to debug.</li>
+                        <li>Where that binary is located in the workspace's <code>target/</code> directory.</li>
+                    </ul>
+                    <p>Cargo's build output tells you all three of these.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="building-and-locating-workspace-binaries">
+                    <h3 id="building-and-locating-workspace-binaries">Building and locating workspace binaries</h3>
+                    <p>Build a specific package:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build -p server</code></pre>
+                    <p>Cargo places the binary under <code>target/debug/</code> at the workspace root:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>target/debug/server</code></pre>
+                    <p>If the package has multiple binaries, each is named after the <code>[[bin]]</code> entries in its <code>Cargo.toml</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+
+[[bin]]
+name = "admin"
+path = "src/bin/admin.rs"</code></pre>
+                    <p>After building, both binaries are under <code>target/debug/</code>. To debug the admin binary:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/admin</code></pre>
+                    <p>This is the standard workflow. Cargo's output directory is shared across the workspace, and each binary is placed under a name derived from its <code>[[bin]]</code> configuration.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="choosing-which-binary-to-debug">
+                    <h3 id="choosing-which-binary-to-debug">Choosing which binary to debug</h3>
+                    <p>When a workspace has several binaries, the first question is: which one exhibits the bug?</p>
+                    <p>The answer is almost always: the one that is closest to the bug. If the bug is in the server's request handling, debug the server binary. If it is in an administrative tool, debug the admin binary. If the same bug can be reproduced in either, prefer the smaller one.</p>
+                    <p>A useful heuristic: the smaller the binary, the cleaner the debugging session. A binary that does not load the full application's startup code, background tasks, and configuration will produce less noise. If you can reproduce the bug in a small CLI tool that shares the same library, the CLI tool is a better debugging target than the full server.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="shared-libraries-in-a-workspace">
+                    <h3 id="shared-libraries-in-a-workspace">Shared libraries in a workspace</h3>
+                    <p>In a workspace, shared libraries are compiled into each dependent binary. There is no dynamic linking between workspace crates by default; each binary contains its own copy of the code from the libraries it depends on.</p>
+                    <p>From a debugging perspective, this means:</p>
+                    <ul>
+                        <li>Breakpoints inside a shared library will fire in the binary you are debugging, not in a separate library process.</li>
+                        <li>Source paths inside the shared library will be relative to its package, not to the binary's package. LLDB uses debug information to map them correctly, but if you are inspecting multiple binaries, it can be helpful to remember which package each source file belongs to.</li>
+                        <li>If you build multiple binaries, they may share the same compiled library artifacts on disk, but each binary has its own copy in memory.</li>
+                    </ul>
+                    <p>When you set a breakpoint on a shared library function, LLDB resolves it to the copy inside the binary you are running. If you then switch to a different binary, the same breakpoint may resolve to a different address.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="workspace-configuration-tips">
+                    <h3 id="workspace-configuration-tips">Workspace configuration tips</h3>
+                    <p>A few Cargo settings affect how easy it is to find and debug workspace binaries:</p>
+                    <ul>
+                        <li><strong><code>default-members</code></strong>: Specifies which packages are built when you run <code>cargo build</code> without <code>-p</code>. Setting this to the package you debug most often makes the default build produce the binary you want.</li>
+                        <li><strong><code>workspace.target-dir</code></strong>: Overrides the location of the <code>target/</code> directory. Useful when you want workspace artifacts in a specific place, but remember to adjust your LLDB launch commands accordingly.</li>
+                        <li><strong><code>profile.release.debug</code></strong>: When enabled, release binaries include debug information. This applies to all packages in the workspace.</li>
+                        <li><strong><code>profile.dev.package."*".debug = true</code></strong>: Enables debug information for dependencies even if the profile would otherwise reduce it. Useful when debugging through a dependency's code.</li>
+                    </ul>
+                    <p>These settings are configured in the workspace's root <code>Cargo.toml</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[workspace]
+members = ["crates/*"]
+default-members = ["crates/server"]
+
+[workspace.target-dir]
+# or workspace.target-dir = "..." in some Cargo versions
+
+[profile.dev.package."*"]
+debug = true</code></pre>
+                    <p>Understanding these settings saves you from repeatedly typing long <code>-p</code> flags or searching for binaries in unexpected directories.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-benches-and-other-targets">
+                <h2 id="debugging-benches-and-other-targets">Debugging benches and other targets</h2>
+                <p>Cargo also supports benchmarks, custom build targets, and other kinds of executables. The general pattern is the same:</p>
+                <ol>
+                    <li>Build the target without running it, using the appropriate <code>cargo build --... --no-run</code> invocation (if available) or <code>cargo build</code> with the appropriate target selection.</li>
+                    <li>Locate the produced binary from Cargo's output.</li>
+                    <li>Launch it under LLDB.</li>
+                    <li>Set breakpoints and debug as usual.</li>
+                </ol>
+                <p>Benchmarks in particular are worth knowing about. A benchmark binary is essentially a test binary that runs measurement code instead of assertions. If a benchmark is failing or producing unexpected results, you can debug it the same way you would debug a test: launch the binary, break on the benchmark function, and step through.</p>
+                <p>Custom build targets (such as <code>[[bin]]</code> entries with custom names or paths) produce binaries whose names are determined by the <code>name</code> field in the target configuration. These binaries are placed under <code>target/debug/</code> like any other binary, and are debugged the same way.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="practical-considerations">
+                <h2 id="practical-considerations">Practical considerations</h2>
+
+                <section tabindex="0" aria-labelledby="stale-binaries">
+                    <h3 id="stale-binaries">Stale binaries</h3>
+                    <p>One of the most common causes of confusing debugging sessions is a stale binary. If you have edited the source but not rebuilt, the binary on disk does not reflect your changes, and every observation in the debugger is about the old code.</p>
+                    <p>Always rebuild before launching LLDB:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test --no-run
+cargo build --example parse_config
+cargo build -p server</code></pre>
+                    <p>A quick check: compare the modification time of the binary to the modification time of the source files. If the binary is older, rebuild.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="multiple-binaries">
+                    <h3 id="multiple-binaries">Multiple binaries</h3>
+                    <p>In a workspace or a package with multiple <code>[[bin]]</code> targets, it is easy to launch the wrong binary. Verify the path before launching:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>ls -l target/debug/</code></pre>
+                    <p>Then launch the specific binary you want:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/specific_binary</code></pre>
+                    <p>If you have several similar binaries, their names will help you pick the right one. If the names are ambiguous, look at the source file each binary was built from, or check the modification times.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debug-symbols-and-shared-libraries">
+                    <h3 id="debug-symbols-and-shared-libraries">Debug symbols and shared libraries</h3>
+                    <p>When debugging through dependencies, ensure that debug symbols are enabled for those dependencies. This is controlled by Cargo profiles:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.dev]
+debug = true
+
+[profile.dev.package."*"]
+debug = true</code></pre>
+                    <p>The first setting enables debug information for your own package. The second enables it for all dependencies. In a workspace, the same settings apply to all members.</p>
+                    <p>With these settings, breakpoints in dependency crates resolve to readable source locations. Without them, you may see mangled names or missing line information, making the dependency's behavior harder to interpret.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="deterministic-debugging">
+                    <h3 id="deterministic-debugging">Deterministic debugging</h3>
+                    <p>Many bugs appear only under specific circumstances. Test binaries and example binaries are often more deterministic than the full application, because they have fewer moving parts. But even in a test, the following can introduce nondeterminism:</p>
+                    <ul>
+                        <li><strong>Parallel test execution</strong>: By default, Cargo runs tests in parallel. Use <code>--test-threads=1</code> to force sequential execution.</li>
+                        <li><strong>Time-dependent logic</strong>: Tests that depend on wall-clock time may behave differently on different runs. Use a mock time source if possible.</li>
+                        <li><strong>Random number generation</strong>: Tests that use randomness should use a seeded RNG so the test is reproducible.</li>
+                        <li><strong>File system state</strong>: Tests that read or write files should use temporary directories and clean up after themselves.</li>
+                        <li><strong>Network access</strong>: Tests that make network calls are inherently nondeterministic. Prefer stubs.</li>
+                    </ul>
+                    <p>For debugging, minimizing nondeterminism is essential. The fewer variable factors, the more reliably a breakpoint, an inspection, or a step will correspond to the bug you are investigating.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugger-attach-to-test">
+                    <h3 id="debugger-attach-to-test">Attaching to a running test</h3>
+                    <p>Sometimes you cannot launch a test under LLDB from the beginning. This happens with tests that are launched by a CI runner, a custom test harness, or a parent process you do not control.</p>
+                    <p>In such cases, you can attach LLDB to an already-running test process:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb -p &lt;pid&gt;</code></pre>
+                    <p>Or, from inside LLDB:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) process attach --pid &lt;pid&gt;</code></pre>
+                    <p>This requires the following:</p>
+                    <ul>
+                        <li>The test process to be running (not exited).</li>
+                        <li>Permission to attach, which on Linux typically requires <code>ptrace_scope</code> to be configured or the debugger to be run with the appropriate privileges.</li>
+                        <li>The binary to have debug information, which is the case for a normal <code>cargo test --no-run</code> build.</li>
+                    </ul>
+                    <p>Attaching is useful for tests that run in the background or that are launched by an external tool. It is less useful than launching under LLDB directly, because you have no opportunity to set breakpoints before the program starts. But you can still set breakpoints and continue after attaching, as long as the interesting code has not already run.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-testing-and-debugging">
+                <h2 id="rust-2024-notes-on-testing-and-debugging">Rust 2024 notes on testing and debugging</h2>
+                <p>A few Rust 2024 specifics affect debugging tests, examples, and workspace binaries.</p>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-test-binaries">
+                    <h3 id="edition-2024-and-test-binaries">Edition 2024 and test binaries</h3>
+                    <p>The Rust 2024 edition does not change the fundamental way test binaries are produced. Each test binary is still a separate executable with a generated harness. What may change slightly is the standard-library source paths shown in backtraces, and the exact names of compiler-generated functions, but the debugging workflow is unchanged.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="test-harness-and-edition-2024">
+                    <h3 id="test-harness-and-edition-2024">Test harness and edition 2024</h3>
+                    <p>The default test harness behavior is governed by the edition of the crate under test. In Rust 2024, the same test harness runs, with the same flags (<code>--exact</code>, <code>--nocapture</code>, <code>--test-threads</code>, and so on). Breakpoint and inspection behavior is identical.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="workspace-inheritance-and-2024">
+                    <h3 id="workspace-inheritance-and-2024">Workspace inheritance and 2024</h3>
+                    <p>Cargo workspaces can share dependencies, profiles, and edition settings across members. If a workspace sets <code>edition = "2024"</code> at the workspace level, every member that opts into inheritance uses the 2024 edition without repeating the setting in each package's <code>Cargo.toml</code>.</p>
+                    <p>For debugging, this means all binaries in the workspace are compiled with the same edition, and the debugger's view is consistent. If you mix editions across workspace members (which is allowed), debug information may differ slightly between members, though the underlying debugging mechanics remain the same.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-and-test-binaries">
+                    <h3 id="unsafe-extern-and-test-binaries"><code>unsafe extern</code> and test binaries</h3>
+                    <p>If a crate has an <code>unsafe extern</code> block that declares foreign functions used by its tests, the test binary will contain references to those foreign symbols. When debugging tests, if a breakpoint inside the FFI boundary does not resolve, it may be because the external library is not linked into the test binary, or because the symbol name differs from what you expect. Use <code>image lookup</code> to confirm the symbol's presence in the binary.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="integration-tests-and-edition-2024">
+                    <h3 id="integration-tests-and-edition-2024">Integration tests and edition 2024</h3>
+                    <p>Integration tests are compiled as separate crates that depend on your library. In Rust 2024, the same <code>unsafe extern</code> and <code>unsafe attribute</code> rules apply to integration tests as to any other crate. If the integration test declares foreign functions, the declarations must be inside <code>unsafe extern</code>, and any <code>no_mangle</code> attributes must be written <code>#[unsafe(no_mangle)]</code>. This is a source-level change with no impact on the debugging workflow.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch14">
+                <h2 id="summary-ch14">Summary</h2>
+                <p>In this chapter, we covered debugging the many executables that Cargo produces:</p>
+                <ul>
+                    <li><strong>Tests</strong>: built with <code>cargo test --no-run</code>, launched under LLDB, and broken on specific test functions. The test name is passed as an argument to the test binary, along with flags such as <code>--exact</code>, <code>--nocapture</code>, and <code>--test-threads=1</code>.</li>
+                    <li><strong>Unit tests vs. integration tests</strong>: unit tests are compiled into the crate's test binary and can access private items; integration tests are separate crates that use only the public API. Both are debugged the same way, but they have different properties that affect what you can inspect.</li>
+                    <li><strong>Examples</strong>: built with <code>cargo build --example name</code>, launched directly under LLDB. Examples have their own <code>main</code> and are excellent as temporary debugging scaffolds for reproduction scripts.</li>
+                    <li><strong>Workspace binaries</strong>: built with <code>cargo build -p package_name</code> and located under the workspace's shared <code>target/</code> directory. Each package's binaries are named after their <code>[[bin]]</code> entries.</li>
+                    <li><strong>Benches and custom targets</strong>: debugged the same way as tests and examples, using the appropriate Cargo build command and then launching the produced binary under LLDB.</li>
+                    <li><strong>Practical considerations</strong>: rebuild before launching to avoid stale binaries; verify the path to avoid launching the wrong binary; enable debug information for dependencies when debugging through them; minimize nondeterminism by using sequential test execution and stubs; attach LLDB to running test processes when launching from the start is not possible.</li>
+                    <li><strong>Rust 2024 notes</strong>: the edition changes source-level details (unsafe extern, unsafe attributes) but does not change the underlying workflow of debugging tests, examples, or workspace binaries.</li>
+                </ul>
+                <p>The unifying principle: debug the smallest executable that reproduces the problem. A test or example binary is often the smallest such executable, and choosing it makes the debugging session shorter, more focused, and easier to reason about.</p>
+                <p>In the next chapter, we turn to a set of Rust constructs that make debugging more interesting: traits, generics, closures, iterators, and macros. Each of these produces its own kinds of debugger behavior, and each is worth understanding before you encounter it in a real session.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-13.html">← Chapter 13</a>
+            <a class="nav-next" href="./chapter-15.html">Chapter 15 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

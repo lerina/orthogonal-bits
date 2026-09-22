@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 14: Rust for Web Development – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch14-heading">
+            <h1 id="ch14-heading">Chapter 14: Rust for Web Development: Building Full-Stack Applications</h1>
+
+            <p>Now, let’s dive into one of Rust’s most practical and exciting applications. This chapter explains why the Rust Language is a great choice for building modern, fast, reliable web applications. I believe it’s one of the best ways to learn Rust: web development!</p>
+            <p>We’ll take a full-stack approach, starting with a quick review of the fundamental web concepts, then moving on to building a backend API with the Axum framework. We’ll also connect this API to a PostgreSQL database using Docker (although we will introduce Docker properly in <a href="./chapter-16.html">Chapter 16</a>) and <code>sqlx</code>, and conclude with a fun peek at how Rust can even power frontend components using WebAssembly (Wasm).</p>
+            <p>Let’s start!</p>
+
+            <section tabindex="0" aria-labelledby="core-web-concepts-a-quick-refresher">
+                <h2 id="core-web-concepts-a-quick-refresher">Core web concepts: a quick refresher</h2>
+                <p>Before we begin creating our first Axum server, let’s take a moment to review some key technologies that form the foundation of the web. This quick refresher on HTTP, JSON, and RESTful APIs will help ensure we’re all on the same page. If you’re already familiar with these basics, you can proceed to the next section, <em>Getting started with Axum</em>.</p>
+
+                <section tabindex="0" aria-labelledby="the-http-protocol-requests-responses-and-methods">
+                    <h3 id="the-http-protocol-requests-responses-and-methods">The HTTP protocol: requests, responses, and methods</h3>
+                    <p>At its core, the web is powered by the Hypertext Transfer Protocol (HTTP). It’s a simple request-response system: a client, such as your browser or Rust application, makes a request to a server, which then responds with the information you need. This process happens seamlessly, making the browsing experience smooth and easy.</p>
+                    <p><strong>Requests and responses</strong><br>
+                    What is an HTTP request? At its core, an HTTP request consists of the following:</p>
+                    <ul>
+                        <li>A <strong>method</strong> (or “verb”) such as <code>GET</code>, <code>POST</code>, <code>PUT</code>, or <code>DELETE</code>, indicating the desired action.</li>
+                        <li>A <strong>path</strong> (or URL) identifying the resource on the server (e.g., <code>/users/123</code>).</li>
+                        <li><strong>Headers</strong>, which are key-value pairs of metadata (e.g., <code>Content-Type: application/json</code>).</li>
+                        <li>An optional <strong>body</strong>, which contains data being sent to the server (e.g., a JSON payload).</li>
+                    </ul>
+                    <p>An HTTP response consists of the following:</p>
+                    <ul>
+                        <li>A <strong>status code</strong> (e.g., <code>200 OK</code>, <code>404 Not Found</code>).</li>
+                        <li><strong>Headers</strong> (e.g., <code>Content-Length: 1234</code>).</li>
+                        <li>An optional <strong>body</strong>, which contains the data being sent back to the client (e.g., an HTML page or JSON data).</li>
+                    </ul>
+                    <p><strong>Common HTTP methods</strong><br>
+                    In this book, we’ll focus on the four primary HTTP methods used for CRUD (Create, Read, Update, Delete) operations:</p>
+                    <ul>
+                        <li><code>GET</code>: Used to <strong>Read</strong> data from a resource. It should be safe and idempotent (calling it multiple times has the same result as calling it once).</li>
+                        <li><code>POST</code>: Used to <strong>Create</strong> a new resource. The data for the new resource is sent in the request body.</li>
+                        <li><code>PUT</code> or <code>PATCH</code>: Used to <strong>Update</strong> an existing resource. <code>PUT</code> typically replaces the entire resource, while <code>PATCH</code> (which we’ll use) applies a partial update.</li>
+                        <li><code>DELETE</code>: Used to <strong>Delete</strong> a resource.</li>
+                    </ul>
+                    <p><strong>Status codes</strong><br>
+                    The server’s response status code is important for the client to understand what happened. The following list is not exhaustive, but the most important categories are as follows:</p>
+                    <ul>
+                        <li><strong>2xx (Successful)</strong>: The request was successful.
+                            <ul>
+                                <li><code>200 OK</code>: The standard response for a successful <code>GET</code>, <code>PUT</code>, or <code>PATCH</code>.</li>
+                                <li><code>201 Created</code>: The standard response for a successful <code>POST</code> that created a new resource.</li>
+                                <li><code>204 No Content</code>: A successful response that has no body (often used for <code>DELETE</code>).</li>
+                            </ul>
+                        </li>
+                        <li><strong>4xx (Client Error)</strong>: The client did something wrong.
+                            <ul>
+                                <li><code>400 Bad Request</code>: The request was malformed (e.g., invalid JSON).</li>
+                                <li><code>404 Not Found</code>: The requested resource (e.g., <code>/users/999</code>) doesn’t exist.</li>
+                            </ul>
+                        </li>
+                        <li><strong>5xx (Server Error)</strong>: The server failed to fulfill a valid request.
+                            <ul>
+                                <li><code>500 Internal Server Error</code>: A generic “something went wrong” on the server (e.g., a database connection failed, or our code panicked).</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="data-formats-json-and-restful-api-design">
+                    <h3 id="data-formats-json-and-restful-api-design">Data formats: JSON and RESTful API design</h3>
+                    <p>When our client and server exchange data in the request and response bodies, they need to agree on a format.</p>
+                    <p><strong>JSON for APIs</strong><br>
+                    The most common data format for modern web APIs is JSON (JavaScript Object Notation). It’s a lightweight, human-readable format that easily maps to Rust structs and enums. We’re excited to use the <code>serde</code> crate, a powerful tool that helps us automatically convert our Rust structs into JSON responses and turn JSON requests back into structs with ease.</p>
+                    <p><strong>Brief on RESTful API design principles</strong><br>
+                    We will be building a <strong>RESTful API</strong>. This is an architectural style that uses these web fundamentals in a predictable way. Instead of creating custom function names in our URLs (such as <code>/getUserById</code>), we will identify “resources” (such as <code>/todos</code>) and use standard HTTP methods to operate on them.</p>
+                    <ol>
+                        <li><strong>Resources and path parameters</strong>: We use the URL path to identify <em>what</em> we are interacting with. If we need to target a specific item, we use a path parameter (usually an ID):
+                            <ul>
+                                <li><code>GET /todos</code>: Get a list of all todos.</li>
+                                <li><code>POST /todos</code>: Create a new todo.</li>
+                                <li><code>GET /todos/1</code>: Get the specific todo with ID 1.</li>
+                                <li><code>PATCH /todos/1</code>: Update the todo with ID 1.</li>
+                                <li><code>DELETE /todos/1</code>: Delete the todo with ID 1.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Refining results with query parameters</strong>: Sometimes, we need to provide extra instructions to the server, such as filtering a list, searching, or pagination, without changing the resource we are accessing. For this, we use <strong>query parameters</strong> (or “query strings”). These appear at the end of the URL, following a <code>?</code> symbol, and are formatted as key-value pairs:
+                            <ul>
+                                <li><code>GET /todos?completed=true</code>: Get a list of todos, but filter to show only the completed ones.</li>
+                                <li><code>GET /todos?sort=title</code>: Get all todos, sorted alphabetically by title.</li>
+                                <li><code>GET /todos?page=2&amp;limit=10</code>: Get the second page of results, limiting the list to 10 items.</li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <p>This combined approach – using path parameters for identity and query parameters for filtering – helps make our API predictable, standard, and easy for other developers to understand and use.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="getting-started-with-axum">
+                <h2 id="getting-started-with-axum">Getting started with Axum</h2>
+                <p>With our web fundamentals refreshed, it’s time to build our first web server. We’ll be using Axum, a modern, ergonomic web framework that’s part of the Tokio ecosystem. Axum is known for its simplicity, powerful “extractor” system (how it gets data from requests), and composable router. This section guides you through setting up a new Rust project for Axum and getting a basic “Hello, Web!” server up and running.</p>
+
+                <section tabindex="0" aria-labelledby="project-setup-and-dependencies">
+                    <h3 id="project-setup-and-dependencies">Project setup and dependencies</h3>
+                    <p>First, let’s create a new Rust binary project using Cargo. Open your terminal and run the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new my_axum_server --bin
+cd my_axum_server</code></pre>
+                    <p>Axum is built on top of Tokio, an asynchronous runtime. Async/await in Rust requires a runtime to execute asynchronous code, and Axum is designed to work perfectly with Tokio. We need to add both <code>axum</code> and <code>tokio</code> to our <code>Cargo.toml</code> dependencies. We’ll enable the “full” feature for <code>tokio</code> for this chapter, which gives us the <code>#[tokio::main]</code> macro and everything else we need.</p>
+                    <p>Here’s the <code>Cargo.toml</code> snippet:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+axum = "0.8" # Check crates.io for the latest
+tokio = { version = "1", features = ["full"] }</code></pre>
+                    <p>After saving <code>Cargo.toml</code>, run <code>cargo build</code> to download and compile these crates.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="hello-web-your-first-axum-server">
+                    <h3 id="hello-web-your-first-axum-server">“Hello, Web!” – Your first Axum server</h3>
+                    <p>Writing a “Hello, World!” server in Axum involves two main parts:</p>
+                    <ol>
+                        <li>A <strong>handler</strong> function that defines what to do when a request is received.</li>
+                        <li>A <strong>main</strong> function that sets up the router, binds to an address, and starts the server.</li>
+                    </ol>
+                    <p>Let’s look at the minimal code to get this running.</p>
+                    <p><code>src/main.rs</code> snippet (handler):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This is a "handler" function.
+// It's an async function that returns something that can be
+// converted into an HTTP response. A simple &amp;str works!
+async fn hello_world_handler() -> &amp;'static str {
+    "Hello, Web!"
+}</code></pre>
+                    <p>Conceptual <code>src/main.rs</code> snippet (main function):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// We need the tokio::main macro to run our async main function
+#[tokio::main]
+async fn main() {
+    // build our application with a single route
+    let app = Router::new().route("/", get(hello_world_handler));
+    // run it
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
+        .await
+        .expect("Failed to bind to address 127.0.0.1:8080");
+    println!(" Server listening on http://{}", listener.local_addr().unwrap());
+    axum::serve(listener, app)
+        .await
+        .expect("Failed to start server");
+}</code></pre>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x400?text=Hello+Web+Axum+Server+Complete+Code" alt="Screenshot of the complete src/main.rs file for the Hello Web server" />
+                        <figcaption>Figure 14.1: The complete src/main.rs file for the “Hello, Web!” server (Placeholder)</figcaption>
+                    </figure>
+                    <p>If you were to combine these snippets and run <code>cargo run</code>, you could visit <code>http://127.0.0.1:8080</code> in your browser and see <code>Hello, Web!</code>.</p>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x200?text=Hello+Web+Browser+Output" alt="Browser window showing 'Hello, Web!' response" />
+                        <figcaption>Figure 14.2: Visiting http://127.0.0.1:8080 in the browser displays the response from our handler (Placeholder)</figcaption>
+                    </figure>
+                </section>
+
+                <section tabindex="0" aria-labelledby="understanding-handlers-and-the-router">
+                    <h3 id="understanding-handlers-and-the-router">Understanding handlers and the router</h3>
+                    <p>The preceding example introduced the two most important concepts in Axum: handlers and the router.</p>
+                    <p><strong>Defining handler functions</strong><br>
+                    A handler is simply an asynchronous function (<code>async fn</code>) that takes zero or more arguments (called “extractors,” which we’ll look at soon) and returns a type that can be converted into an HTTP response (a type that implements Axum’s <code>IntoResponse</code> trait). The <code>hello_world_handler</code> handler is the simplest possible handler:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>async fn hello_world_handler() -> &amp;'static str {
+    "Hello, Web!"
+}</code></pre>
+                    <p>It doesn’t require any arguments and returns <code>&amp;'static str</code>, which Axum conveniently converts into a <code>200 OK</code> response with your string as the body. Handlers are the heart of your application, where all your main logic will be happily organized.</p>
+                    <p><strong>Registering routes with <code>Router::route</code></strong><br>
+                    Think of the router as the heart of your Axum app. Its main role is to guide incoming HTTP requests, based on their path and method, to the right handler functions. You can create a router easily by chaining together <code>.route()</code> methods, making your setup smooth and straightforward.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{routing::get, Router};
+
+// Assume we have these two handlers defined:
+async fn root_handler() -> &amp;'static str { "This is the root." }
+async fn about_handler() -> &amp;'static str { "This is the about page." }
+
+// Create a router that maps paths to handlers
+let app = Router::new()
+    .route("/", get(root_handler)) // Handles GET /
+    .route("/about", get(about_handler)); // Handles GET /about</code></pre>
+                    <p>Here, <code>routing::get()</code> is a function that creates a “method router” for the <code>GET</code> HTTP method. Axum provides similar functions for other methods, such as <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, and so on.</p>
+                    <p>Here is the complete, runnable <code>src/main.rs</code> file that puts all these pieces together, including multiple routes, so you have a fully functioning example to start with.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{
+    routing::get, // Used to create a router for the GET method
+    Router,
+};
+use std::net::SocketAddr;
+
+/// This is our first handler function for the root path (`/`).
+/// It's an async function that returns a type implementing `IntoResponse`.
+/// A static string slice (`&amp;'static str`) is one of the simplest.
+async fn root_handler() -> &amp;'static str {
+    "Welcome to our Axum server!"
+}
+
+/// This is a second handler function for the `/hello` path.
+async fn hello_handler() -> &amp;'static str {
+    "Hello, Web!"
+}
+// ...
+let app = Router::new()
+    .route("/", get(root_handler)) // Handle requests to root
+    .route("/hello", get(hello_handler)); // Handle requests to /hello
+// ...
+/// Refer to the GitHub repository for the complete code!</code></pre>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="building-a-restful-api-an-in-memory-todo-list">
+                <h2 id="building-a-restful-api-an-in-memory-todo-list">Building a RESTful API: an in-memory todo list</h2>
+                <p>Now that we have a basic Axum server up and running, let’s work on something more practical: building a <strong>RESTful API</strong>. This is the foundation of many of today’s web applications, making it easy for clients such as web browsers or mobile apps to communicate and share data seamlessly. To keep our focus on the API logic, we’ll create a simple “todo” list application that stores its data in memory. This way, we can get comfortable with handling HTTP methods, JSON data, and shared state before we move on to adding a database.</p>
+                <p>For this more advanced example, let’s start a new project from scratch to keep everything tidy and easy to understand.</p>
+
+                <section tabindex="0" aria-labelledby="project-setup-for-the-api">
+                    <h3 id="project-setup-for-the-api">Project setup for the API</h3>
+                    <p>Open your terminal and create a new binary Rust project. We’ll also <code>cd</code> into it and immediately create the module files we’ll need for organization:</p>
+                    <ul>
+                        <li><code>models.rs</code> (for our data structs)</li>
+                        <li><code>handlers.rs</code> (for our API logic)</li>
+                    </ul>
+                    <p>Don’t forget to stop your current server because the next project will also use port 8080!</p>
+                    <p>Let’s initialize the project by running some commands on the terminal (the two files can also be created manually or with the help of an IDE).</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new todo_api --bin
+cd todo_api
+touch src/models.rs
+touch src/handlers.rs</code></pre>
+                    <p>Next, open your <code>Cargo.toml</code> file and add <code>axum</code>, <code>tokio</code>, and <code>serde</code> (for JSON).</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "todo_api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }</code></pre>
+                    <p>Now we’re ready to define our data structures.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="defining-data-models-with-serde-for-json">
+                    <h3 id="defining-data-models-with-serde-for-json">Defining data models with serde for JSON</h3>
+                    <p>First, we need to define the shape of our data. We’ll use Rust structs and <code>serde</code> to automatically handle conversions to and from JSON. We’ll define two structs in the <code>src/models.rs</code> file we just created: <code>Todo</code> for an existing item (which has an ID) and <code>NewTodo</code> for the data a client sends to create one (which doesn’t include an ID yet).</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use serde::{Deserialize, Serialize};
+
+/// Represents a Todo item in the system.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Todo {
+    pub id: u32,
+    pub title: String,
+    pub completed: bool,
+}
+
+/// Represents the payload for creating a new Todo.
+#[derive(Debug, Deserialize)]
+pub struct NewTodo {
+    pub title: String,
+}</code></pre>
+                    <ul>
+                        <li><strong><code>#[derive(Serialize, Deserialize)]</code></strong>: These macros from <code>serde</code> are key. <code>Serialize</code> allows us to convert our <code>Todo</code> struct into JSON to send as a response. <code>Deserialize</code> allows us to parse incoming JSON data from a request into our <code>NewTodo</code> struct.</li>
+                        <li><strong><code>Clone</code></strong>: We derive <code>Clone</code> on <code>Todo</code> to make it easy to return copies of items from our in-memory store.</li>
+                        <li><strong><code>NewTodo</code></strong>: We use a separate struct for creating a new todo because the client won’t know the ID (the server will assign it), and we’ll set <code>completed</code> to <code>false</code> by default.</li>
+                    </ul>
+                    <p>Remember to declare this new module in your <code>src/main.rs</code> file by adding <code>pub mod models;</code> at the top.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="managing-shared-state">
+                    <h3 id="managing-shared-state">Managing shared state</h3>
+                    <p>Our API needs a place to keep all our todo items organized. For now, a simple in-memory <code>Vec&lt;Todo&gt;</code> will do the trick, but in a real app, we’d use a proper database (no worries – we will do it later!).</p>
+                    <p>One thing to keep in mind is that Axum, like most high-performance Rust web frameworks, runs on an asynchronous runtime (Tokio). This means it can handle multiple requests simultaneously, even with just a few threads. To keep everything running smoothly and avoid data races when multiple requests attempt to update our <code>Vec</code> simultaneously, we’ll need to use synchronization techniques to protect our shared data.</p>
+
+                    <section tabindex="0" aria-labelledby="using-arcmutex-for-in-memory-state">
+                        <h4 id="using-arcmutex-for-in-memory-state">Using <code>Arc&lt;Mutex&lt;...&gt;&gt;</code> for in-memory state</h4>
+                        <p>We will use a standard Rust concurrency pattern:</p>
+                        <ol>
+                            <li><code>std::sync::Mutex</code>: This “mutual exclusion” lock will wrap our <code>Vec&lt;Todo&gt;</code>. It ensures that only one thread can get mutable access to the vector at any given moment.</li>
+                            <li><code>std::sync::Arc</code>: This is an “atomic reference counted” smart pointer. This allows our mutex-protected <code>Vec</code> to be safely shared (co-owned) by multiple threads (i.e., Axum’s worker threads).</li>
+                        </ol>
+                        <p>We’ll define an <code>AppState</code> struct to hold this shared data, along with an atomic counter for generating new todo IDs.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="sharing-state-with-the-state-extractor">
+                        <h4 id="sharing-state-with-the-state-extractor">Sharing state with the state extractor</h4>
+                        <p>Axum makes it very easy to share this <code>AppState</code> struct with all our handlers. We wrap our state in an <code>Arc</code> (Axum’s <code>State</code> extractor works with <code>Arc</code>-wrapped types) and then add it to our router using the <code>.with_state()</code> method. Any handler can then “extract” this shared state by simply adding <code>State&lt;AppState&gt;</code> as one of its arguments.</p>
+                        <p>Let’s set this up in <code>src/main.rs</code>.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{
+    extract::State,
+    response::Json,
+    routing::get,
+    Router,
+};
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::net::TcpListener;
+
+// Import our data models
+pub mod models;
+use models::Todo;
+
+// --- 1. Define the AppState ---
+// This struct will hold all shared state for our application.
+// We use `Arc` to allow shared ownership across threads.
+// We use `Mutex` for interior mutability for our in-memory `Vec`.
+#[derive(Clone)]
+struct AppState {
+    db: Arc&lt;Mutex&lt;Vec&lt;Todo&gt;&gt;&gt;,
+    next_id: Arc&lt;AtomicU32&gt;,
+}
+
+// Implement a simple constructor for our state
+impl AppState {
+    fn new() -> Self {
+        Self {
+            db: Arc::new(Mutex::new(Vec::new())), // Start with an empty Vec
+            next_id: Arc::new(AtomicU32::new(1)), // Start IDs from 1
+        }
+    }
+}
+
+// A simple handler to show the state is working (we'll replace this soon)
+async fn get_todos_placeholder(
+    State(app_state): State&lt;AppState&gt;, // This is the `State` extractor
+) -> Json&lt;Vec&lt;Todo&gt;&gt; {
+    // Lock the mutex to get access to the inner Vec
+    let todos = app_state.db.lock().unwrap();
+    // Return a clone of the data as JSON
+    Json(todos.clone())
+}
+
+#[tokio::main]
+async fn main() {
+    // --- 2. Create and initialize our AppState ---
+    let app_state = AppState::new();
+
+    // --- 3. Define the Router and add the state ---
+    let app = Router::new()
+        .route("/todos", get(get_todos_placeholder))
+        // `.with_state()` makes the `app_state` available to all routes
+        .with_state(app_state);
+
+    // --- 4. Bind and Serve ---
+    let listener = TcpListener::bind("127.0.0.1:8080")
+        .await
+        .expect("Failed to bind to address 127.0.0.1:8080");
+    println!(" Server listening on http://{}", listener.local_addr().unwrap());
+    axum::serve(listener, app)
+        .await
+        .expect("Failed to start server");
+}</code></pre>
+                        <p><strong>Note on performance</strong><br>
+                        For read-heavy applications (such as an API where <code>GET</code> requests far outnumber <code>POST</code> requests), you might often see <code>std::sync::RwLock</code> used instead. While a mutex allows only one thread to access data at a time (whether reading or writing), <code>RwLock</code> allows multiple readers to access the data simultaneously, blocking only when a writer needs exclusive access. We are using <code>Mutex</code> here for simplicity, as <code>RwLock</code> introduces slightly more overhead for writes, but it is a great alternative to keep in mind for production.</p>
+                        <ul>
+                            <li><strong>AppState struct</strong>: This struct holds our shared data. <code>db</code> is an <code>Arc&lt;Mutex&lt;Vec&lt;Todo&gt;&gt;&gt;</code> (a thread-safe, shared, mutable vector). <code>next_id</code> is an <code>Arc&lt;AtomicU32&gt;</code> (a thread-safe, shared counter).</li>
+                            <li><strong>State extractor</strong>: In our <code>get_todos_placeholder</code> handler, the <code>State(app_state): State&lt;AppState&gt;</code> argument tells Axum to find the <code>AppState</code> we registered and inject it. This is Axum’s built-in dependency injection for shared state.</li>
+                            <li><strong><code>.with_state(app_state)</code></strong>: In <code>main</code>, this method attaches our <code>app_state</code> instance to the router, making it available to all handlers that ask for it via the <code>State</code> extractor.</li>
+                            <li><code>app.into_make_service()</code>: This is needed when using <code>.with_state()</code> to convert the router into a service that can be run by <code>axum::serve</code>.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="handling-requests-and-extracting-data">
+                    <h3 id="handling-requests-and-extracting-data">Handling requests and extracting data</h3>
+                    <p>An API handler is almost useless if it can’t receive data. A client might send data in several ways: as part of the URL path (e.g., <code>/todos/123</code>), as query parameters (e.g., <code>/search?completed=true</code>), or as a data payload in the request body (e.g., a JSON object). Axum handles this using <strong>extractors</strong>.</p>
+                    <p><strong>Extracting path parameters with <code>Path</code></strong><br>
+                    An extractor is a type that you add as an argument to your handler function. Axum sees this argument and automatically tries to extract the corresponding data from the request. If it fails (e.g., the data is missing or in the wrong format), Axum will automatically return a <code>400 Bad Request</code> or <code>404 Not Found</code> response, which saves you from writing a lot of boilerplate validation code.</p>
+                    <p>Let’s look at the three most common extractors you’ll use.</p>
+                    <p>We often put unique identifiers directly in the URL path. Axum lets you capture these dynamic segments using the <code>Path</code> extractor.</p>
+                    <ol>
+                        <li><strong>In your router</strong>: You define a route with a placeholder, prefixed with a colon (<code>:</code>).
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// In main.rs, inside the Router:
+.route("/todos/{id}", get(get_todo_by_id))
+// The `{id}` is the placeholder</code></pre>
+                        </li>
+                        <li><strong>In your handler</strong>: You add an argument of type <code>Path&lt;T&gt;</code>, where <code>T</code> is the type you want Axum to parse the segment into (e.g., <code>u32</code>).
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// The Path&lt;u32&gt; argument tells Axum to extract the corresponding
+// segment from the URL (e.g., "1" from "/todos/1") and parse it as a u32.
+async fn get_todo_by_id(
+    State(app_state): State&lt;AppState&gt;,
+    Path(id): Path&lt;u32&gt;,
+) -> Result&lt;Json&lt;Todo&gt;, StatusCode&gt; {
+    // We can now use `id` directly in our logic
+    let db = app_state.db.lock().unwrap();
+    // ... logic to find todo by `id` ...
+}</code></pre>
+                        </li>
+                    </ol>
+                    <p><strong>Extracting query parameters with <code>Query</code></strong><br>
+                    Query parameters are key-value pairs that come after a <code>?</code> in the URL (e.g., <code>/search?q=rust&amp;lang=en</code>). They are often used for optional filters, sorting, or pagination. Axum uses the <code>Query</code> extractor, which deserializes parameters into a struct you define.</p>
+                    <ol>
+                        <li><strong>Define a Query struct</strong>: The struct must derive <code>serde::Deserialize</code>.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>use serde::Deserialize;
+#[derive(Deserialize)]
+pub struct Pagination {
+    pub page: Option&lt;u32&gt;,
+    pub per_page: Option&lt;u32&gt;,
+}</code></pre>
+                        </li>
+                        <li><strong>In your handler</strong>: Add an argument of type <code>Query&lt;YourStruct&gt;</code>.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{extract::Query, ...}; // Add Query to imports
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct SearchParams {
+    // We can use Option for parameters that are not required
+    pub completed: Option&lt;bool&gt;,
+}
+
+// Handler for GET /todos/search?completed=true
+pub async fn search_todos(
+    State(app_state): State&lt;AppState&gt;,
+    Query(params): Query&lt;SearchParams&gt;, // The Query extractor
+) -> Json&lt;Vec&lt;Todo&gt;&gt; {
+    let db = app_state.db.lock().expect("Mutex was poisoned");
+    // Start with an iterator over the todos
+    let mut results = db.clone();
+    // If the `completed` query param was provided, filter the results
+    if let Some(completed_status) = params.completed {
+        results.retain(|todo| todo.completed == completed_status);
+    }
+    Json(results)
+}</code></pre>
+                        </li>
+                    </ol>
+                    <p><strong>Extracting JSON bodies with <code>Json</code></strong><br>
+                    For <code>POST</code> or <code>PUT</code> requests, data is usually sent in the request body, often as JSON. The <code>Json</code> extractor tells Axum to parse the request body as JSON and deserialize it into your chosen struct.</p>
+                    <ol>
+                        <li><strong>You already have a struct</strong>: We’ll use the <code>NewTodo</code> struct we defined earlier, in <code>src/models.rs</code>, which derives <code>Deserialize</code>.</li>
+                        <li><strong>In your handler</strong>: Add an argument of type <code>Json&lt;YourStruct&gt;</code>.
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{extract::Json, http::StatusCode, ...}; // Add Json to imports
+use crate::models::NewTodo;
+
+// ... other imports ...
+
+// Handler for POST /todos
+pub async fn create_todo(
+    State(app_state): State&lt;AppState&gt;,
+    Json(payload): Json&lt;NewTodo&gt;, // The Json extractor
+) -> (StatusCode, Json&lt;Todo&gt;) {
+    let mut db = app_state.db.lock().expect("Mutex was poisoned");
+    let id = app_state.next_id.fetch_add(1, Ordering::SeqCst);
+    let new_todo = Todo {
+        id,
+        title: payload.title,
+        completed: false,
+    };
+    db.push(new_todo.clone());
+    // Return 201 Created and the new todo
+    (StatusCode::CREATED, Json(new_todo))
+}</code></pre>
+                        </li>
+                    </ol>
+                    <p>Using these three extractors (<code>Path</code>, <code>Query</code>, and <code>Json</code>), you can manage most data inputs in a typical RESTful API. Axum’s extractor system effortlessly performs parsing, type validation, and error handling, so you can concentrate on your application’s core logic.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="implementing-the-crud-api-endpoints">
+                    <h3 id="implementing-the-crud-api-endpoints">Implementing the CRUD API endpoints</h3>
+                    <p>We’ve already outlined the handlers for Create (<code>POST</code>) and Read (<code>GET</code>). Now, let’s move on to adding the handlers for Update and Delete. A truly effective API doesn’t just perform the actions; it also makes sure to return the right data and HTTP status codes to keep everyone on the same page.</p>
+                    <p><strong>Returning JSON and HTTP status codes</strong><br>
+                    Axum handlers use their return type to build an HTTP response. This system is very flexible. A handler can return the following:</p>
+                    <ul>
+                        <li>A simple <code>&amp;'static str</code> (like our “Hello, Web!” example), which becomes a <code>200 OK</code> response with a plain text body.</li>
+                        <li><code>Json&lt;T&gt;</code>: This serializes the value <code>T</code> into a JSON string and sends a <code>200 OK</code> response with the <code>Content-Type: application/json</code> header.</li>
+                        <li><code>StatusCode</code>: You can return just a status code (e.g., <code>StatusCode::NOT_FOUND</code> for a 404).</li>
+                        <li>A tuple <code>(StatusCode, Json&lt;T&gt;)</code>: This is a very common and powerful pattern. It allows you to specify a custom status code (such as <code>201 CREATED</code>) and a JSON body in one step.</li>
+                        <li><code>Result&lt;impl IntoResponse, StatusCode&gt;</code>: This allows you to return <code>Ok(Json(data))</code> on success and <code>Err(StatusCode::NOT_FOUND)</code> on failure, and Axum will automatically turn them into the correct HTTP responses.</li>
+                    </ul>
+                    <p>We’ll use these patterns to complete our API. First, let’s create a new struct in <code>src/models.rs</code> to represent the payload for updating a todo. This is good practice as it allows for partial updates (e.g., only changing the title or the completed status).</p>
+                    <p><code>src/models.rs</code> (add this struct):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// In src/models.rs
+use serde::{Deserialize, Serialize};
+// ... (Existing Todo and NewTodo structs) ...
+
+/// Represents the payload for updating an existing Todo.
+/// All fields are optional.
+#[derive(Debug, Deserialize)]
+pub struct UpdateTodo {
+    pub title: Option&lt;String&gt;,
+    pub completed: Option&lt;bool&gt;,
+}</code></pre>
+                    <p>Now, let’s create the update and delete handlers in <code>src/handlers.rs</code>.</p>
+                    <p><code>src/handlers.rs</code> (add these functions):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{
+    extract::{Path, State, Json as AxJson},
+    http::StatusCode,
+    response::IntoResponse,
+    Json, // The response type for all successful bodies
+};
+use std::sync::atomic::Ordering;
+use crate::models::{Todo, NewTodo, UpdateTodo};
+use crate::AppState; // We assume AppState is defined in main.rs
+
+// --- Create ---
+/// Handler for POST /todos
+/// Creates a new todo item.
+pub async fn create_todo(
+    State(state): State&lt;AppState&gt;,
+    AxJson(payload): AxJson&lt;NewTodo&gt;, // The Json extractor (aliased for clarity)
+) -> (StatusCode, Json&lt;Todo&gt;) {
+    // Lock the mutex safely
+    let mut db = state.db.lock().expect("Mutex was poisoned");
+    // Generate u32 ID from counter and cast it to i32 for the Todo struct.
+    let id_u32 = state.next_id.fetch_add(1, Ordering::SeqCst);
+    let new_todo = Todo {
+        id: id_u32 as i32, // FIX: Cast u32 to i32 to match Todo struct/PostgreSQL
+        title: payload.title,
+        completed: false,
+    };
+    db.push(new_todo.clone());
+    // Return 201 Created and the new todo as JSON
+    (StatusCode::CREATED, Json(new_todo))
+}
+
+// --- Read All ---
+/// Handler for GET /todos
+/// Returns a list of all todo items.
+pub async fn get_all_todos(
+    State(state): State&lt;AppState&gt;
+) -> Json&lt;Vec&lt;Todo&gt;&gt; {
+    // Lock the mutex for reading and clone the vector safely
+    let todos = state.db.lock().expect("Mutex was poisoned").clone();
+    Json(todos) // Return 200 OK with JSON body
+}
+
+// --- Read Single ---
+/// Handler for GET /todos/{id} (Axum 0.8 Syntax)
+/// Returns a single todo by its ID.
+pub async fn get_todo(
+    State(state): State&lt;AppState&gt;,
+    Path(id): Path&lt;i32&gt;, // FIX: Change extractor type to i32
+) -> Result&lt;Json&lt;Todo&gt;, StatusCode&gt; {
+    let db = state.db.lock().expect("Mutex was poisoned");
+    // Find the todo by its ID (i32 == i32 comparison is now valid)
+    if let Some(todo) = db.iter().find(|t| t.id == id) {
+        Ok(Json(todo.clone())) // Return 200 OK with the todo
+    } else {
+        Err(StatusCode::NOT_FOUND) // Return 404 Not Found
+    }
+}
+
+// --- Update (Partial) ---
+/// Handler for PATCH /todos/{id} (Axum 0.8 Syntax)
+/// Updates a todo item (partial updates).
+pub async fn update_todo(
+    State(state): State&lt;AppState&gt;,
+    Path(id): Path&lt;i32&gt;, // FIX: Change extractor type to i32
+    AxJson(payload): AxJson&lt;UpdateTodo&gt;, // Use the UpdateTodo struct
+) -> Result&lt;Json&lt;Todo&gt;, StatusCode&gt; {
+    let mut db = state.db.lock().expect("Mutex was poisoned");
+    // Find a mutable reference to the todo
+    if let Some(todo) = db.iter_mut().find(|t| t.id == id) {
+        // Update fields if they are provided in the JSON payload
+        if let Some(title) = payload.title {
+            todo.title = title;
+        }
+        if let Some(completed) = payload.completed {
+            todo.completed = completed;
+        }
+        Ok(Json(todo.clone())) // Return 200 OK with the updated todo
+    } else {
+        Err(StatusCode::NOT_FOUND) // 404 Not Found
+    }
+}
+
+// --- Delete ---
+/// Handler for DELETE /todos/{id} (Axum 0.8 Syntax)
+/// Deletes a todo item by its ID.
+pub async fn delete_todo(
+    State(state): State&lt;AppState&gt;,
+    Path(id): Path&lt;i32&gt;, // FIX: Change extractor type to i32
+) -> StatusCode {
+    let mut db = state.db.lock().expect("Mutex was poisoned");
+    let len_before = db.len();
+    // Keep all todos *except* the one with the matching ID
+    db.retain(|todo| todo.id != id);
+    let len_after = db.len();
+    if len_before > len_after {
+        // We removed an item
+        StatusCode::NO_CONTENT // 204 No Content (success, no body)
+    } else {
+        // No item was removed, so it wasn't found
+        StatusCode::NOT_FOUND // 404 Not Found
+    }
+}</code></pre>
+                    <ul>
+                        <li><strong><code>create_todo</code></strong>: Now returns a tuple <code>(StatusCode, AxJson&lt;Todo&gt;)</code> to explicitly send a <code>201 CREATED</code> status along with the new <code>Todo</code>.</li>
+                        <li><strong><code>get_todo</code></strong>: Returns <code>Result&lt;AxJson&lt;Todo&gt;, StatusCode&gt;</code>. This is a powerful pattern in Axum. If we return <code>Ok(Json(todo))</code>, Axum sends <code>200 OK</code> with the JSON. If we return <code>Err(StatusCode::NOT_FOUND)</code>, Axum automatically sends a <code>404 Not Found</code> response.</li>
+                        <li><strong><code>update_todo</code></strong>: We’ve changed this to use the <code>PATCH</code> method (which is more correct for partial updates) and the <code>UpdateTodo</code> struct. It finds a mutable reference to the todo (<code>.iter_mut().find(...)</code>) and updates only the fields that were provided (are <code>Some</code>) in the JSON payload.</li>
+                        <li><strong><code>delete_todo</code></strong>: This handler uses <code>db.retain(...)</code> to efficiently remove the item. It returns a <code>StatusCode</code> directly: <code>204 NO_CONTENT</code> on a successful deletion, and <code>404 NOT_FOUND</code> if no item with that ID existed.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="all-the-code-for-the-restful-api-example">
+                    <h3 id="all-the-code-for-the-restful-api-example">All the code for the RESTful API example</h3>
+                    <p>The following is all the code you need to make the preceding example work.</p>
+                    <p><strong>File 1: Cargo.toml</strong></p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "todo_api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }</code></pre>
+
+                    <p><strong>File 2: src/models.rs</strong><br>
+                    Create this file to define your data structures.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use serde::{Deserialize, Serialize};
+
+/// Represents a Todo item in the system.
+/// We derive `FromRow` to allow sqlx to map database rows to this struct.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Todo {
+    pub id: i32, // PostgreSQL SERIAL maps to i32
+    pub title: String,
+    pub completed: bool,
+}
+
+/// Represents the payload for creating a new Todo.
+#[derive(Debug, Deserialize)]
+pub struct NewTodo {
+    pub title: String,
+}
+
+/// Represents the payload for updating an existing Todo.
+/// All fields are optional to allow for partial updates.
+#[derive(Debug, Deserialize)]
+pub struct UpdateTodo {
+    pub title: Option&lt;String&gt;,
+    pub completed: Option&lt;bool&gt;,
+}</code></pre>
+
+                    <p><strong>File 3: src/handlers.rs</strong><br>
+                    Create this file to hold all your API logic/handler functions.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{
+    extract::{Path, State, Json as AxJson},
+    http::StatusCode,
+    response::IntoResponse,
+    Json, // The response type for all successful bodies
+};
+use std::sync::atomic::Ordering;
+use crate::models::{Todo, NewTodo, UpdateTodo};
+use crate::AppState; // We assume AppState is defined in main.rs
+
+// --- Create ---
+/// Handler for POST /todos
+/// Creates a new todo item.
+pub async fn create_todo(
+    State(state): State&lt;AppState&gt;,
+    AxJson(payload): AxJson&lt;NewTodo&gt;, // The Json extractor (aliased for clarity)
+) -> (StatusCode, Json&lt;Todo&gt;) {
+    // Lock the mutex safely
+    let mut db = state.db.lock().expect("Mutex was poisoned");
+    // Generate u32 ID from counter and cast it to i32 for the Todo struct.
+    let id_u32 = state.next_id.fetch_add(1, Ordering::SeqCst);
+    let new_todo = Todo {
+        id: id_u32 as i32, // FIX: Cast u32 to i32 to match Todo struct/PostgreSQL
+        title: payload.title,
+        completed: false,
+    };
+    db.push(new_todo.clone());
+    // Return 201 Created and the new todo as JSON
+    (StatusCode::CREATED, Json(new_todo))
+}
+
+// --- Read All ---
+/// Handler for GET /todos
+/// Returns a list of all todo items.
+pub async fn get_all_todos(
+    State(state): State&lt;AppState&gt;
+) -> Json&lt;Vec&lt;Todo&gt;&gt; {
+    // Lock the mutex for reading and clone the vector safely
+    let todos = state.db.lock().expect("Mutex was poisoned").clone();
+    Json(todos) // Return 200 OK with JSON body
+}
+
+// --- Read Single ---
+/// Handler for GET /todos/{id} (Axum 0.8 Syntax)
+/// Returns a single todo by its ID.
+pub async fn get_todo(
+    State(state): State&lt;AppState&gt;,
+    Path(id): Path&lt;i32&gt;, // FIX: Change extractor type to i32
+) -> Result&lt;Json&lt;Todo&gt;, StatusCode&gt; {
+    let db = state.db.lock().expect("Mutex was poisoned");
+    // Find the todo by its ID (i32 == i32 comparison is now valid)
+    if let Some(todo) = db.iter().find(|t| t.id == id) {
+        Ok(Json(todo.clone())) // Return 200 OK with the todo
+    } else {
+        Err(StatusCode::NOT_FOUND) // Return 404 Not Found
+    }
+}
+
+// --- Update (Partial) ---
+/// Handler for PATCH /todos/{id} (Axum 0.8 Syntax)
+/// Updates a todo item (partial updates).
+pub async fn update_todo(
+    State(state): State&lt;AppState&gt;,
+    Path(id): Path&lt;i32&gt;, // FIX: Change extractor type to i32
+    AxJson(payload): AxJson&lt;UpdateTodo&gt;, // Use the UpdateTodo struct
+) -> Result&lt;Json&lt;Todo&gt;, StatusCode&gt; {
+    let mut db = state.db.lock().expect("Mutex was poisoned");
+    // Find a mutable reference to the todo
+    if let Some(todo) = db.iter_mut().find(|t| t.id == id) {
+        // Update fields if they are provided in the JSON payload
+        if let Some(title) = payload.title {
+            todo.title = title;
+        }
+        if let Some(completed) = payload.completed {
+            todo.completed = completed;
+        }
+        Ok(Json(todo.clone())) // Return 200 OK with the updated todo
+    } else {
+        Err(StatusCode::NOT_FOUND) // 404 Not Found
+    }
+}
+
+// --- Delete ---
+/// Handler for DELETE /todos/{id} (Axum 0.8 Syntax)
+/// Deletes a todo item by its ID.
+pub async fn delete_todo(
+    State(state): State&lt;AppState&gt;,
+    Path(id): Path&lt;i32&gt;, // FIX: Change extractor type to i32
+) -> StatusCode {
+    let mut db = state.db.lock().expect("Mutex was poisoned");
+    let len_before = db.len();
+    // Keep all todos *except* the one with the matching ID
+    db.retain(|todo| todo.id != id);
+    let len_after = db.len();
+    if len_before > len_after {
+        // We removed an item
+        StatusCode::NO_CONTENT // 204 No Content (success, no body)
+    } else {
+        // No item was removed, so it wasn't found
+        StatusCode::NOT_FOUND // 404 Not Found
+    }
+}</code></pre>
+
+                    <p><strong>File 4: src/main.rs</strong><br>
+                    Finally, this file ties everything together. It defines the modules, sets up the shared state, and builds the router.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{
+    extract::State,
+    http::StatusCode,
+    response::{IntoResponse, Json}, // Json is now used for the response body
+    routing::{get, post, patch, delete},
+    Router,
+};
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::net::TcpListener;
+use tokio::signal; // Required for graceful shutdown
+
+// --- Modules ---
+pub mod models;
+pub mod handlers;
+
+// --- Imports from our modules ---
+use models::Todo;
+use handlers::{
+    create_todo,
+    get_all_todos,
+    get_todo,
+    update_todo,
+    delete_todo
+};
+
+// --- Application State ---
+#[derive(Clone)]
+pub struct AppState {
+    db: Arc&lt;Mutex&lt;Vec&lt;Todo&gt;&gt;&gt;,
+    next_id: Arc&lt;AtomicU32&gt;,
+}
+
+impl AppState {
+    fn new() -> Self {
+        Self {
+            db: Arc::new(Mutex::new(Vec::new())),
+            next_id: Arc::new(AtomicU32::new(1)),
+        }
+    }
+}
+
+// Handler for the health check endpoint
+async fn health_check() -> (StatusCode, &amp;'static str) {
+    (StatusCode::OK, "Service is healthy")
+}
+
+// --- Main Server Setup ---
+#[tokio::main]
+async fn main() {
+    // Initialize our shared state
+    let app_state = AppState::new();
+
+    // Build our application router, registering all CRUD handlers
+    let app = Router::new()
+        .route("/health", get(health_check)) // Health check endpoint
+        // Root resource CRUD methods
+        .route("/todos",
+            get(get_all_todos) // GET /todos
+            .post(create_todo) // POST /todos
+        )
+        // Individual resource CRUD methods using Axum 0.8 syntax: {id}
+        .route("/todos/{id}",
+            get(get_todo) // GET /todos/{id}
+            .patch(update_todo) // PATCH /todos/{id}
+            .delete(delete_todo) // DELETE /todos/{id}
+        )
+        // Share the AppState with all handlers
+        .with_state(app_state);
+
+    // --- Bind and Serve ---
+    // Use expect() for safer startup error handling
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    println!(" Server listening on http://{}", addr);
+    let listener = TcpListener::bind(addr).await.expect("Failed to bind to address");
+
+    // Run the server and enable graceful shutdown
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .expect("Server failed to run");
+}
+
+// --- Graceful Shutdown Handler ---
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
+    };
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("Failed to install signal handler")
+            .recv()
+            .await;
+    };
+    // Use a pending future for non-Unix systems (like Windows)
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::&lt;()&gt;();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+    println!("Graceful shutdown initiated.");
+}</code></pre>
+                    <p><strong>Note on JSON aliasing</strong><br>
+                    We alias the inbound <code>Json</code> extractor as <code>AxJson</code> (<code>Json as AxJson</code>) to clearly distinguish it from the <code>Json</code> response type. This prevents confusion, as both are used in the signature for handlers such as <code>create_todo</code> (i.e., receiving <code>AxJson&lt;NewTodo&gt;</code> and returning <code>Json&lt;Todo&gt;</code>).</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="testing-our-restful-application">
+                    <h3 id="testing-our-restful-application">Testing our RESTful application</h3>
+                    <p>You can explore this application using various methods and tools, such as Postman, VS Code extensions, and others. However, the simplest and most universal way is to use <code>curl</code> commands. Give it a try and see how smoothly it works!</p>
+                    <ol>
+                        <li><strong>Run your Axum server</strong>: In your terminal, navigate to your <code>todo_api</code> project directory (where your <code>Cargo.toml</code> file is) and run the server:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo run</code></pre>
+                            You should see this output: <code>Server listening on http://127.0.0.1:8080</code>
+                        </li>
+                        <li><strong>Open a new terminal</strong>: Leave your server running in the first terminal. Open a second, separate terminal window. You will use this new terminal to send commands to your server using <code>curl</code>, a common command-line tool for making HTTP requests. Ensure that 'curl' is a command available in this terminal.</li>
+                        <li><strong>Test your API endpoints with curl</strong>: Run the following commands one by one in your new terminal to test each part of your CRUD API.
+                            <ol>
+                                <li><strong>Create a new todo (POST /todos)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -X POST http://127.0.0.1:8080/todos -H "Content-Type:application/json" -d '{"title": "Learn Axum"}'</code></pre>
+                                    Expected output: <code>{"id":1,"title":"Learn Axum","completed":false}</code> (with a <code>201 Created</code> status)
+                                </li>
+                                <li><strong>Create a second todo (POST /todos)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -X POST http://127.0.0.1:8080/todos -H "Content-Type: application/json" -d '{"title": "Write database chapter"}'</code></pre>
+                                    Expected output: <code>{"id":2,"title":"Write database chapter","completed":false}</code>
+                                </li>
+                                <li><strong>Get all todos (GET /todos)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos</code></pre>
+                                    Expected output: <code>[{"id":1,"title":"Learn Axum","completed":false},{"id":2,"title":"Write database chapter","completed":false}]</code>
+                                </li>
+                                <li><strong>Get a single todo by ID (GET /todos/1)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos/1</code></pre>
+                                    Expected output: <code>{"id":1,"title":"Learn Axum","completed":false}</code>
+                                </li>
+                                <li><strong>Get a non-existent todo (GET /todos/99)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -I http://127.0.0.1:8080/todos/99</code></pre>
+                                    Expected output: <code>Not Found</code> (or similar, with a <code>404</code> status)
+                                </li>
+                                <li><strong>Update a todo (PATCH /todos/1)</strong>: mark "Learn Axum" as completed
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -X PATCH http://127.0.0.1:8080/todos/1 -H "Content-Type: application/json" -d '{"completed": true}'</code></pre>
+                                    Expected output: <code>{"id":1,"title":"Learn Axum","completed":true}</code>
+                                </li>
+                                <li><strong>Verify the update (GET /todos/1 again)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos/1</code></pre>
+                                    Expected output: <code>{"id":1,"title":"Learn Axum","completed":true}</code> (Note completed is now <code>true</code>)
+                                </li>
+                                <li><strong>Delete a todo (DELETE /todos/1)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -v -X DELETE http://127.0.0.1:8080/todos/1</code></pre>
+                                    Expected output: You won’t see a body, but in the verbose output (<code>-v</code>), you should see <code>&lt; HTTP/1.1 204 No Content</code>.
+                                </li>
+                                <li><strong>Verify the deletion (GET /todos)</strong>:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos</code></pre>
+                                    Expected output: <code>[{"id":2,"title":"Write database chapter","completed":false}]</code> (Item 1 is gone)
+                                </li>
+                            </ol>
+                        </li>
+                    </ol>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x400?text=Curl+Testing+Output" alt="Terminal output showing curl commands and responses for CRUD operations" />
+                        <figcaption>Figure 14.3: Testing the in-memory RESTful API endpoints using curl to confirm the functionality of all CRUD operations (Placeholder)</figcaption>
+                    </figure>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="adding-persistence-with-postgresql">
+                <h2 id="adding-persistence-with-postgresql">Adding persistence with PostgreSQL</h2>
+                <p>Storing data in an in-memory <code>Arc&lt;Mutex&lt;Vec&lt;Todo&gt;&gt;&gt;</code> is great for examples, but it has a major drawback: all our data is lost when the server restarts. For a real application, we need <strong>persistence</strong>. This means storing our data in a database. In this section, we’ll refactor our API to use PostgreSQL, a powerful and popular open source relational database. We’ll use <code>sqlx</code>, a modern, pure-Rust, and async-native SQL toolkit.</p>
+
+                <section tabindex="0" aria-labelledby="database-setup">
+                    <h3 id="database-setup">Database setup</h3>
+                    <p>Before our Rust app can connect with a database, it’s important to have a database server up and running. Although you can install PostgreSQL directly on your computer, using Docker to run it inside a container is a much cleaner, more straightforward, and more consistent approach for development. This method keeps the database isolated, avoids any conflicts, and makes cleanup a breeze. Just stop the container when you’re done.</p>
+                    <p>If you haven’t installed Docker yet, you can download it easily from the official website: <a href="https://www.docker.com/get-started">https://www.docker.com/get-started</a>. (We’ll go into more detail about Docker in <a href="./chapter-16.html">Chapter 16</a>, but for now, just ensure it’s installed and running.)</p>
+                    <p>Once Docker is up and running, starting a new PostgreSQL server is as simple as running a single command in your terminal.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>docker run --name my_app_db_postgres -e POSTGRES_PASSWORD=password \
+-p 5432:5432 -d postgres:15-alpine</code></pre>
+                    <p>This command will download the lightweight <code>postgres:15-alpine</code> image, start a container, set a password, and map the port so your Axum app (running on localhost) can communicate with it.</p>
+                    <ul>
+                        <li><code>docker run ... -d</code>: Runs the container in detached (background) mode.</li>
+                        <li><code>--name my-todo-db</code>: Gives your container a memorable name for easy stopping/starting.</li>
+                        <li><code>-e POSTGRES_PASSWORD=password</code>: Sets the required password for the <code>postgres</code> superuser inside the container. <strong>This should be obvious, but NEVER use <code>password</code> as a password for your production database!</strong> This is just an example to make something easy to remember!</li>
+                        <li><code>-p 5432:5432</code>: Maps port 5432 on your host machine (localhost) to port 5432 inside the container. This is what allows your Axum app to connect to <code>localhost:5432</code>.</li>
+                        <li><code>postgres:15-alpine</code>: The image to use: Postgres 15 on a minimal Alpine Linux base.</li>
+                    </ul>
+                    <p>If you run the <code>docker ps -a</code> command on your terminal, you should see something like this:</p>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x100?text=Docker+ps+Output" alt="Output of docker ps -a showing the postgres container running" />
+                        <figcaption>Figure 14.4: Running the postgres container with Docker (Placeholder)</figcaption>
+                    </figure>
+                    <p>This means that your database is up and running (in a Docker container).</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="integrating-sqlx-into-the-axum-project">
+                    <h3 id="integrating-sqlx-into-the-axum-project">Integrating sqlx into the Axum project</h3>
+                    <p>Since our PostgreSQL database is running smoothly inside a Docker container, let’s now move forward and incorporate the <code>sqlx</code> toolkit into our Axum project. This exciting step involves three essential and straightforward tasks: adding the needed <code>sqlx</code> libraries to your <code>Cargo.toml</code> file, setting up your database connection URL in an <code>.env</code> file, and installing the <code>sqlx-cli</code> command-line tool to help manage your database schema effortlessly. Let’s proceed step by step.</p>
+
+                    <section tabindex="0" aria-labelledby="adding-sqlx-and-dotenvy-dependencies">
+                        <h4 id="adding-sqlx-and-dotenvy-dependencies">Adding sqlx and dotenvy dependencies</h4>
+                        <p>Let’s start by adding the <code>sqlx</code> crate to our project. <code>sqlx</code> is a wonderful, async-native Rust SQL toolkit that works seamlessly with our Tokio runtime. We’ll enable features for Postgres, the Tokio runtime, <code>rustls</code> for secure connections, and macros to ensure compile-time query checking. Additionally, we’ll include <code>dotenvy</code>, a reliable fork of <code>dotenv</code> (since <code>dotenv</code> is no longer maintained), to help us load our database connection string effortlessly from an <code>.env</code> file.</p>
+                        <p>Open your <code>Cargo.toml</code> file and add these to your <code>[dependencies]</code> section:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+# ... (keep axum, tokio, serde)
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "uuid"] }
+dotenvy = "0.15"</code></pre>
+                        <p><strong>Note</strong>: We’ve added <code>chrono</code> and <code>uuid</code> as common features you might need for database work, though for our simple todos table, they aren’t strictly required. The <code>macros</code> feature is for the compile-time checked queries we’ll see later.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="configuring-database_url">
+                        <h4 id="configuring-database_url">Configuring DATABASE_URL</h4>
+                        <p>Both our application and <code>sqlx-cli</code> (which we’ll install next) need to know how to connect to the PostgreSQL database we started in Docker. The standard way to provide this information is through an environment variable named <code>DATABASE_URL</code>. We’ll use the <code>dotenvy</code> crate we added earlier to load this variable from an <code>.env</code> file.</p>
+                        <p><strong>VERY IMPORTANT</strong>: you must add this <code>.env</code> file to your <code>.gitignore</code>! This file contains sensitive credentials (such as your database password) and should never be committed to source control.</p>
+                        <p><code>.gitignore</code>:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>.env</code></pre>
+                        <p>Create a new file named <code>.env</code> in the root directory of your <code>todo_api</code> project (the same directory as <code>Cargo.toml</code>). Then, add the following line. This connection string must match the settings (user <code>postgres</code>, password <code>password</code>, port <code>5432</code>, and database <code>postgres</code>) we used in our <code>docker run</code> command.</p>
+                        <p>The <code>.env</code> file should look like this:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>DATABASE_URL=postgres://postgres:password@localhost:5432/postgres</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="installing-and-using-sqlx-cli-for-migrations">
+                        <h4 id="installing-and-using-sqlx-cli-for-migrations">Installing and using sqlx-cli for migrations</h4>
+                        <p>To manage our database schema (such as creating tables), we’ll use <code>sqlx-cli</code>, a command-line tool built by the <code>sqlx</code> team. Its most important feature is handling <strong>migrations</strong>. You can install <code>sqlx-cli</code> using <code>cargo install</code>. A significant advantage of this tool is that it’s a pure-Rust application and connects to the database in the same way as our app will.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo install sqlx-cli</code></pre>
+                        <p>Once installed, <code>sqlx-cli</code> will automatically read your <code>.env</code> file to find the <code>DATABASE_URL</code> and establish a connection to your database. We’ll use it in the next section to create and run our migrations.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="schema-management-with-sqlx-migrations">
+                    <h3 id="schema-management-with-sqlx-migrations">Schema management with sqlx migrations</h3>
+                    <p>Now that we have <code>sqlx-cli</code> installed and our <code>.env</code> file is ready, we can define our database’s structure. <code>sqlx-cli</code> uses <strong>migrations</strong> to manage changes to your database schema in a version-controlled way. A migration is just a SQL file with a unique timestamped name. This is a fantastic practice as it keeps a history of your schema and makes it easy to set up your database in any environment.</p>
+
+                    <section tabindex="0" aria-labelledby="creating-and-running-migrations">
+                        <h4 id="creating-and-running-migrations">Creating and running migrations</h4>
+                        <p>First, we need to tell <code>sqlx-cli</code> to create the migration files. In your terminal, from your project’s root directory, run this:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>sqlx migrate add create_todos_table</code></pre>
+                        <p>This command will do the following:</p>
+                        <ol>
+                            <li>Connect to your database (using <code>DATABASE_URL</code> from <code>.env</code>) to ensure it’s reachable.</li>
+                            <li>Create a <code>migrations</code> folder in your project root.</li>
+                            <li>Inside <code>migrations</code>, it will create a new file with a timestamp and the name you provided, such as <code>YYYYMMDDHHMMSS_create_todos_table.sql</code>.</li>
+                        </ol>
+                        <p>Now, open that new <code>.sql</code> file. <code>sqlx-cli</code> migrations are simple: you write your “up” SQL (to create or alter tables) directly in the file. To add a “down” migration (to revert the change), you add <code>-- Add down migration</code> in a comment.</p>
+                        <p>Let’s edit the newly created <code>migrations/YYYY..._create_todos_table.sql</code> file:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>CREATE TABLE todos (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR NOT NULL,
+    completed BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- Add down migration
+DROP TABLE IF EXISTS todos;</code></pre>
+                        <p><strong>Reversibility note</strong>: The <code>DROP TABLE IF EXISTS todos;</code> command is the <strong>DOWN</strong> migration. If you ever need to completely undo this change, <code>sqlx-cli</code> will execute this command.</p>
+                        <p>After saving this file, you can apply the migration to your database (which is running in Docker) with this command:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>sqlx migrate run</code></pre>
+                        <p><code>sqlx-cli</code> will connect to the database, see that this migration has not been run yet, execute the <code>up.sql</code> portion, and record the migration in a special <code>_sqlx_migrations</code> table it creates in your database.</p>
+                        <p>To test it out, go to the terminal where you are running Docker commands and type the following:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>docker exec -it my_app_db_postgres psql -U postgres</code></pre>
+                        <p>Then, type this command:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>\dt</code></pre>
+                        <p>You should be able to see the <code>todos</code> table.</p>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x200?text=psql+dt+Output" alt="Output of \dt in psql showing the todos table" />
+                            <figcaption>Figure 14.5: Check the todos table with docker exec and psql (Placeholder)</figcaption>
+                        </figure>
+                        <p>Amazing! But, let’s say we type the following:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>SELECT * FROM todos;</code></pre>
+                        <p>We can see that the table is empty.</p>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x100?text=psql+Select+Empty" alt="Output of SELECT * FROM todos showing empty result" />
+                            <figcaption>Figure 14.6: The todos table is currently empty (Placeholder)</figcaption>
+                        </figure>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mapping-rust-structs-and-using-a-connection-pool">
+                    <h3 id="mapping-rust-structs-and-using-a-connection-pool">Mapping Rust structs and using a connection pool</h3>
+                    <p>Now that our database has a <code>todos</code> table defined via migrations, we need to handle two important tasks to make it usable in our Axum app. First, we must “map” our <code>Todo</code> struct to the <code>todos</code> table; this involves telling <code>sqlx</code> how to convert a database row into our struct. Second, we need to create an efficient way to manage database connections (a “connection pool”) and make it available to all our API handlers so they can actually run queries.</p>
+
+                    <section tabindex="0" aria-labelledby="using-sqlxpgpool-for-the-connection-pool">
+                        <h4 id="using-sqlxpgpool-for-the-connection-pool">Using <code>sqlx::PgPool</code> for the connection pool</h4>
+                        <p>Creating a new database connection for every single incoming web request is extremely slow and inefficient. The correct solution is a <strong>connection pool</strong>, which is a cache of database connections that your application maintains. When a handler needs to talk to the database, it quickly “borrows” a connection from the pool, uses it, and then returns it. <code>sqlx</code> provides an excellent, async-native connection pool called <code>sqlx::PgPool</code> (for Postgres). We’ll create this pool when our server first starts up in <code>main.rs</code> by reading the <code>DATABASE_URL</code> from our <code>.env</code> file and using the <code>PgPoolOptions</code> builder.</p>
+                        <p><code>src/main.rs</code> (snippet for pool creation):</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Add these to your `use` statements at the top of src/main.rs
+use dotenvy::dotenv;
+use std::env;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool; // Import the Pool type
+
+// ...
+#[tokio::main]
+async fn main() {
+    // Load environment variables from .env file (DATABASE_URL)
+    dotenv().ok(); // .ok() ignores errors if .env is not found
+
+    // Get the database URL from the environment
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set in .env file");
+
+    // --- Create the Database Connection Pool ---
+    let pool = PgPoolOptions::new()
+        .max_connections(5) // Set a max of 5 connections for our pool
+        .connect(&amp;database_url)
+        .await
+        .expect("Failed to create database connection pool");
+
+    println!(" Database connection pool initialized.");
+    // ... (rest of main function will go here) ...
+}</code></pre>
+                        <ul>
+                            <li><code>dotenv().ok()</code>: We call this at the start of <code>main</code> to load our <code>.env</code> file.</li>
+                            <li><code>env::var("DATABASE_URL")</code>: This reads the connection string from the environment.</li>
+                            <li><code>PgPoolOptions::new()</code>: This is the builder for our <code>sqlx</code> connection pool.</li>
+                            <li><code>.connect(...).await</code>: This asynchronously connects to the database (running in Docker) and establishes the initial connections for the pool.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="deriving-fromrow-for-our-todo-struct">
+                        <h4 id="deriving-fromrow-for-our-todo-struct">Deriving <code>FromRow</code> for our Todo struct</h4>
+                        <p>Now that we have a pool, we need to tell <code>sqlx</code> how to map a row from our <code>todos</code> table into our <code>Todo</code> struct. We do this by adding the <code>sqlx::FromRow</code> derive macro. We also need to ensure the <code>id</code> type is <code>i32</code>, as PostgreSQL’s <code>SERIAL</code> type maps to a 32-bit signed integer.</p>
+                        <p><code>src/models.rs</code> (updated for sqlx):</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use serde::{Deserialize, Serialize};
+use sqlx::FromRow; // Import the FromRow derive macro
+
+/// Represents a Todo item in the system.
+/// We derive `FromRow` to allow sqlx to map database rows to this struct.
+#[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
+pub struct Todo {
+    pub id: i32, // PostgreSQL SERIAL maps to i32
+    pub title: String,
+    pub completed: bool,
+}
+
+/// Represents the payload for creating a new Todo.
+#[derive(Debug, Deserialize)]
+pub struct NewTodo {
+    pub title: String,
+}
+
+/// Represents the payload for updating an existing Todo.
+#[derive(Debug, Deserialize)]
+pub struct UpdateTodo {
+    pub title: Option&lt;String&gt;,
+    pub completed: Option&lt;bool&gt;,
+}</code></pre>
+                        <ul>
+                            <li><code>use sqlx::FromRow;</code>: We import the necessary derive macro.</li>
+                            <li><code>#[derive(..., FromRow)]</code>: By adding <code>FromRow</code> to <code>Todo</code>, <code>sqlx</code> can now automatically map the columns <code>id</code>, <code>title</code>, and <code>completed</code> from a query result directly to the fields of our <code>Todo</code> struct.</li>
+                            <li><code>id: i32</code>: We’ve changed the <code>id</code> type from <code>u32</code> to <code>i32</code> to correctly match PostgreSQL’s <code>SERIAL</code> type.</li>
+                            <li><code>NewTodo</code> and <code>UpdateTodo</code>: These structs don’t need <code>FromRow</code> because they are only deserialized from the client’s JSON request body, not mapped from a database row.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="sharing-the-pool-in-axums-appstate">
+                        <h4 id="sharing-the-pool-in-axums-appstate">Sharing the pool in Axum’s AppState</h4>
+                        <p>Finally, we need to make our connection pool available to all our Axum handlers. The idiomatic way to do this is to store the pool in a shared <code>AppState</code> struct and use Axum’s <code>.with_state()</code> method to “inject” it into our router.</p>
+                        <p><code>src/main.rs</code> (updated to share the pool):</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use axum::{
+    routing::get,
+    Router,
+    extract::State, // We'll need this in our handlers
+};
+use std::net::SocketAddr;
+use tokio::net::TcpListener;
+use dotenvy::dotenv;
+use std::env;
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool; // Import the Pool type
+
+// --- Modules ---
+pub mod models;
+pub mod handlers; // We'll create this in the next section
+// pub mod schema; // NO LONGER NEEDED FOR SQLX
+
+// --- Application State ---
+// Define a struct to hold our shared state (the pool)
+// We derive Clone so the state can be shared with all threads
+#[derive(Clone)]
+pub struct AppState {
+    db_pool: PgPool,
+}
+
+#[tokio::main]
+async fn main() {
+    // Load environment variables from .env file (DATABASE_URL)
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set in .env file");
+
+    // Create the Database Connection Pool
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&amp;database_url)
+        .await
+        .expect("Failed to create database connection pool");
+
+    println!(" Database connection pool initialized.");
+
+    // Run SQLx migrations
+    sqlx::migrate!()
+        .run(&amp;pool)
+        .await
+        .expect("Failed to run database migrations.");
+
+    println!(" Database migrations ran successfully.");
+
+    // --- Create the AppState ---
+    let app_state = AppState { db_pool: pool };
+
+    // --- Build our application router ---
+    let app = Router::new()
+        .route("/", get(|| async { "Hello, World! (from database-backed server)" }))
+        // We will register our real CRUD handlers in the next section
+        // .route("/todos", post(handlers::create_todo_db).get(handlers::get_all_todos_db))
+        // ... etc ...
+        // Share the AppState with all handlers
+        .with_state(app_state);
+
+    // --- Bind and Serve ---
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    println!(" Server listening on http://{}", addr);
+    let listener = TcpListener::bind(addr).await.unwrap();
+    // `.into_make_service()` is required when using `.with_state`
+    axum::serve(listener, app.into_make_service()).await.unwrap();
+}</code></pre>
+                        <ul>
+                            <li><strong>AppState struct</strong>: We’ve defined a simple <code>AppState</code> struct that holds our <code>PgPool</code>.</li>
+                            <li><strong>#[derive(Clone)]</strong>: This is required by Axum’s <code>with_state</code> method. <code>PgPool</code> is already cheap to clone (it’s an <code>Arc</code> internally).</li>
+                            <li><strong><code>sqlx::migrate!()</code></strong>: This macro, needing the <code>migrations</code> folder, automatically runs pending database migrations at server start, ensuring your database schema stays current with your code.</li>
+                            <li><strong><code>.with_state(app_state)</code></strong>: This method connects our state (which includes the pool) to the router, making it accessible to all handlers.</li>
+                            <li><strong><code>app.into_make_service()</code></strong>: When you use <code>.with_state</code>, you must call <code>.into_make_service()</code> on your router before passing it to <code>axum::serve</code>.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="refactoring-handlers-for-async-database-persistence">
+                    <h3 id="refactoring-handlers-for-async-database-persistence">Refactoring handlers for async database persistence</h3>
+                    <p>We will now refactor the functions in <code>src/handlers.rs</code> to use the <code>DbPool</code> from our <code>AppState</code> instead of the in-memory <code>Arc&lt;Mutex&lt;Vec&lt;Todo&gt;&gt;&gt;</code>. A key advantage of <code>sqlx</code> is that it’s async-native, designed to work perfectly with Tokio and Axum. This means we do not need to use <code>tokio::task::spawn_blocking</code>. We can <code>.await</code> database queries directly in our async handlers, leading to cleaner and more efficient code.</p>
+
+                    <section tabindex="0" aria-labelledby="writing-raw-sql-queries">
+                        <h4 id="writing-raw-sql-queries">Writing raw SQL queries</h4>
+                        <p>One of the most powerful features of <code>sqlx</code> is its ability to check your SQL queries at <strong>compile time</strong>. It does this by connecting to your database (using the <code>DATABASE_URL</code> in your <code>.env</code> file) during the build process and verifying that your SQL is valid and that the columns you’re selecting can be correctly mapped to the fields of your Rust struct. This catches typos in your SQL (<code>SELECT *...</code>) or type mismatches (e.g., trying to map <code>VARCHAR</code> to <code>i32</code>) <em>before</em> your program even runs.</p>
+                        <ul>
+                            <li><strong><code>sqlx::query_as!(Todo, "...")</code></strong>: We’ll use this macro when we want to run a query and have <code>sqlx</code> automatically map the resulting rows into our <code>Todo</code> struct (which we’ve already derived <code>FromRow</code> for).</li>
+                            <li><strong><code>sqlx::query!("...")</code></strong>: We’ll use this simpler macro for queries where we want to execute a command and don’t need to map the result to a full struct (such as our <code>DELETE</code> command).</li>
+                        </ul>
+                        <p><strong>Important note on compile-time checking</strong><br>
+                        For this powerful feature to work, your database must be running and accessible when you run <code>cargo build</code> or <code>cargo run</code>. This is because the Rust compiler relies on live schema information to validate the queries and type mappings. If the database isn’t available during compilation, the build will fail. Alternatively, you can use the <code>sqlx prepare</code> command to generate offline query metadata, allowing compilation without a live database connection.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="refactoring-the-crud-endpoints-to-be-fully-async">
+                        <h4 id="refactoring-the-crud-endpoints-to-be-fully-async">Refactoring the CRUD endpoints to be fully async</h4>
+                        <p>We will now replace the entire contents of the <code>src/handlers.rs</code> file with this new, database-backed logic. (Check the <code>11_db_handlers.rs</code> file for the complete code)</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// ... imports and helper functions ...
+
+// --- Reading Data (SELECT) ---
+pub async fn get_all_todos_db(State(state): State&lt;AppState&gt;) -> impl IntoResponse {
+    // query_as! macros check SQL validity at compile time
+    let result = sqlx::query_as!(
+        Todo,
+        "SELECT id, title, completed FROM todos ORDER BY id"
+    )
+    .fetch_all(&amp;state.db_pool) // Returns Vec&lt;Todo&gt;
+    .await;
+
+    match result {
+        Ok(todos) => (StatusCode::OK, Json(todos)).into_response(),
+        Err(e) => internal_db_error(e).into_response(),
+    }
+}
+
+// --- Writing Data (INSERT) ---
+pub async fn create_todo_db(
+    State(state): State&lt;AppState&gt;,
+    AxJson(payload): AxJson&lt;NewTodo&gt;,
+) -> impl IntoResponse {
+    let result = sqlx::query_as!(
+        Todo,
+        "INSERT INTO todos (title) VALUES ($1) RETURNING *",
+        payload.title
+    )
+    .fetch_one(&amp;state.db_pool) // Returns a single Todo
+    .await;
+
+    match result {
+        Ok(todo) => (StatusCode::CREATED, Json(todo)).into_response(),
+        Err(e) => internal_db_error(e).into_response(),
+    }
+}
+
+// ... Additional handlers (update, delete, get_one) follow this same pattern ...</code></pre>
+                        <ul>
+                            <li><strong>Fully async</strong>: Notice that we do not use <code>tokio::task::spawn_blocking</code> anywhere! Because <code>sqlx</code> is async-native, we can <code>.await</code> its methods (such as <code>.fetch_one()</code>, <code>.fetch_all()</code>, and <code>.execute()</code>) directly within our async handlers. This is much cleaner and more efficient.</li>
+                            <li><strong>State injection</strong>: All handlers receive the <code>State&lt;AppState&gt;</code> extractor to get access to the <code>db_pool</code>.</li>
+                            <li><strong><code>sqlx::query_as!</code> Macro</strong>: This is the most powerful feature of <code>sqlx</code>. The <code>query_as!(Todo, "SELECT ...")</code> macro does the following:
+                                <ol>
+                                    <li>Checks your SQL query string at compile time.</li>
+                                    <li>Compares it against your database (using the <code>DATABASE_URL</code> at compile time) to ensure the query is valid and that the columns (<code>id</code>, <code>title</code>, <code>completed</code>) can be correctly mapped to the fields of your <code>Todo</code> struct.</li>
+                                    <li>This prevents a whole class of runtime errors, such as typos in your SQL (<code>SELECT *</code>) or type mismatches.</li>
+                                </ol>
+                            </li>
+                            <li><strong>Error handling</strong>: We use a simple <code>internal_db_error</code> helper to map any <code>sqlx::Error</code> to a <code>500 Internal Server Error</code> response. For specific cases such as <code>get_todo_db</code> (where “not found” is expected), we use <code>.fetch_optional()</code>, which returns an <code>Option</code>, allowing us to send a <code>404 NOT FOUND</code> status code.</li>
+                        </ul>
+                        <p>Finally, you must update <code>src/main.rs</code> to import these new handlers and register them in your router. Complete project reference: Since the full code for a multi-file project structure (containing <code>Cargo.toml</code>, <code>src/models.rs</code>, <code>src/handlers.rs</code>, and <code>src/main.rs</code>) can be quite long, we have minimized it here. For the entire, runnable project structure, including the graceful shutdown handler and module definitions, please check the project repository on GitHub.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs
+// ... imports and AppState definition ...
+// ... imports from handlers module ...
+
+#[tokio::main]
+async fn main() {
+    // 1. Create Connection Pool and Table
+    // ... pool and table creation logic ...
+    let app_state = AppState { db_pool: pool };
+
+    // 2. Build our final RESTful router
+    let app = Router::new()
+        .route("/todos",
+            get(handlers::get_all_todos_db)
+            .post(handlers::create_todo_db)
+        )
+        .route("/todos/:id",
+            get(handlers::get_todo_db)
+            .patch(handlers::update_todo_db)
+            .delete(handlers::delete_todo_db)
+        )
+        .with_state(app_state);
+
+    // 3. Bind and Serve
+    // ... server startup logic ...
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="testing-the-application-ch14">
+                    <h3 id="testing-the-application-ch14">Testing the application</h3>
+                    <p>To test the new application, first run the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo run</code></pre>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x100?text=Axum+App+Running" alt="Terminal output showing Axum application running" />
+                        <figcaption>Figure 14.7: Axum application up and running (Placeholder)</figcaption>
+                    </figure>
+                    <p>Now let’s test the application using <code>curl</code> commands to keep it as universal as possible. But feel free to use tools such as Postman or a VS Code extension to make proper HTTP calls – whichever works best for you!</p>
+                    <ol>
+                        <li><strong>Get all todos (to verify it’s empty)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos</code></pre>
+                            Expected output: <code>[]</code> (An empty JSON array)
+                        </li>
+                        <li><strong>Create a new todo (POST /todos)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -X POST -H "Content-Type: application/json" -d '{"title": "Learn sqlx"}' http://127.0.0.1:8080/todos</code></pre>
+                            Expected output: <code>{"id":1,"title":"Learn sqlx","completed":false}</code>
+                        </li>
+                        <li><strong>Create a second todo (POST /todos)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -X POST -H "Content-Type: application/json" -d '{"title": "Test the API"}' http://127.0.0.1:8080/todos</code></pre>
+                            Expected output: <code>{"id":2,"title":"Test the API","completed":false}</code>
+                        </li>
+                        <li><strong>Get all todos (to see the new items)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos</code></pre>
+                            Expected output: <code>[{"id":1,"title":"Learn sqlx","completed":false},{"id":2,"title":"Test the API","completed":false}]</code>
+                        </li>
+                        <li><strong>Get a single todo (GET /todos/1)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos/1</code></pre>
+                            Expected output: <code>{"id":1,"title":"Learn sqlx","completed":false}</code>
+                        </li>
+                        <li><strong>Get a non-existent todo (GET /todos/99)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos/99</code></pre>
+                            Expected output: <code>Todo not found</code>
+                        </li>
+                        <li><strong>Update a todo (PATCH /todos/1)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -X PATCH -H "Content-Type: application/json" -d '{"completed": true}' http://127.0.0.1:8080/todos/1</code></pre>
+                            Expected output: <code>{"id":1,"title":"Learn sqlx","completed":true}</code>
+                        </li>
+                        <li><strong>Delete a todo (DELETE /todos/1)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -v -X DELETE http://127.0.0.1:8080/todos/1</code></pre>
+                            Expected output: You won't see a body, but in the verbose output (<code>-v</code>), you should see <code>&lt; HTTP/1.1 204 No Content</code>.
+                        </li>
+                        <li><strong>Verify the deletion (GET /todos)</strong>:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/todos</code></pre>
+                            Expected output: <code>[{"id":2,"title":"Test the API","completed":true}]</code>
+                        </li>
+                    </ol>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x400?text=Curl+Testing+Database+Output" alt="Terminal output showing curl commands for CRUD operations on the database-backed API" />
+                        <figcaption>Figure 14.8: Testing endpoints with curl (Placeholder)</figcaption>
+                    </figure>
+                    <p><strong>Verifying with psql</strong><br>
+                    You can also directly check the database. In your testing terminal, run the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>docker exec -it my_app_db_postgres -U postgres</code></pre>
+                    <p>Replace <code>my_app_db_postgres</code> with the name of your container. To verify the current status of the database, you can type this:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>SELECT * FROM TODOS;</code></pre>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x200?text=psql+Select+After+Tests" alt="Output of SELECT * FROM todos showing the persisted todos" />
+                        <figcaption>Figure 14.9: Verification with psql (Placeholder)</figcaption>
+                    </figure>
+                    <p>You should see the current state of your todos table. Type <code>\q</code> to exit <code>psql</code>. That’s it! Your API is now fully persistent and working.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-final-backend-step-enabling-cors">
+                    <h3 id="a-final-backend-step-enabling-cors">A final backend step: enabling CORS</h3>
+                    <p>We’ve now updated all our handlers to be fully async and integrated the <code>sqlx</code> database. Before we can connect our frontend JavaScript application to this API (which we’ll cover in the next section), there’s just one more important step for our backend: setting up a <strong>CORS (Cross-Origin Resource Sharing)</strong> policy. By default, web browsers adhere to a security principle known as the <strong>same-origin policy</strong>. This means that code running on one domain, such as our development frontend at <code>http://localhost:8001</code>, would normally be blocked from making <code>fetch</code> requests to our API on another domain, such as <code>http://localhost:8080</code>. To make our full-stack example work smoothly, we need to allow these cross-origin requests on our Axum server explicitly. We can do this easily by adding a “CORS layer” from the <code>tower-http</code> crate.</p>
+                    <p>First, be sure to include <code>tower-http</code> in your <code>Cargo.toml</code> file.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[dependencies]
+# ... (axum, tokio, serde, dotenvy, sqlx)
+tower-http = { version = "0.5", features = ["cors"] }</code></pre>
+                    <p>The full, multi-file version is available on the GitHub repository. We should highlight the <code>CorsLayer</code> setup and application:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// src/main.rs (CORS Setup Snippet)
+use axum::{routing::get, Router};
+use axum::http::Method;
+use tower_http::cors::{Any, CorsLayer};
+// ... other imports ...
+
+#[tokio::main]
+async fn main() {
+    // ... Pool creation and AppState setup (Steps 1-3) ...
+
+    // --- 4. Define CORS Policy ---
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([axum::http::header::CONTENT_TYPE])
+        .allow_origin(Any);
+
+    // --- 5. Build our application router ---
+    let app = Router::new()
+        // ... route definitions ...
+        .with_state(app_state)
+        .layer(cors); // &lt;-- Apply the CORS layer here!
+
+    // ... Bind and Serve (Step 6) ...
+}</code></pre>
+                    <p>Now, to test this, before we start creating any frontend code, we should use <code>curl</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl -v -X OPTIONS http://localhost:8080/todos \
+-H "Origin: http://localhost:8001" \
+-H "Access-Control-Request-Method: POST" \
+-H "Access-Control-Request-Headers: content-type"</code></pre>
+                    <p>Because you used the <code>-v</code> (verbose) flag, <code>curl</code> will show you the headers in the server’s response. If your CORS layer is working, you should see headers like these coming back from your Axum server:</p>
+                    <figure>
+                        <img src="https://via.placeholder.com/800x200?text=CORS+Preflight+Output" alt="Terminal output showing the successful CORS preflight check for the backend API" />
+                        <figcaption>Figure 14.10: Terminal output showing the successful CORS preflight check for the backend API (Placeholder)</figcaption>
+                    </figure>
+                    <p>The most important line is <code>access-control-allow-origin: *</code> (or <code>http://localhost:8001</code> if you configured it to be specific).</p>
+                    <ul>
+                        <li>If you see <code>access-control-allow-origin: *</code>, congratulations, your CORS is working perfectly! Your backend is telling the “browser” (simulated by <code>curl</code>) that it will accept requests from any origin.</li>
+                        <li>If you do not see that header, it means your CORS layer isn’t configured correctly or isn’t being applied to that route.</li>
+                    </ul>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="frontend-webassembly">
+                <h2 id="frontend-webassembly">Frontend: WebAssembly</h2>
+                <p>So far, our Axum application is a powerful backend API, complete with a persistent <code>sqlx</code> database connection. But the “full-stack” promise of Rust also extends to the client side. This is possible through <strong>WebAssembly (Wasm)</strong>, a high-performance binary format that runs in modern web browsers, allowing you to execute Rust code directly on the client for computationally intensive tasks or, as we’ll do here, to build a simple, interactive frontend. Getting a full grasp of WASM could fill a book on its own! But basically, it’s a way to run non-JavaScript code in your browser very efficiently, almost at native speed. This section provides a brief overview of this workflow to demonstrate how you can connect a Rust-powered frontend to the Rust backend we have just built.</p>
+
+                <section tabindex="0" aria-labelledby="building-and-using-a-simple-wasm-module">
+                    <h3 id="building-and-using-a-simple-wasm-module">Building and using a simple Wasm module</h3>
+                    <p>To get started, we need to create a new, separate library crate for our Wasm code. This project will be compiled into a Wasm module that our <code>index.html</code> file can load.</p>
+                    <p>In your terminal, navigate outside of your <code>todo_api</code> project directory and run the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new wasm_client --lib
+cd wasm_client</code></pre>
+                    <p>Next, open the new <code>wasm_client/Cargo.toml</code> file. We need to tell Rust that this library is a “cdylib” (which is what Wasm compiles to) and add the dependencies for Wasm:</p>
+                    <ul>
+                        <li><code>wasm-bindgen</code>: The core library that handles communication between Rust and JavaScript.</li>
+                        <li><code>wasm-bindgen-futures</code>: A helper to let us use Rust async/await with JavaScript’s Promises.</li>
+                        <li><code>reqwest</code>: A popular HTTP client that can be compiled to Wasm (with its <code>json</code> feature) to make requests to our backend.</li>
+                        <li><code>serde</code> / <code>serde_json</code>: To create the JSON payloads to send to our API.</li>
+                        <li><code>web-sys</code>: To let our Wasm code log messages to the browser’s console for debugging.</li>
+                    </ul>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "wasm_client"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"] # Essential: specifies output as a dynamic library for Wasm
+
+[dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4" # For converting JS Futures to Rust Futures
+reqwest = { version = "0.12", features = ["json"] } # reqwest supports Wasm!
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# We also add web-sys for logging to the browser console
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    'console',
+]</code></pre>
+
+                    <section tabindex="0" aria-labelledby="exposing-rust-functions-with-wasm_bindgen">
+                        <h4 id="exposing-rust-functions-with-wasm_bindgen">Exposing Rust functions with #[wasm_bindgen]</h4>
+                        <p>Now, we’ll write our Rust code in <code>wasm_client/src/lib.rs</code>. This code will define the functions that our JavaScript will call. Notice that we redefine the <code>Todo</code> structs here. In a large project, you might put these in a shared “common” crate, but for our minimal example, redefining them is simpler.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use wasm_bindgen::prelude::*;
+use serde::{Deserialize, Serialize};
+
+// --- We redefine our models here for the frontend ---
+// (In a large project, this would be in a shared crate)
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Todo {
+    pub id: i32,
+    pub title: String,
+    pub completed: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct NewTodo {
+    pub title: String,
+}
+
+// A simple macro to log to the browser console
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&amp;format!( $( $t )* ).into());
+    }
+}
+
+// Our backend API URL
+const API_URL: &amp;str = "http://localhost:8080/todos";
+
+/// Fetches the current list of todos from the backend API.
+/// Returns the JSON as a `JsValue` (which will be a string).
+#[wasm_bindgen]
+pub async fn fetch_todos() -> Result&lt;JsValue, JsValue&gt; {
+    log!("Wasm: Fetching todos from {}", API_URL);
+    let client = reqwest::Client::new();
+    let resp = client
+        .get(API_URL)
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&amp;e.to_string()))?;
+    // use .text() to get the raw JSON string
+    let json_text = resp
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&amp;e.to_string()))?;
+    // Convert the Rust String into a JavaScript String (JsValue)
+    Ok(JsValue::from_str(&amp;json_text))
+}
+
+/// Adds a new todo item by POSTing to the backend API.
+#[wasm_bindgen]
+pub async fn add_todo(title: String) -> Result&lt;JsValue, JsValue&gt; {
+    log!("Wasm: Adding todo: {}", &amp;title);
+    let new_todo = NewTodo { title };
+    let client = reqwest::Client::new();
+    let resp = client
+        .post(API_URL)
+        .json(&amp;new_todo) // Send our NewTodo struct as a JSON body
+        .send()
+        .await
+        .map_err(|e| JsValue::from_str(&amp;e.to_string()))?;
+    // Use .text() here as well
+    let json_text = resp
+        .text()
+        .await
+        .map_err(|e| JsValue::from_str(&amp;e.to_string()))?;
+    // Convert the Rust String into a JavaScript String (JsValue)
+    Ok(JsValue::from_str(&amp;json_text))
+}</code></pre>
+                        <ul>
+                            <li><strong>Model redefinition</strong>: We redefine the <code>Todo</code> and <code>NewTodo</code> structs. In a large production project, you would put these structs in a separate “common” crate that both your backend and frontend could depend on to avoid duplication, but redefining them here is simpler for our example.</li>
+                            <li><strong><code>log!</code> macro</strong>: This is a simple helper macro we’ve defined that uses <code>web_sys::console::log_1</code> to print debug messages (such as <code>Wasm: Fetching todos...</code>) to the browser’s developer console. This is very useful for debugging your Wasm code.</li>
+                            <li><strong><code>#[wasm_bindgen]</code></strong>: This is the most important attribute. It “exposes” our <code>pub async fn</code> functions (<code>fetch_todos</code> and <code>add_todo</code>) to JavaScript, allowing our <code>index.html</code> file to call them by name.</li>
+                            <li><strong>Async functions</strong>: Both <code>fetch_todos</code> and <code>add_todo</code> are <code>async</code> because they perform network I/O (using <code>reqwest</code>). <code>wasm-bindgen-futures</code> helps convert these Rust async functions into JavaScript Promises that our JavaScript code can <code>await</code>.</li>
+                            <li><strong><code>reqwest::Client</code></strong>: We use the <code>reqwest</code> crate (which supports Wasm) to create an HTTP client and make <code>GET</code> and <code>POST</code> requests to our Axum backend’s <code>API_URL</code>.</li>
+                            <li><strong>Returning <code>Result&lt;JsValue, JsValue&gt;</code></strong>:
+                                <ul>
+                                    <li><strong>Success (<code>Ok(JsValue)</code>)</strong>: Our functions don’t return <code>Vec&lt;Todo&gt;</code>. Instead, they use <code>resp.text().await</code> to get the raw JSON string from the server’s response. They then wrap this string in <code>JsValue::from_str(...)</code>. This passes the JSON string to JavaScript.</li>
+                                    <li><strong>Error (<code>Err(JsValue)</code>)</strong>: If <code>reqwest</code> fails (e.g., a network error, or our backend is down), <code>.map_err(...)</code> converts the Rust error into a simple JavaScript string (<code>JsValue</code>), which will be thrown as a JavaScript exception.</li>
+                                </ul>
+                            </li>
+                            <li><strong>JavaScript’s job</strong>: Our <code>index.html</code> JavaScript will be responsible for calling these functions, awaiting the Promise, and then using <code>JSON.parse()</code> on the string it receives to get the actual JavaScript <code>Todo</code> objects.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="building-the-wasm-and-javascript-glue">
+                        <h4 id="building-the-wasm-and-javascript-glue">Building the .wasm and JavaScript glue</h4>
+                        <p>We will use a handy command-line tool called <code>wasm-pack</code> to build our library. It simplifies everything: compiling your Rust code into Wasm, generating the JavaScript “glue” code with <code>wasm-bindgen</code>, and packaging everything nicely for you. If you haven’t already, just install <code>wasm-pack</code> to get started:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo install wasm-pack</code></pre>
+                        <p>Then, from inside your <code>wasm_client</code> directory (the one with your Wasm code), run the build command. We use the <code>--target web</code> flag to tell <code>wasm-pack</code> to generate code that’s compatible with modern browser ES modules.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>wasm-pack build --target web</code></pre>
+                        <p>This command compiles your code and creates a new <code>pkg</code> directory. Inside this <code>pkg</code> directory, you’ll find the following:</p>
+                        <ul>
+                            <li><code>wasm_client_bg.wasm</code>: Your compiled Rust code in WebAssembly format.</li>
+                            <li><code>wasm_client.js</code>: The JavaScript “glue” file. This file knows how to load the <code>.wasm</code> file and provides the JavaScript <code>fetch_todos()</code> and <code>add_todo()</code> functions that call into your Rust code.</li>
+                            <li><code>wasm_client.d.ts</code>: A TypeScript definition file, which is great for code completion if you use TypeScript.</li>
+                            <li><code>package.json</code>: A file that describes this package to JavaScript build tools.</li>
+                        </ul>
+                        <p>With this <code>pkg</code> directory generated, we now have everything we need to use our Rust code from a web page.</p>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x300?text=wasm-pack+build+output" alt="Output of wasm-pack build showing compilation and generation of the pkg directory" />
+                            <figcaption>Figure 14.11: The wasm-pack utility compiling Rust code, installing wasm-bindgen, and optimizing the Wasm binary for web consumption (Placeholder)</figcaption>
+                        </figure>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="using-the-wasm-module-from-a-simple-web-page">
+                        <h4 id="using-the-wasm-module-from-a-simple-web-page">Using the Wasm module from a simple web page</h4>
+                        <p>This is the final step where we connect all the pieces. We’ll create a minimal <code>index.html</code> file to be our user interface. This file will contain a small amount of JavaScript to load our Wasm module and wire up the UI elements to call our exported Rust functions (<code>fetch_todos</code> and <code>add_todo</code>).</p>
+                        <p>Following our plan, you should do the following:</p>
+                        <ol>
+                            <li>Create a <code>www</code> directory inside your <code>wasm_client</code> project folder.</li>
+                            <li>Move the <code>pkg</code> directory (that <code>wasm-pack</code> just created) into this new <code>www</code> directory.</li>
+                            <li>Create the <code>index.html</code> file inside the <code>www</code> directory.</li>
+                        </ol>
+                        <p><strong>Repository reference</strong>: The full HTML structure, CSS styling, and the complete JavaScript event handlers are available in the GitHub repository file: <code>wasm_client/www/index.html</code>.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// The snippet focuses on the critical import and initialization logic.
+&lt;script type="module"&gt;
+    // 1. Import Wasm functions from the generated 'pkg' directory
+    import init, { fetch_todos, add_todo } from './pkg/wasm_client.js';
+
+    // ... define DOM element references (todoList, titleInput, addButton) ...
+
+    // --- Function to refresh the list of todos from the backend ---
+    async function refreshTodos() {
+        // ... UI update logic ...
+        try {
+            // Call our async Rust Wasm function!
+            const todos_json_string = await fetch_todos();
+            // Parse the JSON string received from Wasm
+            const todos = JSON.parse(todos_json_string);
+            // ... logic to render list items ...
+        } catch (e) {
+            console.error("Error fetching todos:", e);
+            // ... error handling ...
+        }
+    }
+
+    // --- Main function to run the app ---
+    async function run() {
+        // Initialize the Wasm module
+        await init();
+        // Load the initial list of todos
+        await refreshTodos();
+        // Wire up the "Add" button
+        addButton.addEventListener('click', addNewTodo);
+    }
+
+    // Start the application
+    run();
+&lt;/script&gt;</code></pre>
+                        <ul>
+                            <li><strong><code>import init, { ... } from './pkg/wasm_client.js';</code></strong>: This line is the bridge to our Rust code. It imports the default <code>init</code> function (which loads and initializes the <code>.wasm</code> file) and our two exported functions, <code>fetch_todos</code> and <code>add_todo</code>, from the JavaScript “glue” file created by <code>wasm-pack</code>. The <code>./pkg/wasm_client.js</code> path is relative to this <code>index.html</code> file.</li>
+                            <li><strong><code>async function run()</code></strong>: This is the main entry point for our frontend. It first calls <code>await init()</code>. This is crucial; we must wait for the Wasm module to be fully loaded and initialized before we can call any of its functions. After initialization, it calls <code>refreshTodos()</code> to get the initial list and attaches the <code>addNewTodo</code> function to the button’s click event.</li>
+                            <li><strong><code>async function refreshTodos()</code></strong>: This function shows the “Wasm-to-Rust” communication for getting data.
+                                <ol>
+                                    <li>It calls <code>await fetch_todos()</code>, which is our async Rust function running in Wasm.</li>
+                                    <li>This Rust function makes an HTTP GET request to our Axum backend (<code>http://localhost:8080/todos</code>).</li>
+                                    <li>Our Rust function returns a <code>JsValue</code> (which we designed to be a JSON string).</li>
+                                    <li>The JavaScript code then uses <code>JSON.parse()</code> to convert this string into a JavaScript array of objects.</li>
+                                    <li>Finally, it loops through the array to build and display the HTML <code>&lt;li&gt;</code> elements in the list.</li>
+                                </ol>
+                            </li>
+                            <li><strong><code>async function addNewTodo()</code></strong>: This function shows the “Wasm-to-Rust” communication for sending data.
+                                <ol>
+                                    <li>It gets the title from the input box.</li>
+                                    <li>It calls <code>await add_todo(title)</code>, passing the JavaScript string to our async Rust function.</li>
+                                    <li>The Rust function creates a <code>NewTodo</code> struct, serializes it to JSON, and makes an HTTP POST request to our Axum backend.</li>
+                                    <li>Once the Wasm function completes, the JavaScript code clears the input box and calls <code>refreshTodos()</code> to show the updated list.</li>
+                                </ol>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="testing-the-frontend-ch14">
+                        <h4 id="testing-the-frontend-ch14">Testing the frontend</h4>
+                        <ol>
+                            <li>To test the frontend, we need a simple static file server to serve the <code>index.html</code> file and the generated Wasm module. We’ll use <code>miniserve</code>, a lightweight and easy-to-use utility written in Rust:
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo install miniserve</code></pre>
+                            </li>
+                            <li>Then, to run the wasm application, run this command from the <code>wasm_client</code> folder:
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>miniserve www/pkg/ --index index.html --port 8001</code></pre>
+                            </li>
+                        </ol>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x200?text=miniserve+running" alt="Terminal output showing miniserve running and serving the Wasm frontend" />
+                            <figcaption>Figure 14.12: Running the miniserve static file server to host the Wasm frontend on port 8001 (Placeholder)</figcaption>
+                        </figure>
+                        <p><strong>What is miniserve?</strong><br>
+                        <code>miniserve</code> is a simple, command-line utility written in Rust, designed for serving local files over HTTP quickly. It is perfect for local development because it’s fast, single-binary, and serves static content reliably.</p>
+                        <p><strong>Alternatives</strong>: You could achieve the same result using other static file servers, such as the following:</p>
+                        <ul>
+                            <li><strong>Python</strong>: <code>python3 -m http.server 8001</code></li>
+                            <li><strong>Node.js</strong>: <code>npx serve -l 8001</code></li>
+                            <li>Any other locally running static server.</li>
+                        </ul>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x400?text=Wasm+Frontend+UI" alt="Browser window showing the Wasm frontend loading the todo list and displaying a sample item" />
+                            <figcaption>Figure 14.13: The Wasm frontend, served on port 8001, successfully loads the initial list item (ID 2: “Test the API”) from the running Axum API on port 8080 (Placeholder)</figcaption>
+                        </figure>
+                        <p>Now you can try to add a new todo using the user interface:</p>
+                        <ol>
+                            <li>Write some input text.</li>
+                            <li>Click <strong>Add Todo</strong>.</li>
+                        </ol>
+                        <p>The UI should update, showing the updated list!</p>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x400?text=Wasm+Frontend+With+New+Item" alt="Browser window showing the updated frontend after adding a new todo item" />
+                            <figcaption>Figure 14.14: The updated frontend display after successfully adding a new todo item through the user interface (Placeholder)</figcaption>
+                        </figure>
+                        <p>You can also check this directly in the postgres container, running <code>docker exec -it my_app_db_postgres psql -U postgres</code> and then <code>select * from todos;</code>.</p>
+                        <figure>
+                            <img src="https://via.placeholder.com/800x200?text=psql+Final+Select" alt="Output of SELECT * FROM todos showing the final persistent state of the todo list" />
+                            <figcaption>Figure 14.15: The result of executing SELECT * FROM todos; in the PostgreSQL database, showing the current persistent state of the Todo list (Placeholder)</figcaption>
+                        </figure>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch14">
+                <h2 id="summary-ch14">Summary</h2>
+                <p>And with that, we’ve successfully built a complete full-stack application in Rust! Let’s have a quick recap. This chapter was an exciting, fast-paced adventure that brought everything we’ve learned together, from the backend to the browser!</p>
+                <p>We started by creating a backend API from scratch with <strong>Axum</strong>, a modern and user-friendly web framework. Along the way, we learned to define routes, write async handlers, and use extractors to handle JSON and path parameters. We initially crafted a simple in-memory todo list with <code>Arc&lt;Mutex&lt;...&gt;&gt;</code> to manage state, and then enhanced it by making it persistent. To do this, we replaced the in-memory <code>Vec</code> with a real PostgreSQL database. We chose the <code>sqlx</code> crate, which allowed us to write pure-Rust, async database code without complex C dependencies. We set up a connection pool, added a <code>CREATE TABLE IF NOT EXISTS</code> query right in our <code>main</code> function to initialize the database, and refactored our handlers to utilize compile-time checked <code>sqlx::query_as!</code> macros.</p>
+                <p>Finally, we linked everything to the frontend by building a small WebAssembly (Wasm) module. We explored how to use <code>wasm-pack</code> and <code>#[wasm_bindgen]</code> to expose Rust functions that use <code>reqwest</code> to call our own Axum API, and then ran that Wasm module from a simple <code>index.html</code> file to create a fully functional, end-to-end application, all written in Rust. That was a complete end-to-end full-stack application entirely written in Rust!</p>
+                <p>In the next chapter, we will dive deeper into the world of systems programming!</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignment-ch14">
+                <h2 id="questions-and-assignment-ch14">Questions and assignment</h2>
+
+                <section tabindex="0" aria-labelledby="questions-ch14">
+                    <h3 id="questions-ch14">Questions</h3>
+                    <ol>
+                        <li>What is the purpose of the <code>#[tokio::main]</code> macro in a Rust web server? Why is it essential when working with Axum?</li>
+                        <li>In Axum, what is a handler? How does a simple handler return a <code>200 OK</code> response when its return type is just a plain <code>&amp;'static str</code>?</li>
+                        <li>When defining a route for dynamic data (e.g., fetching a todo by ID), how does the <code>Path&lt;T&gt;</code> extractor in the handler signature prevent the need for manual string parsing and error checking?</li>
+                        <li>When building the in-memory API, why did we have to wrap the <code>Vec&lt;Todo&gt;</code> in both <code>Arc</code> and <code>Mutex</code>? Explain the distinct role of each smart pointer in this scenario.</li>
+                        <li>What is the role of the <code>State&lt;T&gt;</code> extractor in Axum? How does it gain access to the shared data (such as the <code>AppState</code>)?</li>
+                        <li>Explain the primary purpose of the <code>serde</code> crate when building a REST API. How do the <code>Serialize</code> and <code>Deserialize</code> traits apply to an HTTP POST request?</li>
+                        <li>Why is using a connection pool (such as <code>sqlx::PgPool</code>) far more efficient than creating a new connection with every incoming request?</li>
+                        <li>When using <code>sqlx</code>, what is the purpose of deriving the <code>FromRow</code> trait on the <code>Todo</code> struct?</li>
+                        <li>We opted to use <code>sqlx</code> instead of an asynchronous ORM. What is the fundamental advantage of using an async-native library such as <code>sqlx</code> when writing handlers for an asynchronous framework such as Axum? (Hint: Think about blocking threads.)</li>
+                        <li>Why was it necessary to add the CORS layer to our Axum backend before the Wasm frontend could successfully communicate with it?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignment-ch14">
+                    <h3 id="assignment-ch14">Assignment: Expanding the API and using basic extractors</h3>
+                    <p><strong>Goal</strong>: Get hands-on with Axum’s core routing, handler definition, and the simple use of extractors for shared state and path parameters.</p>
+                    <ol>
+                        <li>Use your existing project: Continue with the <code>todo_api</code> project you just completed.</li>
+                        <li>Add a new state check handler: Create a new asynchronous handler function named <code>get_server_status</code>.</li>
+                        <li>Implement logic: This handler should access the shared <code>AppState</code> and return a <code>200 OK</code> response with a plain text body that says: <code>Server Status: OK. Database Pool Ready.</code></li>
+                        <li>Add a dynamic route: Register this new handler to the <code>/status</code> path.</li>
+                        <li>Add a Path parameter echo handler: Create a second handler function named <code>echo_path</code> that takes a string path parameter (e.g., <code>/echo/:message</code>). This handler should extract the <code>message</code> and return it as the response body (e.g., returning <code>You sent: [message]</code>).</li>
+                        <li>Register routes: Update your router in <code>main.rs</code> to include the <code>GET /status</code> and <code>GET /echo/:message</code> routes.</li>
+                    </ol>
+                    <p>Here’s what you will learn how to do from this:</p>
+                    <ul>
+                        <li>Define simple, new async handlers.</li>
+                        <li>Use the <code>State&lt;AppState&gt;</code> extractor.</li>
+                        <li>Use the <code>Path&lt;String&gt;</code> extractor.</li>
+                        <li>Register routes with different paths and parameters.</li>
+                    </ul>
+                    <p><strong>Example usage</strong> (using curl):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>curl http://127.0.0.1:8080/status
+# Expected: Server Status: OK. Database Pool Ready.
+
+curl http://127.0.0.1:8080/echo/testing-123
+# Expected: You sent: testing-123</code></pre>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-13.html">← Chapter 13</a>
+            <a class="nav-next" href="./chapter-15.html">Chapter 15 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

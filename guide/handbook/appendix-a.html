@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appendix A: Common Pitfalls in Rust Programming – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="appendix-a-heading">
+            <h1 id="appendix-a-heading">Appendix A: Common Pitfalls in Rust Programming (Online)</h1>
+
+            <p>Welcome to <em>Appendix A</em>!</p>
+            <p>This appendix is designed to be a companion to your Rust learning journey. Throughout this book, you’ve seen the language’s strengths, its elegant solutions to hard problems, and its strict but fair compiler. You’ve also, quite likely, run into moments where Rust seemed to be fighting back.</p>
+            <p>This appendix addresses those moments. It is a curated collection of the most common challenges, mistakes, and misunderstandings that developers encounter when learning Rust. Rather than being a list of “gotchas” designed to scare you, it is intended to be a friendly reference you can return to whenever you feel stuck.</p>
+
+            <section tabindex="0" aria-labelledby="about-this-appendix">
+                <h2 id="about-this-appendix">About this appendix</h2>
+                <p>Some of the pitfalls we cover here are subtle traps that even experienced developers fall into from time to time. Others are simple misunderstandings that arise from bringing habits and mental models from other programming languages into Rust. In all cases, we have aimed to do three things:</p>
+                <ul>
+                    <li><strong>Explain what the pitfall is</strong> in clear, plain language. We describe the symptom you’ll see (usually a compiler error), what is actually going on under the hood, and why Rust is designed the way it is.</li>
+                    <li><strong>Show the correct, idiomatic way</strong> to handle the situation. Each pitfall comes with concrete, runnable examples that demonstrate the fix.</li>
+                    <li><strong>Share community insights</strong>. Many of these pitfalls have been discussed, documented, and refined over years by the Rust community. We have drawn from those shared experiences so that you don’t have to rediscover the same lessons yourself.</li>
+                </ul>
+                <p>You might read this appendix straight through, or you might treat it as a reference that you dip into whenever you hit a specific problem. Both approaches are perfectly valid.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-preview-of-common-pitfalls">
+                <h2 id="a-preview-of-common-pitfalls">A preview of common pitfalls</h2>
+                <p>To give you a taste of the kind of content covered in the full appendix, here are a few of the most frequently encountered pitfalls that we explore in depth:</p>
+
+                <section tabindex="0" aria-labelledby="pitfall-1-borrowing-after-move">
+                    <h3 id="pitfall-1-borrowing-after-move">Pitfall 1: Trying to use a value after it has been moved</h3>
+                    <p>A classic mistake for newcomers is assigning a variable to another and then trying to use the original. For types that do not implement the <code>Copy</code> trait (such as <code>String</code> or <code>Vec&lt;T&gt;</code>), this is a move, not a copy. The original is invalidated.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This will NOT compile:
+fn main() {
+    let s1 = String::from("hello");
+    let s2 = s1; // `s1` is moved into `s2`
+    println!("{}", s1); // Error: borrow of moved value: `s1`
+}</code></pre>
+                    <p>The fix is either to borrow (<code>let s2 = &amp;s1;</code>) or to clone (<code>let s2 = s1.clone();</code>) when you genuinely need two independent copies. The full appendix explains when each is appropriate and the performance implications of each choice.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="pitfall-2-borrowing-mutably-while-borrowing-immutably">
+                    <h3 id="pitfall-2-borrowing-mutably-while-borrowing-immutably">Pitfall 2: Borrowing mutably while an immutable borrow is active</h3>
+                    <p>Rust’s borrow checker enforces that you can have either one mutable reference or any number of immutable references, but not both at the same time in the same scope.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This will NOT compile:
+fn main() {
+    let mut v = vec![1, 2, 3];
+    let first = &amp;v[0]; // Immutable borrow
+    v.push(4);         // Error: cannot borrow `v` as mutable
+    println!("{}", first);
+}</code></pre>
+                    <p>This pitfall is often surprising because it appears to be harmless at first glance. The full appendix walks through the reasoning (it’s actually protecting you from a dangling reference if the vector needed to reallocate) and several idiomatic patterns for restructuring your code to satisfy the borrow checker without unnecessary clones.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="pitfall-3-using-unwrap-in-production-code">
+                    <h3 id="pitfall-3-using-unwrap-in-production-code">Pitfall 3: Using <code>unwrap()</code> liberally in production code</h3>
+                    <p>During learning, <code>unwrap()</code> and <code>expect()</code> feel like convenient shortcuts. But they turn recoverable errors into unrecoverable panics, which can crash your program and leave your users frustrated.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Fragile:
+let config = std::fs::read_to_string("config.toml").unwrap();
+
+// More robust:
+let config = std::fs::read_to_string("config.toml")
+    .context("Failed to read config.toml")?;</code></pre>
+                    <p>The full appendix explores a broader set of error-handling patterns, including when <code>unwrap()</code> <em>is</em> appropriate (such as in tests, prototypes, or after an invariant has been checked), how to use <code>?</code> and custom error types, and how the <code>anyhow</code> and <code>thiserror</code> crates fit into a robust strategy.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="pitfall-4-cloning-everything-to-satisfy-the-borrow-checker">
+                    <h3 id="pitfall-4-cloning-everything-to-satisfy-the-borrow-checker">Pitfall 4: Cloning everything to satisfy the borrow checker</h3>
+                    <p>When the borrow checker pushes back, a tempting quick fix is to sprinkle <code>.clone()</code> everywhere. This usually works, but it silently hurts performance and hides design issues.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Inefficient: cloning data unnecessarily
+fn process(data: &amp;Vec&lt;i32&gt;) {
+    let owned = data.clone();
+    // ... use owned ...
+}
+
+// Better: work with the borrow directly
+fn process(data: &amp;[i32]) {
+    // ... use data (a slice) without cloning ...
+}</code></pre>
+                    <p>The full appendix devotes a section to the various reasons developers over-clone, and offers a set of alternative techniques: passing slices, restructuring ownership, using <code>Rc</code>/<code>Arc</code> for shared ownership, and using interior mutability patterns such as <code>RefCell</code> when they are truly warranted.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="pitfall-5-forgetting-the-move-keyword-in-thread-closures">
+                    <h3 id="pitfall-5-forgetting-the-move-keyword-in-thread-closures">Pitfall 5: Forgetting the <code>move</code> keyword in thread closures</h3>
+                    <p>When spawning a thread that needs data from the surrounding scope, the closure must take ownership of that data. Otherwise, the compiler cannot guarantee the data will outlive the spawned thread.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::thread;
+
+fn main() {
+    let name = String::from("worker");
+    // The `move` keyword is required here:
+    let handle = thread::spawn(move || {
+        println!("Hello from {}", name);
+    });
+    handle.join().unwrap();
+}</code></pre>
+                    <p>The full appendix explains the reasoning behind the <code>move</code> keyword, common mistakes around it (such as accidentally moving a variable you wanted to keep), and how this interacts with the <code>Send</code> and <code>Sync</code> traits.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="pitfall-6-using-string-instead-of-str-or-vice-versa">
+                    <h3 id="pitfall-6-using-string-instead-of-str-or-vice-versa">Pitfall 6: Confusing <code>String</code> with <code>&amp;str</code> (and <code>Vec&lt;T&gt;</code> with <code>&amp;[T]</code>)</h3>
+                    <p>Beginners often reach for <code>String</code> when a function parameter could just accept <code>&amp;str</code>. The result is unnecessary ownership transfers and awkward call sites.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Less flexible:
+fn greet(name: String) {
+    println!("Hello, {}!", name);
+}
+
+// More flexible (accepts &amp;str, String, and string literals):
+fn greet(name: &amp;str) {
+    println!("Hello, {}!", name);
+}</code></pre>
+                    <p>The full appendix covers idiomatic guidelines for choosing between owned and borrowed types in function signatures, methods, structs, and APIs, including the important convention that generic parameters accepting string-like types should use <code>AsRef&lt;str&gt;</code> or <code>impl Into&lt;String&gt;</code> when appropriate.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="accessing-the-full-appendix">
+                <h2 id="accessing-the-full-appendix">Accessing the full appendix</h2>
+                <p>The full, unabridged version of this appendix is provided online. It contains many more pitfalls than we could comfortably fit here, each accompanied by detailed explanations, examples, and links to the relevant chapters of the book and to the broader Rust community’s discussions on the topic.</p>
+                <p>You can access the complete appendix here:</p>
+                <p><strong><a href="https://packt.link/ndg4i">https://packt.link/ndg4i</a></strong></p>
+                <p>We recommend bookmarking this link and returning to it whenever you encounter a new and puzzling compiler error, or whenever you want to refresh your memory on the idiomatic solutions to a familiar challenge.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="how-to-use-this-appendix-effectively">
+                <h2 id="how-to-use-this-appendix-effectively">How to use this appendix effectively</h2>
+                <p>A few tips for getting the most out of this appendix:</p>
+                <ul>
+                    <li><strong>Don’t try to memorize it.</strong> Rust is learned by doing, and it’s perfectly normal to hit the same pitfall more than once as your projects grow in complexity. Treat this appendix as a reference, not as required reading.</li>
+                    <li><strong>Pay attention to compiler error codes.</strong> Rust’s compiler messages include helpful error codes (such as <code>E0382</code> for “use of moved value”). These codes are searchable, and they map directly to the pitfalls discussed in the full appendix.</li>
+                    <li><strong>Embrace the frustration.</strong> As we mentioned in the Preface, the compiler is a bit like an “annoying grandma.” Every compiler error you work through is teaching you something about Rust’s memory model, and those lessons compound over time.</li>
+                    <li><strong>When you find a solution, write it down.</strong> Many developers keep a personal “Rust notes” file where they jot down the fixes for pitfalls they’ve encountered. Over time, this becomes a personalized reference that is more valuable than any generic list.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-final-encouragement">
+                <h2 id="a-final-encouragement">A final encouragement</h2>
+                <p>If you are reading this appendix, it likely means you are still actively learning Rust, or you are working through a project and have hit a snag. That is wonderful news. The fact that you are engaging with the harder parts of the language means you are on exactly the right path.</p>
+                <p>Rust’s design philosophy pushes back on old habits precisely because those habits lead to bugs that are hard to find in production. Every time the compiler stops you, it is helping you write software that is faster, safer, and more reliable. Over time, the pitfalls become familiar, and the solutions become second nature.</p>
+                <p>We hope this appendix, together with the online version, serves you well. Happy coding, and enjoy your Rust journey!</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-16.html">← Chapter 16</a>
+            <a class="nav-next" href="./appendix-b.html">Appendix B →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

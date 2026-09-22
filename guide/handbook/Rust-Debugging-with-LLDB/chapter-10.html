@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 10: Option, Result, and Panics – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch10-heading">
+            <h1 id="ch10-heading">Chapter 10: Option, Result, and Panics</h1>
+
+            <p>Almost every Rust program is built on three related ideas:</p>
+            <ul>
+                <li><code>Option&lt;T&gt;</code>: a value that might be present or absent.</li>
+                <li><code>Result&lt;T, E&gt;</code>: an operation that might succeed or fail.</li>
+                <li><code>panic!</code>: the mechanism for signaling an unrecoverable failure.</li>
+            </ul>
+            <p>These three are so pervasive that a large fraction of real-world Rust debugging consists of answering questions about them. Which variant is active? Where did the error come from? Why did this <code>unwrap</code> panic?</p>
+            <p>This chapter is about answering those questions in the debugger. We will look at how <code>Option</code> and <code>Result</code> render, how to trace a value of either type backward toward its origin, and how to debug a panic.</p>
+
+            <section tabindex="0" aria-labelledby="rust-option">
+                <h2 id="rust-option">Rust <code>Option</code></h2>
+                <p>Rust programs frequently use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Option&lt;T&gt;</code></pre>
+                <p>When debugging an <code>Option</code>, determine whether the value is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Some(...)</code></pre>
+                <p>or:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>None</code></pre>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let config = find_config();</code></pre>
+                <p>Stop after the call.</p>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config</code></pre>
+                <p>Now you have evidence.</p>
+                <p>If it is <code>None</code>, move backward.</p>
+                <p>Ask:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Why did find_config return None?</code></pre>
+                <p>Set a breakpoint inside <code>find_config</code>.</p>
+                <p>Then repeat.</p>
+
+                <section tabindex="0" aria-labelledby="how-option-renders">
+                    <h3 id="how-option-renders">How <code>Option</code> renders</h3>
+                    <p>With the Rust pretty-printers active, an <code>Option</code> renders as its variant name and, if it is a <code>Some</code>, the value inside.</p>
+                    <p>Suppose you have:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let maybe_name: Option&lt;String&gt; = Some(String::from("Alice"));</code></pre>
+                    <p>Ask:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable maybe_name
+(Option&lt;String&gt;) maybe_name = Some("Alice")</code></pre>
+                    <p>For an absent value:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let nothing: Option&lt;String&gt; = None;
+(lldb) frame variable nothing
+(Option&lt;String&gt;) nothing = None</code></pre>
+                    <p>For a numeric <code>Option</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let maybe_count: Option&lt;u32&gt; = Some(42);
+(lldb) frame variable maybe_count
+(Option&lt;u32&gt;) maybe_count = Some(42)</code></pre>
+                    <p>For a nested <code>Option</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let nested: Option&lt;Option&lt;i32&gt;&gt; = Some(Some(7));
+(lldb) frame variable nested
+(Option&lt;Option&lt;i32&gt;&gt;) nested = Some(Some(7))</code></pre>
+                    <p>In every case, the debugger tells you exactly which variant is active, and if it is <code>Some</code>, what data it carries. This is one of the places where the Rust integration in LLDB pays off the most, because the corresponding raw layout (a discriminant tag plus a union) would be very hard to read by hand.</p>
+                    <p>When the pretty-printers are not active, you may see something like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(core::option::Option&lt;alloc::string::String&gt;) maybe_name = {
+    __0 = {
+        value = "Alice"
+    }
+}</code></pre>
+                    <p>This is technically correct but far less convenient. If you see this form, check that you are launching the debugger via <code>rust-lldb</code>.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tracing-an-option-backward">
+                    <h3 id="tracing-an-option-backward">Tracing an <code>Option</code> backward</h3>
+                    <p>The most common debugging task involving <code>Option</code> is tracing a <code>None</code> back to its origin. Suppose you are looking at this program:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn find_user(id: u32) -&gt; Option&lt;User&gt; {
+    let user = database_lookup(id);
+    user
+}
+
+fn greet_user(id: u32) -&gt; String {
+    let user = find_user(id);
+    match user {
+        Some(u) =&gt; format!("Hello, {}!", u.name),
+        None =&gt; String::from("Hello, stranger."),
+    }
+}
+
+fn main() {
+    let greeting = greet_user(42);
+    println!("{greeting}");
+}</code></pre>
+                <p>If the program prints “Hello, stranger.” and you expected a real greeting, the final symptom is the <code>None</code> branch. The next question is: why did <code>find_user</code> return <code>None</code>?</p>
+                <p>A practical workflow:</p>
+                <ol>
+                    <li>Set a breakpoint inside <code>find_user</code> at the line where it returns.</li>
+                    <li>Inspect the value being returned.</li>
+                    <li>If the value is already <code>None</code>, the bug is inside <code>find_user</code>. If it is <code>Some</code>, the bug is elsewhere.</li>
+                    <li>If the bug is inside <code>find_user</code>, set a breakpoint inside <code>database_lookup</code> and repeat.</li>
+                </ol>
+                <p>At each step, inspect the value with <code>frame variable</code> and compare it with what you expected. The first place where an expected <code>Some</code> becomes a <code>None</code> is the origin.</p>
+                <p>This is a direct application of the “first wrong state” discipline from the previous chapter.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-question-mark-and-option">
+                    <h3 id="the-question-mark-and-option">The question mark and <code>Option</code></h3>
+                    <p>The <code>?</code> operator on an <code>Option</code> propagates <code>None</code> to the caller. When you see a function returning <code>None</code>, it may be doing so directly, or it may be propagating a <code>None</code> from a callee.</p>
+                    <p>Consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn load_settings() -&gt; Option&lt;Settings&gt; {
+    let raw = read_file()?;
+    let parsed = parse(raw)?;
+    Some(parsed)
+}</code></pre>
+                    <p>If <code>load_settings</code> returns <code>None</code>, the cause is either <code>read_file</code> or <code>parse</code>. To find out which, set breakpoints at the returns of both:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name read_file
+(lldb) breakpoint set --name parse
+(lldb) run</code></pre>
+                    <p>At each stop, inspect the return value. The first function that returns <code>None</code> is the origin of the propagated <code>None</code>.</p>
+                    <p>This pattern is very common. The <code>?</code> operator is convenient in source, but it hides the origin of a failure. The debugger reveals it.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="option-in-real-structs">
+                    <h3 id="option-in-real-structs"><code>Option</code> in real structs</h3>
+                    <p>Options are often fields inside structs. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Config {
+    name: String,
+    timeout: Option&lt;u64&gt;,
+}</code></pre>
+                    <p>When inspecting a config, ask directly about the field:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable config.timeout
+(Option&lt;u64&gt;) config.timeout = Some(30)</code></pre>
+                    <p>Or, if it is unset:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(Option&lt;u64&gt;) config.timeout = None</code></pre>
+                    <p>A common bug pattern: a field is expected to be set, but has never been assigned. The debugger shows the field as <code>None</code>, which tells you that the initialization path did not populate it. The next step is to trace where the config was constructed.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-result">
+                <h2 id="rust-result">Rust <code>Result</code></h2>
+                <p>The same approach applies to:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Result&lt;T, E&gt;</code></pre>
+                <p>Inspect the result before it is transformed.</p>
+                <p>For example:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>let config = load_config()?;</code></pre>
+                <p>Stop before or inside the relevant operation.</p>
+                <p>Determine:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Was the result Ok?
+
+Was it Err?
+
+What is the error value?
+
+Where was the error created?</code></pre>
+                <p>A useful debugging chain is:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Result
+→ Err
+→ error constructor
+→ underlying cause
+→ original input</code></pre>
+
+                <section tabindex="0" aria-labelledby="how-result-renders">
+                    <h3 id="how-result-renders">How <code>Result</code> renders</h3>
+                    <p>A <code>Result</code> renders as its variant name plus the data inside, just like <code>Option</code>.</p>
+                    <p>Success:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let ok: Result&lt;i32, String&gt; = Ok(42);
+(lldb) frame variable ok
+(Result&lt;i32, String&gt;) ok = Ok(42)</code></pre>
+                    <p>Failure:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let err: Result&lt;i32, String&gt; = Err(String::from("not found"));
+(lldb) frame variable err
+(Result&lt;i32, String&gt;) err = Err("not found")</code></pre>
+                    <p>When the error type is a custom enum or struct, the pretty-printer renders its fields as well:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+enum LoadError {
+    NotFound(String),
+    InvalidFormat { line: usize },
+}
+
+let result: Result&lt;Config, LoadError&gt; = Err(LoadError::InvalidFormat { line: 42 });
+(lldb) frame variable result
+(Result&lt;Config, LoadError&gt;) result = Err(InvalidFormat {
+    line = 42
+})</code></pre>
+                    <p>The debugger tells you which variant of the error is active and what data it carries. This is often enough to identify the bug, even without tracing any further.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tracing-a-result-backward">
+                    <h3 id="tracing-a-result-backward">Tracing a <code>Result</code> backward</h3>
+                    <p>Suppose a function returns an <code>Err</code>, and you want to know where the error was created. A practical strategy:</p>
+                    <ol>
+                        <li>Set a breakpoint at the point where the <code>Err</code> becomes visible (usually a return statement, or the point right after the failing call).</li>
+                        <li>Inspect the error value with <code>frame variable</code>.</li>
+                        <li>Use the error’s variant or message to narrow down where it was constructed.</li>
+                        <li>Set a breakpoint in the function that constructs that specific error variant.</li>
+                        <li>Repeat until you reach the original input that triggered the error.</li>
+                    </ol>
+                    <p>This works especially well when the error type is a custom enum, because the variant name in the debugger points directly to the code path that created it.</p>
+                    <p>For example, if the debugger shows:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(Result&lt;Config, LoadError&gt;) result = Err(InvalidFormat { line = 42 })</code></pre>
+                    <p>you know to search for the construction site of <code>LoadError::InvalidFormat</code>. A text search for <code>InvalidFormat</code> will typically find it immediately.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-question-mark-and-result">
+                    <h3 id="the-question-mark-and-result">The question mark and <code>Result</code></h3>
+                    <p>The <code>?</code> operator on a <code>Result</code> propagates <code>Err</code> to the caller, converting the error type along the way if a <code>From</code> implementation exists. This is convenient in source but obscures the origin of the error.</p>
+                    <p>Consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn process_file(path: &amp;str) -&gt; Result&lt;Summary, ProcessError&gt; {
+    let raw = std::fs::read_to_string(path)?;
+    let parsed: Config = toml::from_str(&amp;raw)?;
+    let summary = summarize(&amp;parsed)?;
+    Ok(summary)
+}</code></pre>
+                    <p>If <code>process_file</code> returns an <code>Err</code>, the cause could be:</p>
+                    <ul>
+                        <li>An I/O error from <code>read_to_string</code>.</li>
+                        <li>A TOML parse error from <code>toml::from_str</code>.</li>
+                        <li>A domain error from <code>summarize</code>.</li>
+                    </ul>
+                    <p>Because each <code>?</code> converts its error to <code>ProcessError</code>, the returned <code>Err</code> may have lost the original error type. The debugger shows the converted form. To find the origin:</p>
+                    <ol>
+                        <li>Set a breakpoint at the entry of <code>process_file</code>.</li>
+                        <li>Step over each line.</li>
+                        <li>After each line, inspect the result of the operation just performed. If it is <code>Err</code>, the last line executed is the origin.</li>
+                    </ol>
+                    <p>An alternative, when the error type has a <code>source</code> chain (as it does with <code>thiserror</code> and <code>anyhow</code>), is to inspect the error’s <code>source</code> field. The debugger will show the nested error, often down to the original I/O error or parse error. This is covered further below.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="unwrap-and-expect">
+                <h2 id="unwrap-and-expect"><code>unwrap()</code> and <code>expect()</code></h2>
+                <p>A panic from:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>value.unwrap()</code></pre>
+                <p>is a particularly useful debugging location.</p>
+                <p>Set a breakpoint at the source line or run until the panic occurs.</p>
+                <p>Then inspect:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>value</code></pre>
+                <p>The important question is not:</p>
+                <blockquote>
+                    <p>Why did unwrap panic?</p>
+                </blockquote>
+                <p>The important question is:</p>
+                <blockquote>
+                    <p>Why was this value <code>None</code> or <code>Err</code> here?</p>
+                </blockquote>
+                <p><code>unwrap()</code> is usually the final symptom.</p>
+                <p>The cause is earlier.</p>
+
+                <section tabindex="0" aria-labelledby="unwraps-in-source">
+                    <h3 id="unwraps-in-source">Unwraps in source</h3>
+                    <p>An <code>unwrap()</code> in source is a claim by the programmer: “I believe this value will be <code>Some</code> or <code>Ok</code>.” When that belief is wrong, the program panics. Debugging the panic is, in a sense, debugging the belief: why did reality diverge from the assumption?</p>
+                    <p>The most useful place to look is not the line with the <code>unwrap</code>. It is the line where the value was constructed. The <code>unwrap</code> just happens to be where the assumption became visible.</p>
+                    <p>A practical approach:</p>
+                    <ol>
+                        <li>Note the source location of the <code>unwrap</code> (from the panic message or from the backtrace).</li>
+                        <li>Identify the expression being unwrapped.</li>
+                        <li>Trace that expression back to the point where it was produced.</li>
+                        <li>Inspect the value there.</li>
+                    </ol>
+                    <p>In many cases, the value is wrong at the point of production, not at the point of use. The <code>unwrap</code> only reveals the problem.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unwraps-in-libraries">
+                    <h3 id="unwraps-in-libraries">Unwraps in libraries</h3>
+                    <p>When a library <code>unwrap</code>s internally, the panic message points into the library, not into your code. The useful frame is the first one belonging to your own crate, which is the frame that called into the library.</p>
+                    <p>Set a breakpoint at that call site. Inspect the arguments you are passing. If the arguments satisfy the library’s documented preconditions, the library’s <code>unwrap</code> is a bug in the library. If they do not, the bug is in your code.</p>
+                    <p>This is a common pattern in third-party crate debugging. Your task is often not to fix the library but to understand what input you passed that caused the library to reach an impossible state.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-a-panic">
+                <h2 id="debugging-a-panic">Debugging a panic</h2>
+                <p>When Rust panics, LLDB may stop because of the underlying signal or exception behavior rather than directly at the Rust <code>panic!</code> source line.</p>
+                <p>A practical approach is:</p>
+                <ol>
+                    <li>Run under LLDB.</li>
+                    <li>Observe the stop.</li>
+                    <li>Run:</li>
+                </ol>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                <ol start="4">
+                    <li>Inspect the current frame.</li>
+                    <li>Move through relevant frames.</li>
+                    <li>Identify the first frame belonging to your application.</li>
+                    <li>Inspect its locals.</li>
+                    <li>Trace backward toward the invalid state.</li>
+                </ol>
+                <p>Do not assume the top frame is the root cause.</p>
+                <p>The top frame often shows where the program finally stopped.</p>
+                <p>The useful frame may be several levels below it.</p>
+
+                <section tabindex="0" aria-labelledby="how-rust-panics-work">
+                    <h3 id="how-rust-panics-work">How Rust panics work</h3>
+                    <p>Understanding the mechanism helps interpret what the debugger shows.</p>
+                    <p>When you call <code>panic!</code>, or when a standard-library operation panics, the Rust runtime:</p>
+                    <ol>
+                        <li>Constructs a <code>PanicInfo</code> with the panic message, location, and payload.</li>
+                        <li>Calls the <strong>panic hook</strong>, which by default prints a message to standard error.</li>
+                        <li>Begins unwinding the stack, running destructors for every frame.</li>
+                        <li>If unwinding reaches the top of the thread, terminates the thread. If the thread is the main thread, terminates the program with a non-zero exit status.</li>
+                    </ol>
+                    <p>Under LLDB, the stop occurs somewhere in this sequence. Depending on the platform and LLDB configuration, the stop may be:</p>
+                    <ul>
+                        <li>At the panic hook, where the message is printed.</li>
+                        <li>At the point where unwinding raises a C++ exception.</li>
+                        <li>At the C++ runtime's <code>abort</code> call, if the panic strategy is <code>abort</code>.</li>
+                        <li>At the signal handler that converts the unwinding exception into a signal.</li>
+                    </ul>
+                    <p>In all cases, the backtrace shows where the stop occurred. Your job is to find the frame that belongs to your own code and that is closest to the original panic site.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="finding-the-panic-site">
+                    <h3 id="finding-the-panic-site">Finding the panic site</h3>
+                    <p>When the program stops on a panic, use the backtrace:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                    <p>Look for frames that mention your crate name and your source files. The first such frame from the top is usually the panic site or the frame just below it.</p>
+                    <p>For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0  std::panicking::begin_panic
+frame #1  std::panicking::begin_panic_handler
+frame #2  core::panicking::panic_fmt
+frame #3  core::panicking::panic
+frame #4  core::option::expect_failed
+frame #5  my_crate::load_config at src/config.rs:42
+frame #6  my_crate::main at src/main.rs:10
+frame #7  std::rt::lang_start_internal
+...</code></pre>
+                    <p>The panic was triggered by an <code>expect</code> call (frame #4), which was inside <code>load_config</code> (frame #5). The application frame of interest is frame #5, not frame #0.</p>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame select 5
+(lldb) frame variable</code></pre>
+                    <p>Now you can inspect the state of <code>load_config</code> at the moment the panic was triggered.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="break-on-the-panic-machinery">
+                    <h3 id="break-on-the-panic-machinery">Break on the panic machinery</h3>
+                    <p>A more direct strategy is to set a breakpoint on the panic function itself, before it unwinds the stack. The exact symbol name depends on the Rust version and standard library, but common candidates are:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>std::panicking::begin_panic
+core::panicking::panic_fmt
+core::panicking::panic</code></pre>
+                    <p>For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name std::panicking::begin_panic
+(lldb) run</code></pre>
+                    <p>When the breakpoint fires, the stack is not yet unwound. The backtrace is closer to the panic site. This is often easier to read than the default stop.</p>
+                    <p>The exact symbol may vary across Rust versions. If <code>begin_panic</code> does not resolve, try <code>panic_fmt</code> or <code>panic</code>. Use <code>image lookup</code> to search if you are unsure:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) image lookup --name panic</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-panic-message">
+                    <h3 id="the-panic-message">The panic message</h3>
+                    <p>The default panic hook prints a message to standard error. In a normal (non-debugger) run, that is often the first thing you see:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread 'main' panicked at src/config.rs:42:10:
+Cannot open configuration file: No such file or directory
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</code></pre>
+                    <p>Under LLDB, the message may or may not appear before the debugger stops, depending on where the stop occurs relative to the panic hook. If it does not appear, you can sometimes read it from the <code>PanicInfo</code> argument to the panic function. This is an advanced technique and often not necessary, because the source location in the backtrace usually gives you the same information.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="custom-panic-hooks">
+                    <h3 id="custom-panic-hooks">Custom panic hooks</h3>
+                    <p>Some programs install a custom panic hook, for example to log panics to a file, to send them to a monitoring service, or to suppress the default message. If you are debugging such a program and no panic message appears, the custom hook may be responsible.</p>
+                    <p>Custom panic hooks are typically installed at the very start of <code>main</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>std::panic::set_hook(Box::new(|info| {
+    // custom handling
+}));</code></pre>
+                    <p>If you suspect a custom hook is interfering, set a breakpoint on the hook function itself and inspect what it does.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unwind-versus-abort">
+                    <h3 id="unwind-versus-abort">Unwind versus abort</h3>
+                    <p>Rust supports two panic strategies: <code>unwind</code> and <code>abort</code>. The default is <code>unwind</code>, which runs destructors as it unwinds the stack. In some environments, such as embedded systems or when <code>panic = "abort"</code> is configured in <code>Cargo.toml</code>, panic aborts immediately.</p>
+                    <p>If you are debugging a program with <code>panic = "abort"</code>, the unwinding behavior is different. The stop occurs at the abort call, and there may be no unwinding frames. The stack is still intact at the point of panic, which can make debugging slightly easier in some ways, but destructors are not run, which may leave resources in an unexpected state.</p>
+                    <p>To check which strategy your binary uses, inspect the Cargo profile:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[profile.dev]
+panic = "unwind"   # default
+
+[profile.release]
+panic = "unwind"   # default
+
+# Alternatively:
+[profile.release]
+panic = "abort"</code></pre>
+                    <p>The <code>dev</code> profile uses <code>unwind</code> by default. The <code>release</code> profile also uses <code>unwind</code> unless overridden. Embedded builds often set <code>panic = "abort"</code> at the workspace level.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="panics-in-async-code">
+                    <h3 id="panics-in-async-code">Panics in async code</h3>
+                    <p>An async task that panics does not necessarily panic the entire program. The panic unwinds the task’s future, and the runtime may or may not propagate the panic depending on how the task was spawned.</p>
+                    <p>When debugging async panics, the backtrace often shows runtime frames near the top, followed by application frames. The first application frame is usually the panic site. From there, tracing backward reveals the chain of async calls that led to it.</p>
+                    <p>The same discipline applies as for synchronous panics: do not stop at the top frame. Find the first frame belonging to your own code. That is where the investigation begins.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="panic-during-unwinding">
+                    <h3 id="panic-during-unwinding">Panic during unwinding</h3>
+                    <p>If a panic occurs while another panic is already unwinding the stack, the program aborts. This is called a <em>double panic</em>. The runtime does not attempt to recover, because the state is considered unrecoverable.</p>
+                    <p>If you see the program aborting with a message such as “thread panicked while panicking,” the cause is a destructor that panicked during unwinding. The debugger can show you both panic sites if you set breakpoints on the panic machinery.</p>
+                    <p>This is a rare case, but worth knowing about. If a program is aborting with a double panic, the more interesting panic is the first one, not the second.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="error-chains-in-thiserror-and-anyhow">
+                <h2 id="error-chains-in-thiserror-and-anyhow">Error chains in thiserror and anyhow</h2>
+                <p>Two crates are especially common in Rust error handling: <code>thiserror</code> for defining error types, and <code>anyhow</code> for general-purpose error propagation. Both provide ways to chain errors, and the debugger can show you the chain.</p>
+
+                <section tabindex="0" aria-labelledby="thiserror">
+                    <h3 id="thiserror">thiserror</h3>
+                    <p>With <code>thiserror</code>, you define your own error enum. Each variant may carry a source error, often annotated with <code>#[source]</code> or <code>#[from]</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use thiserror::Error;
+
+#[derive(Error, Debug)]
+enum ConfigError {
+    #[error("failed to read config file")]
+    Io(#[from] std::io::Error),
+
+    #[error("failed to parse config")]
+    Parse(#[from] toml::de::Error),
+}</code></pre>
+                    <p>When the program returns a <code>ConfigError::Io</code> that wraps an <code>std::io::Error</code>, the debugger shows the outer error and, if you inspect the <code>source</code> field, the inner error as well:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable err
+(ConfigError) err = Io(Os { code: 2, kind: NotFound, message: "No such file or directory" })</code></pre>
+                    <p>The inner <code>Os</code> value is the source error. You can often read the underlying cause directly from this display.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="anyhow">
+                    <h3 id="anyhow">anyhow</h3>
+                    <p><code>anyhow::Error</code> is a type-erased error that can wrap any error and add context. In the debugger, an <code>anyhow::Error</code> renders as a message plus an optional chain of sources.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable err
+(anyhow::Error) err = Failed to read config file
+    Caused by:
+        No such file or directory (os error 2)</code></pre>
+                    <p>The exact formatting depends on the pretty-printer, but the chain is visible. The first line is the outermost context; the following lines are the causes, from most recent to oldest.</p>
+                    <p>This is one of the strongest arguments for using a well-structured error type in Rust: the debugger can show you the complete chain, often enough to identify the root cause without further tracing.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-option-result-panics">
+                <h2 id="rust-2024-notes-on-option-result-panics">Rust 2024 notes on Option, Result, and panics</h2>
+                <p>A few Rust 2024 specifics affect what you see when debugging <code>Option</code>, <code>Result</code>, and panics.</p>
+
+                <section tabindex="0" aria-labelledby="edition-2024-and-errors">
+                    <h3 id="edition-2024-and-errors">Edition 2024 and errors</h3>
+                    <p>The Rust 2024 edition does not change the fundamental layout of <code>Option</code> or <code>Result</code>. They are still enums, and they still render as variant name plus data. The pretty-printers handle them the same way as in earlier editions.</p>
+                    <p>What may change is the exact standard-library source path shown in backtraces, because the standard library is compiled with the edition in use. The shape of the display remains the same; the file paths and function names may differ slightly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="panic-hooks-and-2024">
+                    <h3 id="panic-hooks-and-2024">Panic hooks and 2024</h3>
+                    <p>The panic hook mechanism is unchanged in Rust 2024. Custom hooks still receive a <code>PanicHookInfo</code> (the type formerly named <code>PanicInfo</code>, renamed for clarity). If you inspect a custom panic hook in the debugger, the argument type may show the new name.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-blocks-and-errors">
+                    <h3 id="unsafe-extern-blocks-and-errors"><code>unsafe extern</code> blocks and errors</h3>
+                    <p>When an FFI call returns an error code, wrapping that code into a Rust <code>Result</code> is one of the most common patterns at the language boundary. In Rust 2024, the declaration of the foreign function is inside an <code>unsafe extern</code> block, but the error type you construct is a regular Rust enum or struct. When you inspect that error at a breakpoint, it renders as a normal <code>Result</code>.</p>
+                    <p>The practical difference is that the call to the foreign function and the construction of the error are two separate steps in the source. When debugging an FFI error, set breakpoints on both: the call to the foreign function, to inspect the raw error code, and the point where the error is wrapped, to inspect the resulting Rust error value.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-complete-worked-example">
+                <h2 id="a-complete-worked-example">A complete worked example</h2>
+                <p>To bring the ideas in this chapter together, consider the following small program:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::env;
+
+#[derive(Debug)]
+enum AppError {
+    MissingVariable(String),
+    EmptyVariable(String),
+}
+
+fn read_path(name: &amp;str) -&gt; Result&lt;String, AppError&gt; {
+    let value = env::var(name)
+        .map_err(|_| AppError::MissingVariable(name.to_string()))?;
+
+    if value.is_empty() {
+        return Err(AppError::EmptyVariable(name.to_string()));
+    }
+
+    Ok(value)
+}
+
+fn main() {
+    let path = read_path("CONFIG_PATH").expect("failed to read CONFIG_PATH");
+    println!("Using config: {path}");
+}</code></pre>
+                <p>Suppose you run this program without setting <code>CONFIG_PATH</code>. The program panics with a message along the lines of:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>thread 'main' panicked at src/main.rs:19:47:
+failed to read CONFIG_PATH: MissingVariable("CONFIG_PATH")</code></pre>
+                <p>The panic message already tells you a lot. But suppose you wanted to inspect the state at the panic.</p>
+                <p>Set a breakpoint on the panic machinery:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name std::panicking::begin_panic
+(lldb) run</code></pre>
+                <p>When the breakpoint fires:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                <p>Look for the first frame belonging to your crate. It will be in <code>main</code>, just before the <code>expect</code> call. Select that frame:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame select N
+(lldb) frame variable</code></pre>
+                <p>Now inspect the <code>Result</code> that <code>expect</code> was about to unwrap. If <code>expect</code> was inlined into <code>main</code>, the <code>Result</code> may not be directly visible as a named variable, but the value of the <code>read_path</code> call may still be inspectable. In a debug build, the compiler often keeps the intermediate value in a temporary.</p>
+                <p>If you want a clearer observation, set a breakpoint inside <code>read_path</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name read_path
+(lldb) run</code></pre>
+                <p>At each stop, inspect the arguments and the return value. Trace the error back to where it was created: either at the <code>map_err</code> call (for a missing variable) or at the explicit <code>Err</code> (for an empty variable).</p>
+                <p>This illustrates the general principle: <code>expect</code> and <code>unwrap</code> are the final symptom. The evidence you want is one frame up the call stack, in the function that produced the value.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch10">
+                <h2 id="summary-ch10">Summary</h2>
+                <p>In this chapter, we covered three closely related topics:</p>
+                <ul>
+                    <li><strong><code>Option&lt;T&gt;</code></strong>: how it renders in the debugger, how to tell <code>Some</code> from <code>None</code>, and how to trace a <code>None</code> backward toward its origin. We looked at how the <code>?</code> operator propagates <code>None</code> and how to find the origin by setting breakpoints on each contributing function.</li>
+                    <li><strong><code>Result&lt;T, E&gt;</code></strong>: how it renders, including custom error enums, and how to trace an <code>Err</code> backward using the error’s variant to identify the construction site. We also looked at <code>?</code> with <code>Result</code>, and the interaction between error conversion and error origin.</li>
+                    <li><strong><code>unwrap()</code> and <code>expect()</code></strong>: why the panic site is a symptom rather than the cause, and how to trace the value backward to where it became <code>None</code> or <code>Err</code>.</li>
+                    <li><strong>Debugging a panic</strong>: the mechanism of Rust panics, where LLDB stops, how to find the panic site in the backtrace, how to break on the panic machinery before unwinding begins, and how to interpret panic messages and custom panic hooks.</li>
+                    <li><strong>Error chains in thiserror and anyhow</strong>: how the debugger shows the chain of causes for structured errors, often revealing the root cause directly.</li>
+                    <li><strong>Rust 2024 specifics</strong>: edition changes do not alter the fundamental layout of these types, but they do change some type names and source paths that may appear in the debugger.</li>
+                </ul>
+                <p>The unifying theme is that <code>Option</code>, <code>Result</code>, and panics are all about the difference between expectation and reality. The debugger’s job is to show you where that difference first appears.</p>
+                <p>In the next chapter, we turn to a related topic: how Rust’s ownership model interacts with debugging, including the effect of optimized builds on what values are visible.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-09.html">← Chapter 9</a>
+            <a class="nav-next" href="./chapter-11.html">Chapter 11 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

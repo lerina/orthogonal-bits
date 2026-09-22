@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 5: Composite Types in Rust and the Module System – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch5-heading">
+            <h1 id="ch5-heading">Chapter 5: Composite Types in Rust and the Module System</h1>
+
+            <p>Welcome to <em>Chapter 5</em>! Having explored Rust’s powerful ownership and borrowing system in the previous chapter, we now turn our attention to how Rust helps us structure and organize our data. Primitive types such as integers and Booleans are useful, but real-world applications often require grouping multiple values into a single, meaningful unit.</p>
+            <p>This is where Rust’s <strong>composite types</strong> come into play. They provide a robust way to manage more complex data, forming the building blocks for sophisticated applications.</p>
+            <p>In this chapter, we’ll dive deep into Rust’s primary composite types. We will cover the following topics:</p>
+            <ul>
+                <li><strong>Structs</strong>: How to define custom types to group related data fields, and how to add behavior using methods. We’ll also look at variations such as tuple structs and unit-like structs.</li>
+                <li><strong>Enums</strong>: Defining types that can represent one of several possible variants, which is crucial for modeling different states or kinds of data, and how variants can hold data themselves.</li>
+                <li><strong>Tuples</strong>: A simple way to group a fixed number of potentially different types together. We’ll explore these concepts with clear examples, connecting them back to Rust’s core principles, such as ownership, and finish with practical exercises. By the end of this chapter, you’ll be equipped to design and use custom data structures effectively in your Rust projects.</li>
+            </ul>
+            <p>After discussing these types, we will explain the module system in Rust, which is essentially how Rust manages multiple files in a project.</p>
+            <p>Let’s begin!</p>
+
+            <!-- ==================== STRUCTS SECTION ==================== -->
+            <section tabindex="0" aria-labelledby="structs-named-field-collections">
+                <h2 id="structs-named-field-collections">Structs: Named-field collections</h2>
+                <p>Structs are one of Rust’s fundamental custom data types, allowing you to create blueprints for grouping related values under a single type name. If you’ve encountered classes in object-oriented languages, structs might feel somewhat familiar, though Rust handles associated behavior (methods) distinctly using impl blocks, which we’ll explore shortly.</p>
+                <p>Structs are incredibly useful for modeling real-world entities (such as User, Product, or BlogPost) or abstract concepts by bundling different pieces of data into one logical unit. Mastering structs is very important to write organized and meaningful Rust code.</p>
+
+                <section tabindex="0" aria-labelledby="defining-structs">
+                    <h3 id="defining-structs">Defining structs</h3>
+                    <p>Defining a struct in Rust is straightforward. You use the struct keyword, followed by the name you choose for your custom type (using PascalCase by convention), and then curly braces {} enclosing the fields. Each field consists of a name (using snake_case by convention) and its data type. Structs are highly versatile, enabling you to represent anything from simple configuration settings to complex domain objects.</p>
+                    <p>Let’s define a simple User struct to represent a user in a system:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// We use the `derive` attribute to give our struct useful default functionality.
+// - `Debug`: Allows us to print the struct for debugging purposes using `{:?}`.
+// - `PartialEq`: Allows us to compare two `User` instances for equality using `==`.
+#[derive(Debug, PartialEq)]
+struct User {
+    // Note: Unlike tuples, you access struct fields by name, so the order
+    // in which you declare or instantiate them doesn't matter.
+    active: bool,
+    username: String,
+    email: String,
+    sign_in_count: u64,
+}</code></pre>
+                    <p>Here, our User struct logically groups four pieces of information: an active status (a Boolean, bool), a username and email (both owned Strings), and sign_in_count (a 64-bit unsigned integer, u64). Adhering to the PascalCase for struct names and snake_case for field names is standard Rust practice and significantly improves code readability.</p>
+                    <p>By adding #[derive(Debug, PartialEq)], we’ve equipped our User struct with two important capabilities right from the start. Debug is essential for printing out instances of our struct while we’re developing and debugging. PartialEq is incredibly useful for testing, as it allows us to use assertion macros such as assert_eq!(user1, user2); to check whether two instances are identical. For #[derive(PartialEq)] to work, all the fields within the struct must also support equality comparison, which is true for most common types. We’ll see more of these derive attributes throughout the book.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="creating-instances-of-structs">
+                    <h3 id="creating-instances-of-structs">Creating instances of structs</h3>
+                    <p>Once you have defined a struct, you can create instances of it to store and manipulate data. Creating an instance of a struct involves specifying values for each of its fields.</p>
+
+                    <section tabindex="0" aria-labelledby="initializing-structs">
+                        <h4 id="initializing-structs">Initializing structs</h4>
+                        <p>Once a struct is defined (the blueprint), you can create instances of it (actual objects built from the blueprint). Creating an instance involves using the struct’s name, followed by curly braces, {}, containing key: value pairs for each field. You must provide a value for every field defined in the struct.</p>
+                        <p>Let’s create an instance of our User struct:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Assuming the User struct is defined as above
+fn main() {
+    let user1 = User {
+        email: String::from("someone@example.com"),
+        username: String::from("someusername123"),
+        active: true,
+        sign_in_count: 1,
+    };
+    // We'll see how to access these fields next
+    println!("Created user with email: {}", user1.email);
+}</code></pre>
+                        <p>In this code, the user1 variable holds an instance of our User struct. To create this instance, we provide concrete values for each field. It’s important to notice that for the username and email fields, we use String::from("..."). This is a crucial detail related to Rust’s ownership system. Our User struct is defined to hold owned String types, not borrowed string slices (&amp;str). This is a common and important design choice. For an instance of User to be a self-contained, independent piece of data, it needs to <em>own</em> all of its data. If it held &amp;str references instead, the validity of the User instance would be tied to the lifetime of whatever data those references were borrowing.</p>
+                        <p>By using String, the User instance manages its own string data on the heap, and this data will live exactly as long as the User instance does. String::from() is the standard way to create a new, owned String from a string literal (&amp;str), which is why it’s used here to provide the necessary owned data for the struct’s fields.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="field-init-shorthand">
+                        <h4 id="field-init-shorthand">Field initialization shorthand</h4>
+                        <p>Rust offers a convenient <em>field init shorthand</em> syntax. If you have variables in scope with the exact same names as the struct fields you want to initialize, you can simply write the variable name instead of field_name: variable_name. This reduces repetition and makes initialization cleaner, especially when creating structs from function parameters.</p>
+                        <p>Consider this example where variable names match field names:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Assuming the User struct is defined
+fn build_user(email: String, username: String) -> User {
+    User {
+        email,               // Shorthand for email: email
+        username,            // Shorthand for username: username
+        active: true,
+        sign_in_count: 1,
+    }
+}
+
+fn main() {
+    let user_email = String::from("shorthand@example.com");
+    let user_name = String::from("shorthand_user");
+    let user2 = build_user(user_email, user_name);
+    println!("User 2 active status: {}", user2.active);
+}</code></pre>
+                        <p>Inside build_user, because the email and username parameters match the field names, we can use the shorthand. Rust <em>understands</em> that this means email: email and username: username. Next, we’ll discuss how to access and modify the fields of a struct instance.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="accessing-struct-fields">
+                    <h3 id="accessing-struct-fields">Accessing struct fields</h3>
+                    <p>Once you have a struct instance, you’ll often need to read the values stored in its fields. Rust uses the familiar dot notation (.) for this purpose. To read a field’s value, use the instance name followed by a dot and the field name.</p>
+
+                    <section tabindex="0" aria-labelledby="reading-field-values">
+                        <h4 id="reading-field-values">Reading field values</h4>
+                        <p>To read the value of a field in a struct, you use dot notation. Here’s an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Assuming the user1 instance from earlier
+fn main() {
+    let user1 = User {
+        email: String::from("someone@example.com"),
+        username: String::from("someusername123"),
+        active: true,
+        sign_in_count: 1,
+    };
+    // Accessing fields using dot notation
+    println!("The username is: {}", user1.username);
+    println!("Is the user active? {}", user1.active);
+}</code></pre>
+                        <p>As shown, user1.username accesses the username field, and user1.active accesses the active field, providing direct read access to the data within the instance.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="modifying-struct-fields">
+                        <h4 id="modifying-struct-fields">Modifying struct fields</h4>
+                        <p>What if you need to change a field’s value after creating an instance? Remember Rust’s default immutability! To allow modification, you must declare the struct instance variable as mutable using the mut keyword when you create it.</p>
+                        <p><strong>Tip: A common pitfall: forgetting let mut</strong><br>
+                        A very common error for newcomers is trying to modify a field on a struct instance that was declared with just let. Remember, immutability in Rust applies to the entire binding. If you need to change <em>any</em> field on a struct instance, the instance itself must be declared as mutable when you create it.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This will NOT compile:
+let user = User { active: true, ... };
+user.active = false; // Error: cannot assign to field `active` of immutable binding
+
+// This is the correct way:
+let mut user = User { active: true, ... };
+user.active = false; // This is allowed!</code></pre>
+                        <p>Then, you can use dot notation with the assignment operator (=) to change a field’s value.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// ... assuming the `User` struct is defined ...
+fn main() {
+    // Declare user1 as mutable to allow its fields to be changed.
+    let mut user1 = User {
+        email: String::from("someone@example.com"),
+        username: String::from("someusername123"),
+        active: true,
+        sign_in_count: 1,
+    };
+    println!("Original Email: {}", user1.email);
+    // Modify fields of the mutable struct instance.
+    user1.email = String::from("new.email@example.com");
+    user1.sign_in_count += 1;
+    println!("Updated Email: {}", user1.email);
+    println!("Updated sign_in_count: {}", user1.sign_in_count);
+}</code></pre>
+                        <p>Here, let mut user1 is crucial. It allows us to later assign a new string to user1.email and increment user1.sign_in_count. Without mut, the compiler would issue an error preventing these modifications.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="updating-struct-instances">
+                    <h3 id="updating-struct-instances">Updating struct instances</h3>
+                    <p>Often, you might want to create a new struct instance that is mostly the same as an existing one, but with a few different values. Instead of manually specifying all the unchanged fields again, Rust provides the convenient <strong>struct update syntax</strong>. This syntax lets you specify only the fields you want to change and tells Rust to either <em>copy</em> (for types that implement the Copy trait) or <em>move</em> (for owned types like String) the rest of the values from another instance.</p>
+
+                    <section tabindex="0" aria-labelledby="struct-update-syntax">
+                        <h4 id="struct-update-syntax">Struct update syntax</h4>
+                        <p>The struct update syntax uses .. to indicate that the remaining fields should be copied from another instance. Here’s an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        username: String::from("original_user"),
+        email: String::from("original@example.com"),
+        sign_in_count: 50,
+        active: true,
+    };
+    // Create user2 based on user1, but with a new email.
+    let user2 = User {
+        email: String::from("new_user@example.com"),
+        ..user1 // Handle remaining fields
+    };
+    // The line below would now fail to compile because `user1.username` (a String)
+    // was *moved* to `user2`. The rest of `user1`'s fields (`sign_in_count` and `active`)
+    // were copied because they implement the `Copy` trait, but since part of `user1`
+    // was moved, the whole instance cannot be used like this anymore.
+    // println!("Original User 1 after move: {:?}", user1);
+
+    println!("New User 2 Details:");
+    println!(" - username: '{}' (Moved from user1)", user2.username);
+    println!(" - email: '{}' (Newly specified)", user2.email);
+    println!(" - sign_in_count: {} (Copied from user1, as u64 is Copy)", user2.sign_in_count);
+    println!(" - active: {} (Copied from user1, as bool is Copy)", user2.active);
+}</code></pre>
+                        <p>In this example, when we create user2 using ..user1, Rust checks each field we didn’t explicitly set. For sign_in_count (u64) and active (bool), which implement the Copy trait, the values are simply copied. However, for username (String), which does not implement Copy, ownership is <em>moved</em> from user1 to user2.</p>
+                        <p>Because user1 has had one of its fields moved away, the user1 variable as a whole is no longer considered fully valid and cannot be used afterward, as shown by the commented-out line that would cause a compile error.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="cloning-struct-instances">
+                        <h4 id="cloning-struct-instances">Cloning struct instances</h4>
+                        <p>When using the struct update syntax, it’s important to remember that Rust’s ownership rules apply to each field individually. The behavior depends on whether a type implements the Copy trait. The Copy trait is a special marker for types whose values can be duplicated with a simple bit-for-bit copy without any special handling. This is true for simple types that are stored entirely on the stack, such as integers (i32), Booleans (bool), and tuples containing only other Copy types.</p>
+                        <p>Types that manage resources, such as String, which owns data on the heap, do not implement Copy. A simple bitwise copy of String would result in two variables pointing to and believing they own the same heap memory, which would lead to a “double-free” error when both are dropped. For these non-Copy fields, the struct update syntax performs a move, transferring ownership.</p>
+                        <p>If you need to keep the original struct valid after the update, you must explicitly clone its non-Copy fields to create a deep copy for the new instance.</p>
+                        <p>Here is an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    let user2 = User {
+        email: String::from("newemail@example.com"),
+        username: user1.username.clone(),
+        ..user1
+    };
+    println!("Username: {}", user2.username);
+    println!("Email: {}", user2.email);
+    println!("Sign-in Count: {}", user2.sign_in_count);
+    println!("Active: {}", user2.active);
+}</code></pre>
+                        <p>We explicitly set email and active for user2. The ..user1 syntax instructs Rust to use the values from user1 for any fields not explicitly set in user2 (in this case, username and sign_in_count).</p>
+                        <p><strong>Important note on ownership:</strong> Remember Rust’s ownership rules from <a href="./chapter-04.html"><em>Chapter 4</em></a>! The ..other_instance struct update syntax behaves like assignment for the fields it copies. If a field’s type implements the Copy trait (such as u64 or bool), the value is copied. But if a field’s type does <em>not</em> implement Copy (such as String), ownership of that field’s data is moved from other_instance to the new instance. In our User example, using ..user1 moves ownership of user1.username (a string) to user2. Consequently, user1 becomes partially moved, and you can no longer access user1.username after user2 is created this way.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Continuing from the previous example...
+// If username was moved via ..user1:
+// println!("User 1 Username after move: {}", user1.username); // Compile Error! Value moved
+
+// If you need user1 to remain fully usable, you must explicitly .clone()
+// the non-Copy fields before the update syntax moves them:
+let user3 = User {
+    email: String::from("user3@example.com"),
+    username: user1.username.clone(), // Explicitly clone the String
+    ..user1 // Copies 'active' and 'sign_in_count' (as they are Copy)
+};
+// Now user1 is still fully usable because its username was cloned, not moved.
+println!("User 1 Username after clone: {}", user1.username); // OK!
+println!("User 3 Username: {}", user3.username); // OK!</code></pre>
+                        <p>In this example, we create user2 by providing new, explicit values for the email and sign_in_count fields. The ..user1 syntax then handles the remaining fields. It’s important to remember that this syntax performs a <em>move</em> for any fields that do not implement the Copy trait (such as username: String), while it performs a <em>copy</em> for fields that do implement Copy (such as active: bool). Because user1.username was moved to user2, the user1 variable as a whole can no longer be used after user2 is created.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="methods-for-structs">
+                    <h3 id="methods-for-structs">Methods for structs</h3>
+                    <p>Structs are great for organizing data, but often you’ll want to associate <em>behavior</em> or <em>actions</em> directly with that data. In Rust, you achieve this by defining <em>methods</em> within an impl (implementation) block specifically tied to your struct type. This keeps data and the operations on that data closely related, which is great.</p>
+
+                    <section tabindex="0" aria-labelledby="defining-methods">
+                        <h4 id="defining-methods">Defining methods</h4>
+                        <p>An impl block allows you to define functions associated with your struct. Functions defined within an impl block are called <em>methods</em> if their first parameter is named self, which can appear in three forms:</p>
+                        <ul>
+                            <li>&amp;self: Borrows the instance immutably (read-only access).</li>
+                            <li>&amp;mut self: Borrows the instance mutably (read-write access).</li>
+                            <li>self: Takes ownership of the instance (consumes it).</li>
+                        </ul>
+                        <p>Let’s define a Rectangle struct and implement methods for it:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)] // Added for printing later
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+// Implementation block for Rectangle
+impl Rectangle {
+    // Method to calculate the area (needs read-only access)
+    fn area(&amp;self) -> u32 {
+        // Access fields using self.field_name
+        self.width * self.height
+    }
+    // Method to check if width is greater than 0 (read-only)
+    fn has_valid_width(&amp;self) -> bool {
+        self.width > 0
+    }
+    // Method that modifies the instance (needs read-write access)
+    fn double_width(&amp;mut self) {
+        self.width *= 2;
+    }
+}</code></pre>
+                        <p>Here, inside impl Rectangle, we defined the following:</p>
+                        <ul>
+                            <li>area() and has_valid_width(): These take &amp;self, borrowing the Rectangle immutably to read data.</li>
+                            <li>double_width(): This takes &amp;mut self, borrowing the Rectangle mutably, allowing it to change self.width.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="calling-methods">
+                        <h4 id="calling-methods">Calling methods</h4>
+                        <p>Once methods are defined, you call them on an instance of the struct using dot notation, just like accessing fields: instance.method_name(arguments). Rust handles the borrowing (&amp;self or &amp;mut self) automatically through a feature called <strong>automatic referencing and dereferencing</strong>:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Assuming Rectangle struct and its impl block are defined as above
+fn main() {
+    let mut rect1 = Rectangle { width: 30, height: 50 }; // 'mut' needed for double_width
+    // Call methods using dot notation
+    println!("The area of rect1 is {}.", rect1.area()); // Calls area(&amp;rect1)
+    println!("Does rect1 have valid width? {}", rect1.has_valid_width()); // Calls has_valid_width(&amp;rect1)
+    println!("Original width: {}", rect1.width);
+    rect1.double_width(); // Calls double_width(&amp;mut rect1)
+    println!("Width after doubling: {}", rect1.width);
+    println!("New area: {}", rect1.area()); // Call area() again on modified rect1
+}</code></pre>
+                        <p>Notice how cleanly methods are called. When you write rect1.area(), Rust automatically passes &amp;rect1 as the &amp;self parameter. Similarly, rect1.double_width() automatically passes &amp;mut rect1 as &amp;mut self.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="associated-functions-intro">
+                    <h3 id="associated-functions-intro">Associated functions intro</h3>
+                    <p>Besides methods that operate on an instance (taking &amp;self or &amp;mut self), impl blocks can also contain <strong>associated functions</strong>. These are functions that are associated with the struct type itself but do not take self as their first parameter. They are often used as constructors or “factory functions” to create new instances of the struct.</p>
+                    <p>Associated functions are called using the struct’s name followed by ::, such as Rectangle::square(3):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// To print our struct with `{:?}`, we need to derive the Debug trait.
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    // An associated function, often called `new`, used as a constructor.
+    // It returns `Self`, which is an alias for the type `Rectangle` inside this impl block.
+    fn new(width: u32, height: u32) -> Self {
+        Rectangle { width, height }
+    }
+    // Another associated function to create a square.
+    fn square(size: u32) -> Self {
+        Rectangle { width: size, height: size }
+    }
+    // A method to calculate the area, for use in main.
+    fn area(&amp;self) -> u32 {
+        self.width * self.height
+    }
+}
+
+fn main() {
+    // Call associated functions using the `StructName::function_name()` syntax.
+    let rect_from_new = Rectangle::new(10, 20);
+    let square_rect = Rectangle::square(15);
+    // We use `{:?}` to print `rect_from_new` because we derived the Debug trait.
+    println!("Rectangle from new: {:?}", rect_from_new);
+    println!("Area of square: {}", square_rect.area());
+}</code></pre>
+                    <ul>
+                        <li><strong>Associated functions versus methods</strong>: Notice that new and square do not take self as their first parameter. This is what makes them associated functions, not methods. They are associated with the Rectangle type, but not a specific instance of it.</li>
+                        <li><strong>The self keyword</strong>: Inside an impl block, the Self keyword (with a capital <em>S</em>) is an alias for the type the block is implementing. So, -&gt; Self is the idiomatic way of saying -&gt; Rectangle. This makes the code more concise and easier to refactor if you ever rename the struct.</li>
+                        <li><strong>A note on {:?} and #[derive(Debug)]</strong>: In the println! macro, the {} formatter uses a trait called Display, which is for user-facing output. To print a struct for debugging purposes, we use the {:?} formatter, which uses a trait called Debug. To automatically provide a Debug implementation for our Rectangle struct, we add the #[derive(Debug)] attribute directly above its definition. This is a common and very useful practice for easily inspecting your custom types during development.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unit-like-structs">
+                    <h3 id="unit-like-structs">Unit-like structs</h3>
+                    <p>Rust also allows defining <em>unit-like structs</em>, which are structs with no fields at all. They are declared using the struct keyword, a name, and an immediate semicolon, ;. They are useful when you need a type simply for its identity or to implement a trait, without needing to store any data.</p>
+
+                    <section tabindex="0" aria-labelledby="defining-unit-like-structs">
+                        <h4 id="defining-unit-like-structs">Defining unit-like structs</h4>
+                        <p>Unit-like structs are defined using the struct keyword followed by the struct name without any fields. Here’s an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Marker; // A unit-like struct
+
+trait MyTrait {
+    fn description(&amp;self) -> &amp;'static str;
+}
+
+// We can implement traits for unit-like structs
+impl MyTrait for Marker {
+    fn description(&amp;self) -> &amp;'static str {
+        "This is a marker instance."
+    }
+}
+
+fn main() {
+    let m = Marker; // Create an instance (it holds no data)
+    println!("{}", m.description()); // Call method from the implemented trait
+}</code></pre>
+                        <p>Here, Marker serves primarily to implement MyTrait. Instances such as m occupy no memory at runtime beyond their type information. They are often used with marker traits or in advanced generic programming.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="use-cases-unit-like">
+                        <h4 id="use-cases-unit-like">Use cases for unit-like structs</h4>
+                        <p>Unit-like structs are typically used in situations where the existence of a type is more important than the data it holds. Some common use cases include the following:</p>
+                        <ul>
+                            <li><strong>Marker traits</strong>: Sometimes you want to mark types with a specific trait to indicate that they conform to a particular behavior. Unit-like structs can be used to implement such traits without storing any data.</li>
+                            <li><strong>Type-level programming</strong>: In more advanced Rust programming, unit-like structs can be used in type-level computations and generic programming scenarios where the type itself carries meaning.</li>
+                        </ul>
+                        <p>Here’s an example of using a unit-like struct with a marker trait:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct MyStruct;
+
+trait MyMarker {}
+
+impl MyMarker for MyStruct {}
+
+fn main() {
+    let instance = MyStruct;
+    // Now instance has the MyMarker trait
+}</code></pre>
+                        <p>In this example, MyStruct is a unit-like struct, and MyMarker is a marker trait. We implement the MyMarker trait for MyStruct, and now any instance of MyStruct is marked with MyMarker.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tuple-structs-detail">
+                    <h3 id="tuple-structs-detail">Tuple structs</h3>
+                    <p><em>Tuple structs</em> are another struct variant, blending features of tuples and regular structs. They get a unique type name like a struct, but their fields are unnamed and accessed by index like a tuple. Define them with struct Name(Type1, Type2, ...);. They are useful when naming the whole structure is important but naming individual fields feels redundant, such as for simple Color or Point types.</p>
+
+                    <section tabindex="0" aria-labelledby="defining-tuple-structs">
+                        <h4 id="defining-tuple-structs">Defining tuple structs</h4>
+                        <p>Here’s how you can define a tuple struct:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Define tuple structs
+struct Color(u8, u8, u8); // RGB
+struct Point(i32, i32);   // 2D coordinates
+
+fn main() {
+    // Instantiate like tuples, but with the type name
+    let red = Color(255, 0, 0);
+    let origin = Point(0, 0);
+    // Access fields using dot notation and index
+    println!("Red's green component: {}", red.1); // Accesses the second field (index 1)
+    // They define distinct types
+    // let point_tuple: (i32, i32) = origin; // Error: mismatched types Point != (i32, i32)
+    // Can be destructured
+    let Point(x, y) = origin;
+    println!("Origin coordinates: x={}, y={}", x, y);
+}</code></pre>
+                        <p>Key points to note are that they create a new named type, fields are unnamed, and access is via instance.index. They offer a concise way to create simple, distinct types. In this example, note the following:</p>
+                        <ul>
+                            <li>Dimensions is a tuple struct with three f64 fields representing length, width, and height.</li>
+                            <li>Coordinates is a tuple struct with two i32 fields representing <em>x</em> and <em>y</em> coordinates.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="creating-tuple-struct-instances">
+                        <h4 id="creating-tuple-struct-instances">Creating instances of tuple structs</h4>
+                        <p>You can create instances of tuple structs just like you create instances of tuples:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let box_dimensions = Dimensions(30.5, 20.0, 15.0);
+    let point = Coordinates(10, 20);
+    println!("Box dimensions: {:?}", box_dimensions);
+    println!("Point coordinates: {:?}", point);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="accessing-tuple-struct-fields">
+                        <h4 id="accessing-tuple-struct-fields">Accessing tuple struct fields</h4>
+                        <p>Tuple struct fields are accessed using dot notation and their index:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let box_dimensions = Dimensions(30.5, 20.0, 15.0);
+    let point = Coordinates(10, 20);
+    println!("Box dimensions - Length: {}, Width: {}, Height: {}", box_dimensions.0, box_dimensions.1, box_dimensions.2);
+    println!("Point coordinates - x: {}, y: {}", point.0, point.1);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="practical-tuple-struct-example">
+                        <h4 id="practical-tuple-struct-example">Practical example: Using tuple structs in a function</h4>
+                        <p>Let’s use tuple structs to represent the dimensions of a package and calculate its volume:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Dimensions(f64, f64, f64); // Represents length, width, and height
+
+fn calculate_volume(dimensions: Dimensions) -> f64 {
+    dimensions.0 * dimensions.1 * dimensions.2
+}
+
+fn main() {
+    let package = Dimensions(30.5, 20.0, 15.0);
+    println!("Package dimensions: Length: {}, Width: {}, Height: {}", package.0, package.1, package.2);
+    println!("Package volume: {} cubic units", calculate_volume(package));
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>We define a Dimensions tuple struct with three f64 fields.</li>
+                            <li>We create a calculate_volume function that calculates the volume of a package.</li>
+                            <li>We create an instance of Dimensions and use the calculate_volume function to calculate its volume.</li>
+                        </ul>
+                        <p>Tuple structs provide a way to name and work with tuples in a more structured manner without needing to name each field. They are useful for creating simple, lightweight data structures that benefit from having a named type.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="empty-tuples">
+                        <h4 id="empty-tuples">Empty tuples</h4>
+                        <p>It’s also important to understand the <strong>unit type</strong>, written as (), which is essentially an empty tuple. In Rust, functions that don’t explicitly return a value are said to return the unit type. This is how Rust represents the concept of “no return value” in its type system.</p>
+                        <p>You’ll see this frequently in error handling, particularly with the Result&lt;(), Error&gt; type. This signature signifies a function that can fail (returning an Err), but on success, it simply signals completion without providing any data (Ok(())). Think of Ok(()) as a way of saying, “The operation succeeded, and there’s no value to give back.”</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="structs-and-ownership">
+                    <h3 id="structs-and-ownership">Structs and ownership</h3>
+                    <p>Ownership is a central concept in Rust that ensures memory safety without needing a garbage collector. Understanding how ownership works with structs is very important for managing data in Rust programs. This section will briefly cover how ownership affects struct fields and how to work with borrowed and owned data.</p>
+
+                    <section tabindex="0" aria-labelledby="ownership-of-struct-fields">
+                        <h4 id="ownership-of-struct-fields">Ownership of struct fields</h4>
+                        <p>When you create an instance of a struct, each field of the struct takes ownership of the data assigned to it. This means that the struct instance owns its fields, and the ownership rules apply to these fields just as they do to any other data in Rust.</p>
+                        <p>Here is an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    let user2 = user1; // Moves ownership of user1 to user2
+    // println!("Username: {}", user1.username); // This would cause a compile-time error
+    println!("Username: {}", user2.username); // Accessing user2 is fine
+}</code></pre>
+                        <p>In this example, the ownership of user1 is moved to user2. After the move, user1 can no longer be used, as it no longer owns its data. Attempting to use user1 after the move results in a compile-time error.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="borrowing-struct-fields">
+                        <h4 id="borrowing-struct-fields">Borrowing struct fields</h4>
+                        <p>Borrowing allows you to reference data without taking ownership of it. This is useful when you want to read or modify the data of a struct without transferring ownership.</p>
+                        <p>Here’s how you can borrow struct fields:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    let user_ref = &amp;user1; // Borrowing user1
+    println!("Username: {}", user_ref.username); // Reading borrowed data
+    // user1 can still be used because user_ref is just a reference
+    println!("Email: {}", user1.email);
+}</code></pre>
+                        <p>In this example, user_ref is a reference to user1. Borrowing user1 with &amp;user1 allows you to access the fields of user1 without transferring ownership. This means user1 can still be used after being borrowed.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="mutable-borrowing-structs">
+                        <h4 id="mutable-borrowing-structs">Mutable borrowing</h4>
+                        <p>If you need to modify the fields of a struct, you can use mutable borrowing. Mutable borrowing allows you to borrow a mutable reference to the data, enabling you to make changes.</p>
+                        <p>Here’s an example of mutable borrowing:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    let user_ref = &amp;mut user1; // Mutable borrowing of user1
+    user_ref.email = String::from("newemail@example.com"); // Modifying borrowed data
+    println!("Updated Email: {}", user1.email);
+}</code></pre>
+                        <p>In this example, user_ref is a mutable reference to user1. Borrowing user1 with &amp;mut user1 allows you to modify the email field of user1.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-with-structs">
+                    <h3 id="debugging-with-structs">Debugging with structs</h3>
+                    <p>Debugging is an essential part of software development, and Rust provides tools to make debugging easier. One of these tools is the Debug trait, which allows you to print your structs in a readable format. By default, Rust’s standard library includes a Debug implementation for most types, but you need to explicitly opt into it for your custom types.</p>
+
+                    <section tabindex="0" aria-labelledby="implementing-debug-trait">
+                        <h4 id="implementing-debug-trait">Implementing the Debug trait</h4>
+                        <p>To enable the Debug trait for your struct, you use the #[derive(Debug)] attribute. This automatically provides a basic implementation of the Debug trait for your struct, allowing you to print it using the println! macro with the {:?} format specifier.</p>
+                        <p>The following is an example:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    println!("{:?}", user1);
+}</code></pre>
+                        <p>In this example, we add #[derive(Debug)] above the User struct definition. This enables the Debug trait for User, allowing us to print user1 using println!("{:?}", user1).</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="customizing-debug-output">
+                        <h4 id="customizing-debug-output">Customizing debug output</h4>
+                        <p>While #[derive(Debug)] is often all you need, Rust gives you the power to completely customize the debug output for your structs. This is done by manually implementing the Debug trait. This process involves syntax for implementing traits (impl Trait for Struct), a powerful feature we will cover in great detail in a dedicated chapter later on. However, for those who are curious or have a specific need for custom formatting now, here’s a quick look at how it works:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt;
+
+struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+impl fmt::Debug for User {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "User {{ username: {}, email: {}, sign_in_count: {}, active: {} }}",
+            self.username, self.email, self.sign_in_count, self.active
+        )
+    }
+}
+
+fn main() {
+    let user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    println!("{:?}", user1);
+}</code></pre>
+                        <p>In this example, we manually implement the Debug trait for the User struct. This allows us to customize the output format when printing the struct.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="practical-example-user-profile">
+                    <h3 id="practical-example-user-profile">Practical example: User profile</h3>
+                    <p>To bring together the concepts we’ve covered so far, let’s create a practical example. We’ll define a UserProfile struct, add methods to it, and implement the Debug trait.</p>
+
+                    <section tabindex="0" aria-labelledby="defining-userprofile-struct">
+                        <h4 id="defining-userprofile-struct">Defining the UserProfile struct</h4>
+                        <p>We’ll start by defining a UserProfile struct with fields for the username, email, age, and active status. We’ll also derive the Debug trait so we can print the struct:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+struct UserProfile {
+    username: String,
+    email: String,
+    age: u32,
+    active: bool,
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="adding-methods-to-userprofile">
+                        <h4 id="adding-methods-to-userprofile">Adding methods to UserProfile</h4>
+                        <p>Next, we’ll add methods to the UserProfile struct. These methods will include a constructor to create new user profiles and methods to deactivate and reactivate a user profile:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>impl UserProfile {
+    fn new(username: String, email: String, age: u32) -> UserProfile {
+        UserProfile {
+            username,
+            email,
+            age,
+            active: true,
+        }
+    }
+    fn deactivate(&amp;mut self) {
+        self.active = false;
+    }
+    fn reactivate(&amp;mut self) {
+        self.active = true;
+    }
+}</code></pre>
+                        <p>In this impl block, note the following:</p>
+                        <ul>
+                            <li>The new function is an associated function that creates a new UserProfile instance.</li>
+                            <li>The deactivate method sets the active field to false.</li>
+                            <li>The reactivate method sets the active field to true.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="using-userprofile-struct">
+                        <h4 id="using-userprofile-struct">Using the UserProfile struct</h4>
+                        <p>Let’s use the UserProfile struct in the main function to create a new user, deactivate and reactivate the user, and print the user profile at each step:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut user = UserProfile::new(
+        String::from("johndoe"),
+        String::from("johndoe@example.com"),
+        30,
+    );
+    println!("{:?}", user);
+    user.deactivate();
+    println!("After deactivation: {:?}", user);
+    user.reactivate();
+    println!("After reactivation: {:?}", user);
+}</code></pre>
+                        <p>In the main function, note the following:</p>
+                        <ul>
+                            <li>We create a new user profile using the UserProfile::new function.</li>
+                            <li>We print the user profile using println!("{:?}", user).</li>
+                            <li>We deactivate the user profile using the deactivate method and print the updated profile.</li>
+                            <li>We reactivate the user profile using the reactivate method and print the updated profile again.</li>
+                        </ul>
+                        <p>This example demonstrates how to define a struct, add methods, and use the Debug trait to print the struct.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="structs-exercises">
+                    <h3 id="structs-exercises">Structs: Exercises and assignments</h3>
+                    <p>To reinforce your understanding, try the following exercises:</p>
+                    <ol>
+                        <li><strong>Extend the UserProfile struct</strong>: Add additional fields such as phone_number and address. Implement methods to update these fields.</li>
+                        <li><strong>Implement more methods</strong>: Add methods to update the email and age of the user profile.</li>
+                        <li><strong>Debug output customization</strong>: Manually implement the Debug trait for UserProfile to customize the debug output.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="structs-summary">
+                    <h3 id="structs-summary">Structs: Summary</h3>
+                    <p>In this section, we explored Rust’s composite types, focusing primarily on structs. We’ve covered how to define structs, create instances, access and modify fields, update instances, add methods, and implement the Debug trait. We’ve also worked through a practical example to apply these concepts in a real-world scenario, reinforcing our understanding of how to manage complex data in Rust programs effectively.</p>
+                    <p>Next, we’ll explore another crucial composite type in Rust: <strong>enums</strong>. Enums allow you to define a type by enumerating its possible variants, providing a way to represent different kinds of data with the same type. We’ll cover how to define and use enums, as well as pattern matching, providing practical examples to illustrate their usage.</p>
+                </section>
+            </section>
+
+            <!-- ==================== ENUMS SECTION ==================== -->
+            <section tabindex="0" aria-labelledby="enums-one-of-several">
+                <h2 id="enums-one-of-several">Enums: One of several possibilities</h2>
+                <p>Now, let’s explore Rust’s second major composite type: <em>enums</em> (enumerations). While structs group related fields <em>together</em>, enums define a type that can be <em>one of several possible variants</em>. Think of modeling states (e.g., <em>Loading</em>, <em>Success</em>, <em>Error</em>) or choices (<em>Red</em>, <em>Green</em>, <em>Blue</em>). Enums allow you to encode these possibilities into the type system, ensuring a value can only be one of the defined variants, making your code safer and more expressive.</p>
+
+                <section tabindex="0" aria-labelledby="defining-and-using-enums">
+                    <h3 id="defining-and-using-enums">Defining and using enums</h3>
+                    <p>Define an enum using the enum keyword, a PascalCase name, and curly braces, {}, containing the PascalCase names of the possible variants. Instances are created using the EnumName::VariantName syntax. The match expression is ideal for handling different enum variants exhaustively.</p>
+                    <p>Let’s see an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Define an enum for different kinds of web events
+enum WebEvent {
+    PageLoad,                  // Simple variant with no data
+    PageUnload,                // Simple variant with no data
+    KeyPress(char),            // Tuple-like variant holding a char
+    Click { x: i64, y: i64 },  // Struct-like variant holding named data
+}
+
+// A function to process different web events
+fn inspect(event: WebEvent) {
+    match event {
+        WebEvent::PageLoad => println!("Page loaded"),
+        WebEvent::PageUnload => println!("Page unloaded"),
+        // Destructure the data from the variant
+        WebEvent::KeyPress(c) => println!("Key pressed: '{}'.", c),
+        WebEvent::Click { x, y } => println!("Clicked at coordinates: x={}, y={}.", x, y),
+    }
+}
+
+fn main() {
+    let load_event = WebEvent::PageLoad;
+    let click_event = WebEvent::Click { x: 20, y: 80 };
+    let key_event = WebEvent::KeyPress('x');
+    inspect(load_event);
+    inspect(click_event);
+    inspect(key_event);
+}</code></pre>
+                    <p>Here, WebEvent can be one of four distinct kinds, and some of these variants hold data. This example demonstrates two different styles for including data, and the choice between them is a matter of clarity:</p>
+                    <ul>
+                        <li><strong>Tuple-like variants (KeyPress(char))</strong>: This style is concise and works well when the meaning of the data is clear from the type alone or when there’s only one data value. Since KeyPress holds a single character, its purpose is obvious.</li>
+                        <li><strong>Struct-like variants (Click { x: i64, y: i64 })</strong>: This style is preferred when a variant holds multiple pieces of data and giving them names improves readability. By naming the fields x and y, the code becomes more self-documenting; it’s immediately clear that these are coordinates, which is more explicit than Click(i64, i64).</li>
+                    </ul>
+                    <p>The match statement elegantly handles each case, destructuring and extracting the data where present. This ability for enum variants to hold different types and structures of data is what makes them incredibly powerful and flexible.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="enum-variants-can-hold-data">
+                    <h3 id="enum-variants-can-hold-data">Enum variants can hold data</h3>
+                    <p>One of the most powerful features of Rust enums is that their variants can store data directly. This goes beyond simply listing possibilities; it allows each variant to carry specific information relevant to that particular case. This makes enums incredibly versatile for modeling complex states or messages where the <em>kind</em> of information differs depending on the situation. Each variant can hold different types and amounts of data.</p>
+                    <p>Let’s illustrate this with a classic example: defining an enum to represent different kinds of messages or events that might occur in an application. Some events might be simple signals, while others need to carry associated values:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Message {
+    Quit,                           // Variant with no associated data
+    ChangeColor(u8, u8, u8),        // Variant holding three u8 values (like a tuple)
+    Move { x: i32, y: i32 },        // Variant holding named fields (like a struct)
+    Write(String),                  // Variant holding a single String
+}
+
+fn process_message(msg: Message) {
+    match msg {
+        Message::Quit => {
+            println!("Received Quit message: The program should terminate.");
+        }
+        // Destructure the tuple-like data directly in the pattern
+        Message::ChangeColor(r, g, b) => {
+            println!("Received ChangeColor: Changing color to RGB({}, {}, {}).", r, g, b);
+        }
+        // Destructure the struct-like data directly in the pattern
+        Message::Move { x, y } => {
+            println!("Received Move: Moving to coordinates ({}, {}).", x, y);
+        }
+        // Bind the contained String to the variable 'text'
+        Message::Write(text) => {
+            println!("Received Write: Message content is '{}'.", text);
+        }
+    }
+}
+
+fn main() {
+    // Create instances of different variants, providing data where needed
+    let msg1 = Message::Quit;
+    let msg2 = Message::ChangeColor(255, 0, 0); // Red
+    let msg3 = Message::Move { x: 100, y: 50 };
+    let msg4 = Message::Write(String::from("Rust enums are powerful!"));
+    // Process each message using our function
+    process_message(msg1);
+    process_message(msg2);
+    process_message(msg3);
+    process_message(msg4);
+}</code></pre>
+                    <p>In this Message enum, note the following:</p>
+                    <ul>
+                        <li>Quit is a simple variant, holding no data.</li>
+                        <li>ChangeColor bundles three u8 values, similar to a tuple struct.</li>
+                        <li>Move uses named x and y fields, just like a regular struct definition.</li>
+                        <li>Write contains a single string.</li>
+                    </ul>
+                    <p>The real magic happens in the process_message function. The match expression doesn’t just identify the variant; it simultaneously <em>destructures</em> the associated data. Notice how Message::ChangeColor(r, g, b) binds the three u8 values to r, g, and b, and Message::Move { x, y } binds the field values to the x and y variables. This combination of enumeration, data storage, and pattern matching is central to writing idiomatic and safe Rust code.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="enum-methods-functions">
+                    <h3 id="enum-methods-functions">Enum methods/functions intro</h3>
+
+                    <section tabindex="0" aria-labelledby="enum-methods-example">
+                        <h4 id="enum-methods-example">Enum methods example</h4>
+                        <p>Just like structs, you can define behavior associated with your enums using impl blocks. This allows you to add methods that operate on enum instances or <strong>associated functions</strong> that relate to the enum type itself. Associated functions don’t take self as a parameter and are often used as constructors, providing a controlled way to create instances.</p>
+                        <p>Let’s create a TrafficLight enum with an associated from_str function that attempts to create an instance from a string. Since the input string might not be a valid color, this operation can fail. In Rust, the idiomatic way to handle operations that might return a value or nothing at all is with the Option&lt;T&gt; enum.</p>
+                        <p>An <strong>Option</strong> is one of the most important types in Rust for handling the potential absence of a value. It has two variants:</p>
+                        <ul>
+                            <li>Some(T): Represents the presence of a value of type T.</li>
+                            <li>None: Represents the absence of a value.</li>
+                        </ul>
+                        <p>By returning Option&lt;TrafficLight&gt;, our from_str function makes it explicit that the conversion might not succeed, forcing the caller to handle the None case:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)] // Add derive for printing
+enum TrafficLight {
+    Red,
+    Yellow,
+    Green,
+}
+
+impl TrafficLight {
+    // Associated function (like a constructor) that can fail.
+    // It returns an Option&lt;TrafficLight&gt;.
+    fn from_str(color: &amp;str) -> Option&lt;TrafficLight&gt; {
+        match color.to_lowercase().as_str() {
+            "red" => Some(TrafficLight::Red),
+            "yellow" => Some(TrafficLight::Yellow),
+            "green" => Some(TrafficLight::Green),
+            _ => None, // Return None for any invalid input string
+        }
+    }
+}
+
+fn main() {
+    let green_light = TrafficLight::from_str("green");
+    let invalid_light = TrafficLight::from_str("purple");
+    println!("'green' -> {:?}", green_light); // Output: Some(Green)
+    println!("'purple' -> {:?}", invalid_light); // Output: None
+    // Using 'if let' is a concise way to handle the Some case.
+    if let Some(light) = TrafficLight::from_str("Red") {
+        println!("Successfully created from 'Red': {:?}", light);
+    } else {
+        println!("Could not create light from 'Red'.");
+    }
+}</code></pre>
+                        <p>In this example, we define a method, is_safe_to_go, for the TrafficLight enum. This method checks whether the traffic light is green, returning true if it is and false otherwise. The is_safe_to_go method takes an immutable reference, &amp;self, and uses match to check the current variant. It returns true only if the light is Green. Encapsulating this logic within the impl block makes the enum more self-contained and easier to use correctly.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="using-enums-with-structs">
+                        <h4 id="using-enums-with-structs">Using enums with structs</h4>
+                        <p>Structs and enums often work together beautifully. A common pattern is to include an enum as a field within a struct. This allows you to represent an object that has some fixed data (the other struct fields) but also exists in one of several possible states or configurations (represented by the enum field).</p>
+
+                        <section tabindex="0" aria-labelledby="defining-structs-with-enum-fields">
+                            <h5 id="defining-structs-with-enum-fields">Defining structs with enum fields</h5>
+                            <p>You can define a struct that includes an enum as one of its fields. This allows you to model more intricate relationships between data.</p>
+                            <p>Let’s model a network device that has an ID and name, but can be in various operational states:</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)] // For printing Status
+enum Status {
+    Online,
+    Offline,
+    Connecting { attempts: u32 }, // Status with data
+    Maintenance,
+}
+
+#[derive(Debug)] // For printing Device
+struct Device {
+    id: u32,
+    name: String,
+    status: Status, // Enum used as a field
+}
+
+impl Device {
+    fn new(id: u32, name: String) -> Device {
+        Device {
+            id,
+            name,
+            status: Status::Offline, // Default status
+        }
+    }
+    // Method to update the device status
+    fn set_status(&amp;mut self, new_status: Status) {
+        self.status = new_status;
+    }
+    // Method to get a descriptive status message
+    fn get_status_message(&amp;self) -> String {
+        match &amp;self.status { // Match on a reference to the status field
+            Status::Online => format!("Device '{}' (ID {}) is online.", self.name, self.id),
+            Status::Offline => format!("Device '{}' (ID {}) is offline.", self.name, self.id),
+            Status::Connecting { attempts } => format!("Device '{}' is connecting (attempt {})...", self.name, attempts),
+            Status::Maintenance => format!("Device '{}' ({}) is under maintenance.", self.name, self.id),
+        }
+    }
+}
+
+fn main() {
+    let mut router = Device::new(101, String::from("Main Router"));
+    println!("{}", router.get_status_message());
+    router.set_status(Status::Connecting { attempts: 1 });
+    println!("{}", router.get_status_message());
+    router.set_status(Status::Online);
+    println!("{}", router.get_status_message());
+    println!("Current device state: {:?}", router); // Debug print the whole struct
+}</code></pre>
+                            <p>Here, the Device struct holds id, name, and a status field of type Status (our enum). The set_status method allows changing the device’s state, and get_status_message uses match on the status field (note the &amp;self.status borrow) to provide a user-friendly description, handling the data within the Connecting variant correctly. This combination allows for flexible and type-safe state management within our Device objects.</p>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="enums-exercises">
+                    <h3 id="enums-exercises">Enums: exercises and assignments</h3>
+                    <p>To reinforce your understanding, try the following exercises:</p>
+                    <ol>
+                        <li><strong>Extend the Device struct</strong>: Add additional fields such as ip_address and location. Implement methods to update these fields.</li>
+                        <li><strong>Implement more methods for enums</strong>: Add methods to the Status enum that return different messages or perform different actions based on the current status.</li>
+                        <li><strong>(Advanced) Create a network management system</strong>: Combine structs and enums to create a simple network management system that can track devices and their statuses and perform operations such as bringing devices online or offline.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="enums-summary">
+                    <h3 id="enums-summary">Enums: summary</h3>
+                    <p>In this section, we’ve explored Rust’s enums and their powerful capabilities. We covered how to define and use enums, how to handle data within enums, and how to combine enums with structs to create complex data structures. We also looked at adding associated functions and methods to enums and using pattern matching to handle different enum variants.</p>
+                </section>
+            </section>
+
+            <!-- ==================== TUPLES SECTION ==================== -->
+            <section tabindex="0" aria-labelledby="tuples-simple-ordered-groups">
+                <h2 id="tuples-simple-ordered-groups">Tuples: simple ordered groups</h2>
+                <p>Beyond structs and enums, Rust provides a simpler composite type: the <strong>tuple</strong>. Tuples offer a lightweight way to group a fixed number of values, potentially of different types, into a single compound value. Define them using parentheses, (), containing comma-separated values. Unlike structs, tuple elements lack names, identified only by their zero-based index.</p>
+                <p>Let’s see an example, so everything will look easier to understand:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // Define a tuple with type annotation
+    let basic_tuple: (i32, f64, bool) = (100, 3.14, true);
+    // Define a tuple with type inference
+    let mix_tuple = ("Rust", 2015, '🚀'); // Type: (&amp;str, i32, char)
+    // Print tuples (Debug is usually available)
+    println!("Basic tuple: {:?}", basic_tuple);
+    println!("Mixed tuple: {:?}", mix_tuple);
+}</code></pre>
+                <p>Tuples are handy for quick, temporary groupings or returning multiple values from functions efficiently. There are two main ways to access their elements:</p>
+                <ol>
+                    <li><strong>Direct indexing</strong>: Use dot notation followed by the zero-based index (e.g., basic_tuple.0, mix_tuple.1):
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Continuing main...
+let first_val = basic_tuple.0; // 100 (i32)
+let second_val = basic_tuple.1; // 3.14 (f64)
+println!("First: {}, Second: {}", first_val, second_val);</code></pre>
+                    </li>
+                    <li><strong>Destructuring</strong>: Break the tuple into individual variables using a pattern in a let statement. This is often more readable:
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Continuing main...
+let (language, year, mascot) = mix_tuple; // Destructure mix_tuple
+println!("Language: {}, Year: {}, Mascot: {}", language, year, mascot);
+// Ownership: If mix_tuple contained non-Copy types (like String),
+// destructuring would move ownership into 'language', 'year', 'mascot'.
+// The original tuple might become unusable.</code></pre>
+                    </li>
+                </ol>
+                <p>A common use case is returning multiple results from a function:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>// Function returning (String, u32) tuple
+fn get_server_info() -> (String, u32) {
+    (String::from("192.168.1.100"), 8080)
+}
+
+fn main() { // Separate main for this example
+    // Call function and destructure the returned tuple
+    let (ip_address, port) = get_server_info();
+    println!("Connect to server {}:{}", ip_address, port);
+    // 'ip_address' now owns the String returned by the function.
+}</code></pre>
+                <p>Tuples provide fixed-size, ordered collections, which are great when the element positions provide enough meaning.</p>
+
+                <section tabindex="0" aria-labelledby="using-tuples">
+                    <h3 id="using-tuples">Using tuples</h3>
+                    <p>Tuples can be used to group related data items, making them easier to pass around and manage in your code. Here’s an example where we use a tuple to return multiple values from a function:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn get_person_info() -> (String, u32, bool) {
+    let name = String::from("Alice");
+    let age = 30;
+    let is_active = true;
+    (name, age, is_active)
+}
+
+fn main() {
+    let person_info = get_person_info();
+    println!("Name: {}, Age: {}, Active: {}", person_info.0, person_info.1, person_info.2);
+}</code></pre>
+                    <p>In this example, note the following:</p>
+                    <ul>
+                        <li>The get_person_info function returns a tuple containing a String, u32, and bool.</li>
+                        <li>We call get_person_info in the main function and print each element of the returned tuple using positional indexing.</li>
+                    </ul>
+                    <p>Tuples are particularly useful for the following:</p>
+                    <ul>
+                        <li>Returning multiple values from a function without the need to define a struct.</li>
+                        <li>Grouping related values for iteration or other operations where the context makes their meaning clear.</li>
+                        <li>Passing multiple values as a single parameter to a function.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="accessing-tuple-elements">
+                    <h3 id="accessing-tuple-elements">Accessing tuple elements</h3>
+                    <p>Once you have defined a tuple, you can access its elements using positional indexing. Each element in a tuple is accessed using a zero-based index, which indicates its position in the tuple.</p>
+
+                    <section tabindex="0" aria-labelledby="accessing-by-index">
+                        <h4 id="accessing-by-index">Accessing elements by index</h4>
+                        <p>Here’s how to access the elements of a tuple using their indices:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let tuple: (i32, f64, bool) = (42, 6.7, true);
+    let int_value = tuple.0;
+    let float_value = tuple.1;
+    let bool_value = tuple.2;
+    println!("Integer value: {}", int_value);
+    println!("Float value: {}", float_value);
+    println!("Boolean value: {}", bool_value);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>tuple.0 accesses the first element (i32).</li>
+                            <li>tuple.1 accesses the second element (f64).</li>
+                            <li>tuple.2 accesses the third element (bool).</li>
+                        </ul>
+                        <p>Using positional indexing, we can extract and use the values stored in a tuple.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="practical-employee-record">
+                        <h4 id="practical-employee-record">Practical example: employee record</h4>
+                        <p>Let’s consider a practical example where we use a tuple to store an employee’s record:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let employee: (u32, String, f64) = (1001, String::from("John Doe"), 75000.0);
+    let id = employee.0;
+    // We take a reference (&amp;) to the String because String is not a `Copy` type.
+    // This borrows the value without moving it, so `employee` can still be used.
+    let name = &amp;employee.1;
+    let salary = employee.2;
+    println!("Employee ID: {}", id);
+    println!("Employee Name: {}", name);
+    println!("Employee Salary: ${}", salary);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>We define an employee tuple with an ID (u32), name (String), and salary (f64).</li>
+                            <li>We access each element of the tuple using positional indexing and print the values.</li>
+                        </ul>
+                        <p>This demonstrates how to work with tuples effectively in a real-world scenario. Next, we’ll explore how to destructure tuples to extract multiple values simultaneously.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="destructuring-tuples">
+                    <h3 id="destructuring-tuples">Destructuring tuples</h3>
+                    <p>Destructuring tuples allows you to extract multiple values simultaneously in a concise and readable way. This technique can be particularly useful when you need to work with multiple elements of a tuple at once.</p>
+
+                    <section tabindex="0" aria-labelledby="destructuring-example">
+                        <h4 id="destructuring-example">Destructuring tuples</h4>
+                        <p>Here’s how to destructure a tuple into individual variables:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let tuple: (i32, f64, bool) = (42, 6.7, true);
+    let (int_value, float_value, bool_value) = tuple;
+    println!("Integer value: {}", int_value);
+    println!("Float value: {}", float_value);
+    println!("Boolean value: {}", bool_value);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>We destructure the tuple into three separate variables: int_value, float_value, and bool_value.</li>
+                            <li>Each variable corresponds to an element in the tuple, in order.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="destructuring-function-returns">
+                        <h4 id="destructuring-function-returns">Practical example: destructuring function return values</h4>
+                        <p>Let’s use destructuring to handle multiple return values from a function:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn calculate(a: i32, b: i32) -> (i32, i32, i32) {
+    let sum = a + b;
+    let difference = a - b;
+    let product = a * b;
+    (sum, difference, product)
+}
+
+fn main() {
+    let (sum, difference, product) = calculate(10, 5);
+    println!("Sum: {}", sum);
+    println!("Difference: {}", difference);
+    println!("Product: {}", product);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>The calculate function returns a tuple containing the sum, difference, and product of two integers.</li>
+                            <li>In the main function, we destructure the returned tuple into three separate variables: sum, difference, and product.</li>
+                        </ul>
+                        <p>Destructuring helps keep the code concise and readable when working with multiple values.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="destructuring-in-loop">
+                        <h4 id="destructuring-in-loop">Destructuring in a loop</h4>
+                        <p>Destructuring can also be used in a loop to iterate over a collection of tuples:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let points = vec![(0, 0), (1, 2), (3, 4)];
+    for (x, y) in points {
+        println!("Point at ({}, {})", x, y);
+    }
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>We have a vector of tuples representing points.</li>
+                            <li>We use a for loop to destructure each tuple into x and y coordinates and print them.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="returning-tuples-from-functions">
+                    <h3 id="returning-tuples-from-functions">Returning tuples from functions</h3>
+                    <p>Tuples are particularly useful for returning multiple values from functions without needing to define a more complex struct. This can simplify your code and make functions more flexible.</p>
+
+                    <section tabindex="0" aria-labelledby="returning-multiple-values">
+                        <h4 id="returning-multiple-values">Returning multiple values</h4>
+                        <p>Here’s an example of a function that returns a tuple with multiple values:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn calculate(a: i32, b: i32) -> (i32, i32, i32) {
+    let sum = a + b;
+    let difference = a - b;
+    let product = a * b;
+    (sum, difference, product)
+}
+
+fn main() {
+    let result = calculate(10, 5);
+    println!("Sum: {}", result.0);
+    println!("Difference: {}", result.1);
+    println!("Product: {}", result.2);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>The calculate function returns a tuple containing the sum, difference, and product of two integers.</li>
+                            <li>In the main function, we call calculate and access each element of the returned tuple using positional indexing.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="destructuring-function-return-values">
+                        <h4 id="destructuring-function-return-values">Destructuring function return values</h4>
+                        <p>You can also destructure the returned tuple directly into individual variables:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let (sum, difference, product) = calculate(10, 5);
+    println!("Sum: {}", sum);
+    println!("Difference: {}", difference);
+    println!("Product: {}", product);
+}</code></pre>
+                        <p>In this example, we destructure the tuple returned by calculate into sum, difference, and product. This makes the code more readable and easier to work with.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="practical-split-name">
+                        <h4 id="practical-split-name">Practical example: splitting a full name</h4>
+                        <p>Let’s create a practical example where we use a function to split a full name into first and last names:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn split_name(full_name: &amp;str) -> (&amp;str, &amp;str) {
+    let parts: Vec&lt;&amp;str&gt; = full_name.splitn(2, ' ').collect();
+    (parts[0], parts[1])
+}
+
+fn main() {
+    let full_name = "John Doe";
+    let (first_name, last_name) = split_name(full_name);
+    println!("First Name: {}", first_name);
+    println!("Last Name: {}", last_name);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>The split_name function takes a full name as a string slice and returns a tuple containing the first and last names.</li>
+                            <li>We destructure the returned tuple in the main function to access and print the first and last names.</li>
+                        </ul>
+                        <p>Using tuples to return multiple values from functions makes your code more flexible and reduces the need for complex data structures.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="practical-point-3d">
+                    <h3 id="practical-point-3d">Practical example: point in 3D space</h3>
+                    <p>To demonstrate the versatility and practical use of tuples, let’s create a function that calculates the distance between two points in 3D space. Each point will be represented as a tuple containing three f64 values for the <em>x</em>, <em>y</em>, and <em>z</em> coordinates.</p>
+
+                    <section tabindex="0" aria-labelledby="calculating-distance">
+                        <h4 id="calculating-distance">Calculating the distance between points</h4>
+                        <p>The formula for the distance between two points, (x1, y1, z1) and (x2, y2, z2), in 3D space is as follows:</p>
+                        <p>Here’s how you can implement this in Rust:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn distance(point1: (f64, f64, f64), point2: (f64, f64, f64)) -> f64 {
+    let (x1, y1, z1) = point1;
+    let (x2, y2, z2) = point2;
+    ((x2 - x1).powi(2) + (y2 - y1).powi(2) + (z2 - z1).powi(2)).sqrt()
+}
+
+fn main() {
+    let point1 = (0.0, 0.0, 0.0);
+    let point2 = (3.0, 4.0, 0.0);
+    println!("The distance between points is: {}", distance(point1, point2));
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>We define a function, distance, that takes two tuples as parameters, each representing a point in 3D space.</li>
+                            <li>We destructure the tuples into their respective coordinates.</li>
+                            <li>We calculate the distance using the Euclidean distance formula and return the result.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="practical-usage">
+                        <h4 id="practical-usage">Practical usage</h4>
+                        <p>This example showcases how tuples can be used to represent complex data structures in a simple and efficient manner. By using tuples, we avoid the need for more complex structs, keeping the code concise and readable.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tuples-exercises">
+                    <h3 id="tuples-exercises">Tuples: exercises and assignments</h3>
+                    <p>To further solidify your understanding of tuples, try the following exercises:</p>
+                    <ol>
+                        <li><strong>Extend the distance function</strong>: Modify the distance function to handle points in 2D space (<em>x</em>, <em>y</em>) as well as 3D space.</li>
+                        <li><strong>Create a color tuple</strong>: Define a tuple to represent a color with <strong>red, green, blue</strong> (<strong>RGB</strong>) values, and write a function that converts it to a hexadecimal string.</li>
+                        <li><strong>Employee information</strong>: Write a function that returns an employee’s ID, name, and salary as a tuple, and then destructure the tuple in the main function to print the employee’s details.</li>
+                        <li><strong>Point transformation</strong>: Write a function that takes a 3D point (<em>x</em>, <em>y</em>, <em>z</em>) and a tuple representing a translation vector (<em>dx</em>, <em>dy</em>, <em>dz</em>). The function should return a new point that is the result of applying the translation vector to the original point.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tuples-summary">
+                    <h3 id="tuples-summary">Tuples: summary</h3>
+                    <p>We’ve explored tuples in Rust, including their definition, element access, destructuring, and use as function return types. A practical example showed calculating distances between 3D points using tuples. Understanding tuples allows for the efficient grouping of values without complex structs. This concludes our discussion on Rust’s composite types: structs, enums, and tuples.</p>
+                </section>
+            </section>
+
+            <!-- ==================== COMBINING TYPES SECTION ==================== -->
+            <section tabindex="0" aria-labelledby="using-structs-enums-tuples-together">
+                <h2 id="using-structs-enums-tuples-together">Using structs, enums, and tuples together</h2>
+                <p>The real power often comes from combining these different composite types. You can have structs containing enums, enums containing structs or tuples, structs containing other structs, and so on. This allows you to model complex real-world data relationships accurately and safely within Rust’s type system.</p>
+
+                <section tabindex="0" aria-labelledby="practical-modeling-user-profile">
+                    <h3 id="practical-modeling-user-profile">Practical example: modeling a user profile</h3>
+                    <p>Let’s revisit the vehicle fleet idea, showing structs and enums working together:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+struct Point(i32, i32); // Tuple struct for coordinates
+
+#[derive(Debug)]
+enum VehicleKind {
+    Car { passengers: u8 },
+    Truck { capacity_tons: f32 },
+    Bicycle { gears: u8 },
+}
+
+#[derive(Debug)]
+struct Vehicle {
+    id: u32,
+    kind: VehicleKind, // Enum field
+    location: Point,   // Tuple struct field
+}
+
+fn main() {
+    let delivery_truck = Vehicle {
+        id: 101,
+        kind: VehicleKind::Truck { capacity_tons: 2.5 },
+        location: Point(50, -30),
+    };
+    let commuter_bike = Vehicle {
+        id: 205,
+        kind: VehicleKind::Bicycle { gears: 18 },
+        location: Point(10, 15),
+    };
+    println!("Vehicle 1: {:?}", delivery_truck);
+    println!("Vehicle 2: {:?}", commuter_bike);
+    // We can match on the kind field
+    match &amp;delivery_truck.kind {
+        VehicleKind::Truck { capacity_tons } => {
+            println!("Truck {} has capacity: {} tons", delivery_truck.id, capacity_tons);
+        }
+        _ => {
+            println!("Vehicle {} is not a truck.", delivery_truck.id);
+        }
+    }
+}</code></pre>
+                    <p>This example uses a tuple struct, Point, an enum, VehicleKind (where variants hold specific data), and a main struct, Vehicle, that contains both a VehicleKind enum and a Point tuple struct. This demonstrates how you can layer these types to build expressive data models representing complex entities and their varying attributes or states.</p>
+                </section>
+            </section>
+
+            <!-- ==================== MODULE SYSTEM SECTION ==================== -->
+            <section tabindex="0" aria-labelledby="managing-complexity-module-system">
+                <h2 id="managing-complexity-module-system">Managing complexity with the module system</h2>
+
+                <section tabindex="0" aria-labelledby="packages-and-crates">
+                    <h3 id="packages-and-crates">Packages and crates</h3>
+                    <p>To get a good grasp on organizing a project, let’s start by looking at the physical artifacts Cargo creates.</p>
+                    <p>When you run ‘cargo new', you’re creating a Package, basically, a directory with a Cargo.toml file that explains how to build your code. Think of it as the main container for everything. Inside this package, your actual code lives in Crates.</p>
+                    <p>What is a crate? A crate is just the smallest piece of code that the Rust compiler works on at a time. Usually, you’ll be dealing with binary crates (which turn into a program you can run) or library crates (which hold code shared across projects). A package can have many binaries, but it will only have one library.</p>
+
+                    <section tabindex="0" aria-labelledby="package-layout">
+                        <h4 id="package-layout">The Package layout</h4>
+                        <p>A Package essentially functions as a project bundle. When you run ‘cargo new my_project' in your terminal, you’re creating a package. The key element of a package is the Cargo.toml file, serving as a manifest. This file offers Cargo the necessary instructions to compile your code, oversee dependencies, and manage software versioning.</p>
+                        <p>Inside this package, you include your actual code in the form of crates. The package enforces specific rules about what it can contain. It must include at least one crate, whether that is a library or a binary. While a package can include as many binary crates as you want, it can only contain at most one library crate.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="binary-vs-library-crates">
+                        <h4 id="binary-vs-library-crates">Binary crates vs. library crates</h4>
+                        <p>A <strong>Crate</strong> is the smallest amount of code that the Rust compiler considers at one time. Crates come in two distinct forms.</p>
+                        <p><strong>Binary crates</strong>: Programs that you can compile into an executable and run, such as a command-line tool or a server, are often called crates. These crates need to include a function called main, which tells the program where to start. Usually, if your package has a file named src/main.rs, that file is considered the main entry point of a binary crate.</p>
+                        <p><strong>Library crates</strong>: Most of these files usually don’t include a main function, and they don’t compile directly into an executable. Instead, they serve as a way to share functionality with other projects. When folks in the Rust community mention “crate,” they’re often talking about a library crate. Typically, if your package has a src/lib.rs file, Cargo recognizes this as the main part of your library crate. A package can have several binary crates, but it can only have one library crate.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>my-project/
+├── Cargo.toml
+├── src/
+│   ├── main.rs      &lt;-- Root of the binary crate
+│   └── lib.rs       &lt;-- Root of the library crate
+│   └── bin/
+│       └── another.rs &lt;-- Root of another binary crate</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="controlling-scope-privacy">
+                    <h3 id="controlling-scope-privacy">Controlling scope and privacy with modules</h3>
+                    <p>Modules allow us to organize the code inside a crate into groups for readability and easy reuse. Modules also control the <em>privacy</em> of items, which is how we decide whether an item can be used by outside code (public) or is an internal implementation detail (private).</p>
+
+                    <section tabindex="0" aria-labelledby="defining-module-tree">
+                        <h4 id="defining-module-tree">Defining the module tree</h4>
+                        <p>We define a module by starting with the mod keyword and then giving it a name. Inside the curly brackets, we can define other modules, as well as structs, enums, constants, traits, and functions. By nesting modules inside other modules, we create a structure called the module tree.</p>
+                        <p>Here is an example of how we might organize a library that models a restaurant:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+        fn seat_at_table() {}
+    }
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+    }
+}</code></pre>
+                        <p>In this example, the crate root is the parent of the front_of_house module. The front_of_house module is the parent of hosting and serving. This tree structure allows you to keep related functionality together rather than having everything in a single flat list.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="rules-of-privacy">
+                        <h4 id="rules-of-privacy">The rules of privacy (the pub keyword)</h4>
+                        <p>Rust carefully manages who can see and use different parts of your code, making sure everything stays secure and well-structured. By default, everything inside a module is private, so only the code within that module can access it. This helps keep your inner workings safe from accidental misuse. It’s interesting to note that while child modules can reach into their parent modules, the reverse isn’t automatically allowed: parents can’t access items in their children without explicit permission.</p>
+                        <p>To help external code access an item, you simply use the pub keyword. Think of it as opening a door to that module or function. In the example below, we’ve added pub to both the module and the function, allowing eat_at_restaurant to reach them easily.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>mod front_of_house {
+    // We add 'pub' to the module so the parent can see it
+    pub mod hosting {
+        // We add 'pub' to the function so it can be called
+        pub fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // This works because 'hosting' and 'add_to_waitlist' are now public
+    crate::front_of_house::hosting::add_to_waitlist();
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="referring-to-items-via-paths">
+                    <h3 id="referring-to-items-via-paths">Referring to items via paths</h3>
+                    <p>To show Rust where to find an item in the module tree, we use a path, similar to navigating a filesystem. To call a function, specify its path with double colons :: as separators. A path can be absolute or relative, like in a file system.</p>
+
+                    <section tabindex="0" aria-labelledby="absolute-paths">
+                        <h4 id="absolute-paths">Absolute paths</h4>
+                        <p>An absolute path starts from the crate root or, if from an external crate, with that crate’s name. For code within the current crate, it begins with the keyword crate. This approach is preferred as item definitions are less likely to move than calling code.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>pub fn eat_at_restaurant() {
+    // Absolute path starting with 'crate'
+    crate::front_of_house::hosting::add_to_waitlist();
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="relative-paths-super">
+                        <h4 id="relative-paths-super">Relative paths and the super keyword</h4>
+                        <p>A relative path starts from the current module instead of the crate root. It uses self, super, or an identifier available in the current scope. This is often useful when the definition of the item and the code calling it are likely to be moved around the project together.</p>
+                        <p>The super keyword allows you to reference the parent module. This is exactly like using .. in a filesystem path to go up one directory level. In the example below, the fix_incorrect_order function is inside the back_of_house module. To call serve_order, which is defined in the parent crate root, we use super.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn serve_order() {}
+
+mod back_of_house {
+    fn fix_incorrect_order() {
+        cook_order();
+        // We use super to go up one level to the parent module
+        super::serve_order();
+    }
+    fn cook_order() {}
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="simplifying-scope-use">
+                    <h3 id="simplifying-scope-use">Simplifying scope with the use keyword</h3>
+                    <p>Writing out a full path to a function repeatedly can be tedious and makes code harder to read. Rust allows you to bring a path into scope once with the use keyword, enabling you to call the item as if it were local.</p>
+                    <p>Think of this similar to creating a symbolic link or shortcut in your filesystem. By including a line with use at the beginning of your file, you create a shortcut to that particular module or item. In the example below, we bring the hosting module into scope. Now, whenever we want to access add_to_waitlist, we only need to specify hosting:: instead of the full path from the crate root.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>mod front_of_house {
+    pub mod hosting {
+        pub fn add_to_waitlist() {}
+    }
+}
+// Bring the module into scope
+use crate::front_of_house::hosting;
+
+pub fn eat_at_restaurant() {
+    // Now we can use the shorter path
+    hosting::add_to_waitlist();
+}</code></pre>
+
+                    <section tabindex="0" aria-labelledby="idiomatic-use-paths">
+                        <h4 id="idiomatic-use-paths">Idiomatic use paths</h4>
+                        <p>You might wonder why we included the hosting module earlier instead of directly using add_to_waitlist. The reason is Rust convention: it’s more idiomatic to bring the parent module into scope for functions. This makes your code clearer, showing that the function isn’t in the current file. However, when it comes to working with structs, enums, and other items, the usual convention is a bit different. Typically, we like to bring the entire item into scope so we can use it directly, which helps keep our code clean and concise. For instance, instead of just bringing in collections, we bring HashMap directly into scope.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Idiomatic: Bring the function's parent module into scope
+use crate::front_of_house::hosting;
+// Idiomatic: Bring the full struct into scope
+use std::collections::HashMap;
+
+fn main() {
+    // It is clear this function comes from the hosting module
+    hosting::add_to_waitlist();
+    // We can use the struct directly
+    let mut map = HashMap::new();
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="handling-naming-conflicts">
+                        <h4 id="handling-naming-conflicts">Handling naming conflicts with “as”</h4>
+                        <p>Sometimes, you need to use items with identical names from different modules. If you attempt to bring both into scope with use, Rust won’t know which one you’re referencing and will fail to compile. To fix this, you can use the as keyword to create an alias, giving a new local name to the type and avoiding conflicts.</p>
+                        <p>In the example below, we use the Result type from both the fmt module and the io module. By renaming io::Result to IoResult, we avoid confusion and can use both in the same file.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt::Result;
+use std::io::Result as IoResult;
+
+fn function1() -> Result {
+    // Returns std::fmt::Result
+    Ok(())
+}
+
+fn function2() -> IoResult&lt;()&gt; {
+    // Returns std::io::Result
+    Ok(())
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="physical-organization">
+                    <h3 id="physical-organization">Physical organization: separating modules into files</h3>
+                    <p>As modules grow, managing all definitions in src/lib.rs becomes challenging. Moving definitions into separate files improves navigation. Rust enables extracting modules into different files without altering your crate’s external API; the code structure changes, but the module tree remains logically consistent.</p>
+
+                    <section tabindex="0" aria-labelledby="module-filesystem-mapping">
+                        <h4 id="module-filesystem-mapping">The module filesystem mapping</h4>
+                        <p>To move a module to its own file, we change how we declare it in the parent file. Instead of using a block with curly brackets, we declare the module with a semicolon. This tells Rust that the module exists but its definition is located in another file with the same name.</p>
+                        <p>For example, to move the front_of_house module out of src/lib.rs:</p>
+                        <ol>
+                            <li>In src/lib.rs, we replace the full module block with pub mod front_of_house;.</li>
+                            <li>We create a new file named src/front_of_house.rs.</li>
+                            <li>We paste the content of the module into the new file. Note that we do not need to wrap the code in a mod block inside the new file because the file itself acts as the module container.</li>
+                        </ol>
+                        <p>File: src/lib.rs</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Rust looks for src/front_of_house.rs
+pub mod front_of_house;
+
+pub fn eat_at_restaurant() {
+    crate::front_of_house::hosting::add_to_waitlist();
+}</code></pre>
+                        <p>File: src/front_of_house.rs</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>pub mod hosting {
+    pub fn add_to_waitlist() {}
+}</code></pre>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch5">
+                <h2 id="summary-ch5">Summary</h2>
+                <p>Well done!</p>
+                <p>We’ve journeyed through Rust’s essential composite data types, learning how to structure data beyond simple primitives. We started with <strong>structs</strong>, understanding how to define custom types with named fields, create instances, access and modify data, and add behavior using <strong>methods</strong> and associated functions within impl blocks. We also touched upon variations such as concise <strong>tuple structs</strong> and field-less <strong>unit-like structs</strong>.</p>
+                <p>Next, we explored <strong>enums</strong>, discovering how they allow us to define a type that can be one of several distinct <strong>variants</strong>. Crucially, we saw how these variants can hold associated data, making enums incredibly powerful for modeling different states, choices, or message types, often paired elegantly with Rust’s exhaustive match expression for safe handling. Finally, we looked at <strong>tuples</strong> as a simple, lightweight way to group a fixed number of values together, which is particularly useful for returning multiple values from functions or for temporary data bundling.</p>
+                <p>Mastering structs, enums, and tuples is crucial for organizing data effectively in Rust. By combining these types and understanding how they interact with core concepts such as ownership and borrowing (which we covered in <a href="./chapter-04.html"><em>Chapter 4</em></a>), you gain the tools to build complex, expressive, and safe data models for your applications. Keep practicing, and these fundamental building blocks will become second nature.</p>
+                <p>We also addressed the structural side of Rust programming by introducing the module system. We explored how to organize code into logical groups using packages, crates, and modules, and how to control the privacy of that code using the pub keyword. We also covered how to navigate the module tree using paths, which is essential for splitting code across multiple files and managing complexity as your projects grow.</p>
+                <p>In the next chapter, we’ll explore another of Rust’s most important safety features: a powerful and explicit system for handling errors.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch5">
+                <h2 id="questions-and-assignments-ch5">Questions and assignments</h2>
+                <p>Congratulations on completing this exploration of Rust’s composite types! To ensure these concepts stick, let’s reinforce your learning with some review questions and hands-on coding assignments. Tackling these will significantly strengthen your grasp of how to structure data effectively in Rust.</p>
+
+                <section tabindex="0" aria-labelledby="questions-ch5">
+                    <h3 id="questions-ch5">Questions</h3>
+                    <ol>
+                        <li>In your own words, what is the core difference between a struct and an enum? Provide a scenario where a struct is clearly more appropriate, and another where an enum is the better choice.</li>
+                        <li>What are the three forms of self that a method’s first parameter can take, and what does each signify in terms of ownership and mutability for the instance the method is called on?</li>
+                        <li>Explain the purpose and syntax of an associated function (such as ::new()) within an impl block. How does calling it differ from calling a method?</li>
+                        <li>When defining an enum variant that holds data, what are the different ways you can structure that data (e.g., a tuple, a struct)?</li>
+                        <li>What is the struct update syntax (..), and why is it important to consider ownership (and the Copy trait) when using it?</li>
+                        <li>Why might you choose to use a tuple struct, such as struct Color(u8, u8, u8);, instead of a regular tuple (u8, u8, u8) or a regular struct, such as struct Color { red: u8, green: u8, blue: u8 }?</li>
+                        <li>How can you make your custom struct or enum printable for debugging using println!?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch5">
+                    <h3 id="assignments-ch5">Assignments</h3>
+                    <ul>
+                        <li><strong>Assignment 5.1: order system</strong>
+                            <ol>
+                                <li>Define a Product struct with the id (u32), name (String), and price (f32) fields.</li>
+                                <li>Define an OrderStatus enum with Pending, Processing, Shipped, Delivered, and Cancelled variants.</li>
+                                <li>Define an Order struct with the order_id (u32), product (Product), quantity (u32), and status (OrderStatus) fields.</li>
+                                <li>Implement #[derive(Debug)] for all structs and the enum.</li>
+                                <li>Create an associated function, Order::new(order_id: u32, product: Product, quantity: u32) -> Order, that creates a new order with the Pending status.</li>
+                                <li>Implement an update_status(&amp;mut self, new_status: OrderStatus) method for the Order struct.</li>
+                                <li>In main, create a Product, create a new order using Order::new, print the order, update its status to Shipped, and print it again.</li>
+                            </ol>
+                        </li>
+                        <li><strong>Assignment 5.2: geometric shapes enhanced</strong>
+                            <ol>
+                                <li>Define a tuple struct, Point(f64, f64), representing a 2D point.</li>
+                                <li>Define a Shape enum with the following variants:
+                                    <ul>
+                                        <li>Circle { center: Point, radius: f64 }</li>
+                                        <li>Rectangle { top_left: Point, width: f64, height: f64 }</li>
+                                    </ul>
+                                </li>
+                                <li>Implement #[derive(Debug)] for Point and Shape.</li>
+                                <li>Implement an impl block for Shape. Add an area(&amp;self) -> f64 method that calculates and returns the area based on the shape variant (Area of circle = π * radius²; Area of rectangle = width * height). Use std::f64::consts::PI for π.</li>
+                                <li>In main, create a Circle and a Rectangle. Store them in a Vec&lt;Shape&gt;. Iterate through the vector and print both the debug representation ({:?}) and the calculated area for each shape.</li>
+                            </ol>
+                        </li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-04.html">← Chapter 4</a>
+            <a class="nav-next" href="./chapter-06.html">Chapter 6 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

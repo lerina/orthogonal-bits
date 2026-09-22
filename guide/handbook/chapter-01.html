@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 1: Getting Started with Rust – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch1-heading">
+            <h1 id="ch1-heading">Chapter 1: Getting Started with Rust</h1>
+
+            <p>Welcome to the realm of Rust programming!</p>
+            <p>If you’ve found your way here, you’re probably intrigued by Rust’s reputation as a robust, contemporary language specialized in systems programming, focusing on safety, speed, and reliability.</p>
+            <p>This book is for anyone who wants to learn Rust, from experienced developers looking to expand their skills to beginners exploring new technologies or those who are just curious. In the Stack Overflow 2024 Developer Survey, Rust was voted the “most admired programming language” by ~83% of developers. This is because it offers a rare combination of performance, memory safety, and a strong, welcoming community. It eliminates entire classes of bugs, such as null pointer dereferences and data races, while delivering the speed of a systems language. Learning Rust is a great way to write safer, more efficient code and future-proof your skills.</p>
+            <p>In this chapter, we start our journey by understanding the essence of Rust programming. We’ll dive deep into the core principles defining Rust and explain why it shines among other programming languages. Rust has some unique features that really make it “special” among other languages. Following that, we’ll set up your development environment together, ensuring you’re fully equipped to dive into Rust coding right away. Finally, we’ll start with the practical side of Rust by walking you through creating your first Rust program. To make it accessible to everyone, we will begin with a simple CLI tool, ensuring you grasp Rust’s fundamental concepts before moving to more advanced projects such as a web server. This structured approach will help you build confidence in Rust step by step.</p>
+            <p>By the end of this chapter, you’ll have a solid understanding of what makes Rust unique and why so many developers appreciate it. You’ll get familiar with its core principles and how it differs from other programming languages. This foundation will give you the confidence to start exploring Rust and writing your first programs.</p>
+            <p>Let’s get started!</p>
+
+            <section tabindex="0" aria-labelledby="technical-requirements">
+                <h2 id="technical-requirements">Technical requirements</h2>
+                <p>You can use any operating system you want, but it is highly recommended that you have Git, the system versioning system. All the code examples are available in the `book-compendium` folder of the GitHub repository.</p>
+                <p>You will also need an IDE. Any IDE works, but for this book, I will use VS Code, with a couple of extensions.</p>
+                <ul>
+                    <li><strong>GitHub</strong>: <a href="https://github.com/FrancescoXX/rustcrab/tree/main/book-compendium">https://github.com/FrancescoXX/rustcrab/tree/main/book-compendium</a></li>
+                    <li><strong>Git</strong>: <a href="https://git-scm.com/downloads">https://git-scm.com/downloads</a></li>
+                    <li><strong>VS Code (or any other IDE)</strong>: <a href="https://code.visualstudio.com/download">https://code.visualstudio.com/download</a></li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="what-is-rust">
+                <h2 id="what-is-rust">What is Rust?</h2>
+                <p>According to Wikipedia, “<em>Rust is a general-purpose programming language emphasizing performance, type safety, and concurrency. It enforces memory safety, meaning that all references point to valid memory, without a garbage collector. To simultaneously enforce memory safety and prevent data races, its ‘borrow checker’ tracks the object lifetime of all references in a program during compiling</em>.”</p>
+                <p>This definition sounds fascinating, but can also be quite confusing. This brief explanation alone isn’t enough to fully grasp what Rust is and what makes it unique!</p>
+                <p>Let’s break down this definition and explain each part:</p>
+                <ul>
+                    <li><strong>General-purpose programming language</strong>: Rust is a versatile language that excels in various domains, from system-level programming to modern web development. It’s used in embedded systems, operating systems, backend engineering, and even high-frequency, low-latency applications. Rust also plays a significant role in frontend development with <strong>WebAssembly</strong> (<strong>Wasm</strong>) and is gaining traction in decentralized systems such as blockchain. Its ability to adapt across different fields makes it truly unique.</li>
+                    <li><strong>Emphasizing performance, type safety, and concurrency</strong>: Rust is designed with three main goals in mind:
+                        <ul>
+                            <li><strong>Type safety</strong>: Rust ensures that your code adheres to strict type rules, reducing bugs and making it easier for you and other developers to understand and maintain.</li>
+                            <li><strong>Performance</strong>: Rust allows you to write high-performance software that runs as fast as programs written in C or C++.</li>
+                            <li><strong>Concurrency</strong>: Rust provides powerful tools for writing concurrent code, allowing you to take full advantage of multi-core processors without the risk of data races.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Enforces memory safety without a garbage collector</strong>: Memory safety means that all pointers (references) point to valid memory. Rust achieves this without a garbage collector, which is typically used in other languages such as Java or Go to manage memory automatically. Instead, Rust uses a system of ownership with rules that the compiler checks at compile time.</li>
+                    <li><strong>The borrow checker</strong>: To enforce memory safety and prevent data races, Rust employs a mechanism known as the “borrow checker.” This system tracks the lifetime of all references in a program during compilation, ensuring that references are always valid and that multiple threads do not unexpectedly modify data.</li>
+                </ul>
+                <p><strong>No worries!</strong> If some of these concepts sound complex or unfamiliar right now, don’t worry! Throughout this book, we’ll explore these topics in depth, providing clear explanations and practical examples to help you understand and master Rust programming. By the end of the book, any doubts you have now will be resolved, and you’ll be confident in your ability to use Rust effectively.</p>
+
+                <section tabindex="0" aria-labelledby="what-is-rust-good-for">
+                    <h3 id="what-is-rust-good-for">What is Rust good for?</h3>
+                    <p>So, what is Rust good for? Overall, Rust is versatile and excels in many areas, from system-level programming to web development. It provides the tools and guarantees necessary to build robust and efficient software, making it a valuable addition to any developer’s skill set.</p>
+                    <p>Rust is valued for its high performance, security, and ability to handle concurrency. These qualities matter more than ever, as software must be fast, scalable, and vulnerable to vulnerabilities. It’s especially well-suited for systems programming, where speed and reliability are critical.</p>
+                    <p>Rust is well-suited for developing low-level system components such as operating systems, device drivers, and embedded systems. Its memory safety features help prevent crashes and security vulnerabilities, making it a dependable choice for critical software where stability and performance are essential. But don’t worry! We will start with something much simpler to help you become familiar with the syntax quickly.</p>
+                    <p>Rust’s robust concurrency model and expressive type system make it exceptionally well-suited for creating scalable and resilient network services, web servers, and concurrent applications. In fact, many real-world applications, such as the Firefox browser engine, Dropbox’s file storage backend, and Cloudflare’s performance-critical systems, currently use Rust.</p>
+                    <p>In a recent communication from the US government, the White House recommended memory-safe programming languages and security-by-design principles to prevent cyberattacks. Rust was highlighted as a key example of such a language. While Rust doesn’t make your application secure by default, it enforces strict rules that require developers to handle memory safely and efficiently.</p>
+                    <p>The biggest challenge for developers learning Rust is adapting to its distinctive approach to memory management. This requires a mindset different from that of many other programming languages. The good news is that once you grasp these concepts, you’ll be able to write safer and more efficient code with confidence. Unlike C and C++, where developers manually manage memory or languages with garbage collection, Rust requires you to adopt a different mindset. Be open-minded and ready to embrace this new way of thinking.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="key-features">
+                    <h3 id="key-features">Key features of Rust</h3>
+                    <p>What makes Rust stand out compared to other programming languages is its unique features and design principles:</p>
+                    <ul>
+                        <li><strong>Expressiveness</strong>: Rust’s expressive syntax and powerful type system allow developers to write clear, concise, and maintainable code, making it easier to reason about complex systems. For instance, Rust’s pattern matching makes decision-making elegant and enjoyable:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn developer_mood(caffeine_level: u8) -> &amp;'static str {
+    match caffeine_level {
+        0 => "I can't work without coffee!",
+        1..=2 => "Alright, I can write a few functions.",
+        3..=5 => "Productivity mode: ON!",
+        _ => "Too much coffee! I'm rewriting the entire project in Rust!",
+    }
+}
+fn main() {
+    println!("{}", developer_mood(4)); // Output: Productivity mode: ON!
+}</code></pre>
+                        </li>
+                        <li><strong>Memory safety</strong>: Rust guarantees memory safety while maintaining high performance by implementing strict rules during compile time. These checks help prevent common programming errors such as null pointer dereferencing and out-of-bounds array indexing before the code is executed. As a result, many potential bugs are identified early on, reducing the likelihood of crashes and enhancing the reliability of Rust programs, all without the necessity for garbage collection.</li>
+                        <li><strong>Concurrency</strong>: Rust offers robust abstractions for writing concurrent code, enabling developers to fully utilize modern multi-core processors while minimizing concerns about data races and deadlocks. Features such as ownership-based threading and the async/await system ensure that concurrency is both safe and efficient. This allows developers to create fast, parallel code without encountering the typical challenges associated with concurrent programming.</li>
+                        <li><strong>Performance</strong>: Rust provides performance that is comparable to low-level programming languages such as C and C++ by eliminating runtime overhead. Its zero-cost abstractions guarantee that high-level code compiles into efficient machine instructions without incurring additional performance penalties. Furthermore, Rust offers precise control over memory management, enabling developers to write fast and predictable code without compromising safety.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="rust-ecosystem">
+                    <h3 id="rust-ecosystem">The Rust ecosystem</h3>
+                    <p>Rust not only boasts essential language features but also has a dynamic ecosystem of libraries, tools, and frameworks that enhance its functionality and simplify development. Notable crates such as Serde for data serialization, Tokio for asynchronous programming, and Axum for web development make Rust a strong option for various applications. This extensive ecosystem enables developers to create efficient and reliable software while taking advantage of Rust’s safety and performance guarantees.</p>
+                    <p>Rust’s ecosystem caters to various industries and use cases, such as web development, system programming, data analysis, and gaming. One of Rust’s most significant strengths lies in its ability to handle data processing tasks efficiently, which has become a cornerstone of its industrial applications. Rust’s memory safety guarantees, combined with its performance comparable to C and C++, make it an excellent choice for building data-intensive systems. Developers use Rust to create high-performance data pipelines, process large-scale datasets, and implement real-time analytics applications. Its growing library ecosystem, including crates such as Polars, is a fast, multithreaded DataFrame library for Rust and Python, designed for efficient data manipulation and analysis. It is optimized for performance, using Apache Arrow’s columnar memory format to handle large datasets efficiently. Polars is often compared to pandas, but it is significantly faster, especially for big data and parallel processing tasks.</p>
+                    <p>You can check it out here: <a href="https://crates.io/crates/polars">https://crates.io/crates/polars</a>.</p>
+                    <p>This versatility makes Rust a natural fit for demanding scenarios, such as optimizing database query engines or building distributed systems capable of processing petabytes of data. Beyond data processing, Rust excels in high-performance web servers and efficient system utilities, offering developers a robust toolkit across a range of domains.</p>
+                    <p>The Rust community is very welcoming and committed to being open source. The Rust language itself is an open source project!</p>
+                    <figure>
+                        <img src="" alt="The official Rust repository" />
+                        <figcaption>Figure 1.1: The official Rust repository</figcaption>
+                    </figure>
+                    <p>This is the perfect environment to grow a robust and solid language with a solid basis and a bright future.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="why-learn-rust">
+                    <h3 id="why-learn-rust">Why learn Rust?</h3>
+                    <p>As a developer, learning Rust offers several advantages:</p>
+                    <ul>
+                        <li><strong>Enhanced productivity</strong>: Rust’s strict compiler checks and powerful tooling assist developers in catching bugs early and writing more reliable code, which reduces both development time and debugging efforts. For instance, Rust prevents the use of uninitialized variables at compile time:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let x: i32;
+    println!("{}", x); // Error: use of possibly-uninitialized variable `x`
+}</code></pre>
+                        </li>
+                        <li><strong>Career opportunities</strong>: Rust is gaining popularity in industries such as systems programming, cloud computing, and cybersecurity, opening up exciting career opportunities for developers. More and more companies are using Rust for performance-critical applications, secure backend services, and infrastructure tooling. This creates demand for different roles, such as systems engineers, backend developers, security engineers, and embedded systems developers. If you’re looking for a language that’s both future-proof and in high demand, Rust is a very strong choice for your career.</li>
+                        <li><strong>Personal growth</strong>: Learning Rust goes beyond simply adding another language to your skill set; it transforms your approach to memory management, safety, and concurrency. It challenges your problem-solving abilities and enhances your understanding of how computers operate. By mastering Rust, you become a more well-rounded developer, enabling you to write efficient and reliable software. And let’s face it, overcoming the borrow checker feels like a great achievement!</li>
+                    </ul>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="installation-and-hello-world">
+                <h2 id="installation-and-hello-world">Installation and Hello World</h2>
+                <p>This chapter will cover the essential steps to install Rust on your system and write your first Rust program.</p>
+                <p>We’ll start by guiding you through the installation process, followed by a demonstration of compiling and running a "Hello World" program in Rust.</p>
+
+                <section tabindex="0" aria-labelledby="installing-rust">
+                    <h3 id="installing-rust">Installing Rust</h3>
+                    <p>Before diving into Rust programming, you must set up your development environment by installing the Rust toolchain.</p>
+                    <p>You can download and install Rust by visiting <a href="https://www.rust-lang.org/tools/install">https://www.rust-lang.org/tools/install</a> and following the instructions for your operating system.</p>
+                    <figure>
+                        <img src="" alt="How to install Rust on different operating systems" />
+                        <figcaption>Figure 1.2: How to install Rust on different operating systems</figcaption>
+                    </figure>
+                    <p>Rust provides convenient installation options for different platforms, ensuring a smooth setup process:</p>
+                    <ul>
+                        <li><strong>Linux/Unix</strong>: The official installer or package manager can install Rust on Linux and Unix-based systems.</li>
+                        <li><strong>macOS</strong>: Rust is well-supported on macOS, and you can install it using the official installer or Homebrew package manager.</li>
+                        <li><strong>Windows</strong>: Rust offers a straightforward installation experience through the official installer or Chocolatey package manager.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="verifying-installation">
+                    <h3 id="verifying-installation">Verifying the installation</h3>
+                    <p>Once Rust is installed on your system, you can verify the installation by opening a terminal or command prompt and running the following command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rustc --version</code></pre>
+                    <p>This command should display the installed version of the Rust compiler, confirming that Rust is successfully installed on your machine.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="setting-up-dev-environment">
+                    <h3 id="setting-up-dev-environment">Setting up your development environment</h3>
+                    <p>In addition to the Rust compiler, you’ll need a text editor or <strong>integrated development environment</strong> (<strong>IDE</strong>) to write and edit Rust code.</p>
+                    <p>A good IDE enhances productivity with features such as syntax highlighting, code completion, and debugging support. The most popular options for Rust development include the following:</p>
+                    <ul>
+                        <li><strong>Visual Studio Code</strong> (<strong>VS Code</strong>): A lightweight and highly customizable code editor with excellent Rust support via extensions.</li>
+                        <li><strong>RustRover by IntelliJ IDEA</strong>: A powerful, full-featured IDE specifically designed for Rust development, offering deep code analysis, refactoring tools, and seamless Cargo integration.</li>
+                        <li><strong>Neovim</strong>: A customizable, terminal-based editor with Rust support via plugins.</li>
+                    </ul>
+                    <section tabindex="0" aria-labelledby="setting-up-vs-code">
+                        <h3 id="setting-up-vs-code">Setting up VS Code for Rust (recommended)</h3>
+                        <p>VS Code is one of the most popular editors for Rust development due to its lightweight design, extensibility, and excellent Rust support.</p>
+                        <p>To get started, download and install VS Code from the official website at <a href="https://code.visualstudio.com/">https://code.visualstudio.com/</a>:</p>
+                        <ol>
+                            <li>Choose the version for your operating system (Windows, macOS, or Linux).</li>
+                            <li>Follow the installation prompts.</li>
+                            <li>Once installed, open VS Code.</li>
+                        </ol>
+                        <p>For a smooth Rust development experience, install the following essential extensions:</p>
+                        <ul>
+                            <li><strong>Rust Analyzer</strong> (<a href="https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer">https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer</a>): This provides intelligent code completion, error checking, go-to definitions, and code formatting. To install it, follow these steps:
+                                <ul>
+                                    <li>Open VS Code.</li>
+                                    <li>Press <em>Ctrl</em> + <em>Shift</em> + <em>X</em> (or <em>Cmd</em> + <em>Shift</em> + <em>X</em> on macOS) to open the Extensions Marketplace.</li>
+                                    <li>Search for Rust Analyzer and click <strong>Install</strong>.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Even Better TOML</strong> (<a href="https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml">https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml</a>): This adds syntax highlighting and validation for .toml files, which are used in Cargo.toml.</li>
+                            <li><strong>(Optional)</strong> <strong>Crates</strong> (<a href="https://marketplace.visualstudio.com/items?itemName=serayuzgur.crates">https://marketplace.visualstudio.com/items?itemName=serayuzgur.crates</a>): This helps manage dependencies by showing the latest versions of crates directly inside Cargo.toml.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="hello-world">
+                    <h3 id="hello-world">Hello World</h3>
+                    <p>With Rust installed and your development environment set up, you can write your first Rust program.</p>
+                    <p>For our first program, we’ll use the Rust compiler (rustc) directly, even if this is not recommended for creating a project. We will do this just once to understand how the Rust compiler works. For all future projects, we will use a package manager that will compile all our project files for us.</p>
+                    <p>Open your preferred text editor or IDE and create a new file named hello.rs. In this file, enter the following code:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    println!("Hello, Rust!");
+}</code></pre>
+                    <p>The code is available here: <a href="https://github.com/FrancescoXX/rustcrab/blob/main/book-compendium/chapter-1/hello_world.rs">https://github.com/FrancescoXX/rustcrab/blob/main/book-compendium/chapter-1/hello_world.rs</a>.</p>
+                    <p>This simple Rust program consists of a single function named main, which prints the message "Hello, Rust!" to the console using the println! macro. Similar to the main function in other programming languages, the main function serves as the entry point for all Rust programs.</p>
+                    <p><strong>Note</strong>: In Rust, a macro is a way of writing code that generates other code, this is known as metaprogramming. The println! macro is used to print text to the console, similar to how console.log works in JavaScript or print in Python.</p>
+                    <p>Here is an example comparison:</p>
+                    <ul>
+                        <li><strong>Rust</strong>: println!("Hello, Rust!");</li>
+                        <li><strong>JavaScript</strong>: console.log("Hello, Rust!");</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="compiling-and-running">
+                    <h3 id="compiling-and-running">Compiling and running your Hello World</h3>
+                    <p>To compile and run your Rust program, open a terminal or command prompt, navigate to the directory containing your hello.rs file, and execute the following command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rustc hello.rs</code></pre>
+                    <p>This command compiles your Rust source code into an executable binary named hello (or hello.exe on Windows). By default, Rust compiles your code in debug mode, which includes additional debugging information and performs fewer optimizations to make development easier:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>./hello # (or hello.exe on Windows)</code></pre>
+                    <p>You should see the message "Hello, Rust!" printed on the console, indicating that your Rust program was executed successfully.</p>
+                    <p><strong>Note</strong>: While using rustc directly is useful for understanding how Rust compiles code, this is not the standard way to build Rust projects. In real-world development, Rust programmers use Cargo, Rust’s official package manager and build system.</p>
+                    <p>Why use Cargo instead of rustc?</p>
+                    <ul>
+                        <li>Simplifies project management (automates builds, dependencies, and tests).</li>
+                        <li>Handles multiple source files efficiently (unlike rustc, which requires compiling each file manually).</li>
+                        <li>Supports optimized builds (cargo build --release) for production-ready applications.</li>
+                    </ul>
+                    <p>In the next chapters, we’ll explore how Cargo makes Rust development easier and dive into its powerful features for building, testing, and distributing Rust applications.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="using-cargo-and-crates-io">
+                <h2 id="using-cargo-and-crates-io">Using Cargo and Crates.io</h2>
+                <p>Cargo is Rust’s package manager and build system, designed to streamline developing, building, and managing Rust projects.</p>
+                <p>Crates.io is the official repository for Rust crates, where you can find and share libraries and tools written in Rust.</p>
+                <figure>
+                    <img src="" alt="crates.io website" />
+                    <figcaption>Figure 1.3: crates.io website</figcaption>
+                </figure>
+
+                <section tabindex="0" aria-labelledby="verifying-cargo-installation">
+                    <h3 id="verifying-cargo-installation">Verifying Cargo installation</h3>
+                    <p>Before we use Cargo and Crates.io, let’s ensure that your system has Rust and Cargo installed:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo --version</code></pre>
+                    <p>If you see something like this, you are good to go; otherwise, check the installation procedure:</p>
+                    <figure>
+                        <img src="" alt="Check cargo version on your machine" />
+                        <figcaption>Figure 1.4: Check cargo version on your machine</figcaption>
+                    </figure>
+                </section>
+
+                <section tabindex="0" aria-labelledby="what-is-cargo">
+                    <h3 id="what-is-cargo">What is Cargo?</h3>
+                    <p>Cargo is an essential tool for Rust development. It simplifies project management, from building and running programs to managing dependencies and publishing packages.</p>
+                    <p>Cargo automates many tasks that would otherwise require manual configuration, making development more efficient. Instead of compiling each file individually, Cargo organizes and builds entire projects with a single command. It also ensures that dependencies are downloaded and used correctly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cargo-features">
+                    <h3 id="cargo-features">Cargo’s main features</h3>
+                    <p>Cargo provides several built-in commands for common development tasks:</p>
+                    <ol>
+                        <li><strong>Creating a new project</strong>: Cargo can generate a project structure with the necessary files:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new my_project</code></pre>
+                            This creates a folder with Cargo.toml (which manages dependencies) and a src directory for code.
+                        </li>
+                        <li><strong>Building and running code</strong>: Instead of compiling files manually, Cargo compiles the entire project:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build   # Compiles the project (debug mode)
+cargo run     # Compiles and runs the project</code></pre>
+                            For optimized performance, use the release mode:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --release</code></pre>
+                            This produces a faster executable by applying optimizations.
+                        </li>
+                        <li><strong>Managing dependencies</strong>: Cargo makes it easy to add external libraries (called “crates”):
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo add serde</code></pre>
+                            This updates Cargo.toml and downloads the required dependencies automatically.
+                        </li>
+                        <li><strong>Running tests</strong>: Cargo includes a built-in testing framework:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo test</code></pre>
+                            This runs all test functions in the project.
+                        </li>
+                        <li><strong>Checking code without full compilation</strong>: For quick feedback on potential errors, use the following:
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo check</code></pre>
+                            This is much faster than cargo build and helps catch issues early.
+                        </li>
+                    </ol>
+                    <section tabindex="0" aria-labelledby="stable-vs-nightly">
+                        <h3 id="stable-vs-nightly">Stable versus Nightly Rust</h3>
+                        <p>Cargo also manages different versions of Rust. The default version is Stable Rust, which receives updates every six weeks and is recommended for most projects.</p>
+                        <p>For developers who need access to experimental features, Cargo supports Nightly Rust, which can be installed with the following:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>rustup install nightly
+rustup default nightly</code></pre>
+                        <p>Nightly Rust includes features that may become part of future stable versions. However, it may be less stable than the default version.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="creating-new-rust-project">
+                    <h3 id="creating-new-rust-project">Creating a new Rust project</h3>
+                    <p>With Rust and Cargo installed, you can create a new Rust project using the cargo new command. Open your terminal or command prompt and navigate to the directory where you want to create your project. Then, run the following command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new my_project</code></pre>
+                    <p>Replace my_project with the desired name of your project. This command will create a new directory named my_project containing the files and folders necessary for a basic Rust project.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="managing-dependencies">
+                    <h3 id="managing-dependencies">Managing dependencies with Cargo.toml</h3>
+                    <p>When you create a new Rust project with Cargo, it generates a file named Cargo.toml. This file serves as the manifest for your project and contains metadata about your project, including its name, version, authors, and dependencies.</p>
+                    <p>The .toml extension is used for configuration files in Rust projects because <strong>TOML</strong> (<strong>Tom’s Obvious, Minimal Language</strong>, <a href="https://toml.io/en/">https://toml.io/en/</a>) provides a human-readable format that is easy to write and understand. This makes it ideal for specifying project dependencies, build settings, and other configuration details concisely and intuitively.</p>
+                    <p>Let’s take a look at an example Cargo.toml file:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "my_project"
+version = "0.1.0"
+authors = ["Your Name <your@email.com>"]
+edition = "2024"
+
+[dependencies]</code></pre>
+                    <p>In the [dependencies] section, you can specify the dependencies required by your project. You can add dependencies manually by editing the Cargo.toml file, or you can use Cargo commands to manage dependencies automatically.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="installing-dependencies">
+                    <h3 id="installing-dependencies">Installing dependencies from Crates.io</h3>
+                    <p>To install the dependencies, you usually just modify the Cargo.toml file.</p>
+                    <p>An alternative is to use the cargo add command. For example, to add the rand crate, which provides random number generation functionality, run the following command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo add rand</code></pre>
+                    <p>This command will automatically update your Cargo.toml file to include the rand crate as a dependency and fetch the latest version from Crates.io.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cargo-lock">
+                    <h3 id="cargo-lock">Cargo.lock: keeping dependencies consistent</h3>
+                    <p>When Cargo installs dependencies, it locks the exact versions in a file called Cargo.lock. This ensures that all developers working on the project use the same dependency versions, avoiding unexpected updates.</p>
+                    <p>Cargo.lock is similar to package-lock.json in npm or Pipfile.lock in Python, as it records the resolved versions of all dependencies and their subdependencies.</p>
+                    <p>Cargo automatically updates Cargo.lock when dependencies change, so you don’t need to edit it manually.</p>
+                    <p>To update dependencies explicitly, use the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo update</code></pre>
+                    <p>This will fetch the latest compatible versions based on the constraints in Cargo.toml and update Cargo.lock accordingly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="building-project">
+                    <h3 id="building-project">Building your project</h3>
+                    <p>Once you’ve set up your project and added any necessary dependencies, you can build and run your project using Cargo commands. By default, Cargo builds in debug mode, which includes additional debugging information and fewer optimizations.</p>
+                    <p>To build your project, navigate to your project directory in the terminal and run the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                    <p>This generates a debug binary inside the target/debug/ directory. Debug mode is useful for development because it compiles faster and provides better error messages.</p>
+                    <p>For an optimized build with full compiler optimizations, use the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build --release</code></pre>
+                    <p>This produces a release binary inside target/release/, which is faster but takes longer to compile.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="running-project-with-cargo">
+                    <h3 id="running-project-with-cargo">Running your project with Cargo</h3>
+                    <p>Instead of manually executing the compiled binary after using cargo build or cargo build --release, Cargo provides a more efficient way to compile and run your project in a single step:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo run</code></pre>
+                    <p>This command automatically compiles the project if necessary and then runs the binary from target/debug/. If no changes were made since the last build, Cargo skips recompilation and executes the existing binary.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cargo-init">
+                    <h3 id="cargo-init">Initializing a new Rust project with cargo init</h3>
+                    <p>When starting a new Rust project, you have two main commands to choose from: cargo new and cargo init. Both simplify the setup process by generating the necessary files and directories for your project, but they serve slightly different purposes:</p>
+                    <ul>
+                        <li><strong>cargo new</strong>: Used to create a brand-new project in a new directory. It’s ideal when starting a project from scratch.</li>
+                        <li><strong>cargo init</strong>: Used to initialize a Rust project in an existing directory. This is useful if you already have a folder set up and want to turn it into a Rust project.</li>
+                    </ul>
+                    <p>For example, if you’re working in a pre-existing directory, navigate to it in your terminal and run the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo init</code></pre>
+                    <p>This command generates two key components:</p>
+                    <ul>
+                        <li><strong>Cargo.toml</strong>: The manifest file containing project metadata such as the name, version, and dependencies.</li>
+                        <li><strong>The src/ directory</strong>: Contains your Rust source code, including a main.rs file for binary (executable) projects.</li>
+                    </ul>
+                    <p>If you’re starting from scratch and want Cargo to create a new directory for you, use the following:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new your_project_name</code></pre>
+                    <p>This creates a new folder named your_project_name with the same structure as cargo init, which, by default, generates a binary (executable) project containing a main.rs file.</p>
+                    <p>Choose the command that fits your workflow: cargo new for a fresh start, or cargo init for existing directories. Either way, you can jump right into coding once the project is set up.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="creating-library">
+                    <h3 id="creating-library">Creating a library with cargo init --lib</h3>
+                    <p>Alternatively, if you intend to create a Rust library (a reusable crate) instead of a binary project, you can utilize the --lib option with the cargo init command. This option tells Cargo to generate a library project structure instead of a binary project.</p>
+                    <p>To create a new Rust library project, execute the following command:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo init --lib your_library_name</code></pre>
+                    <p>Cargo generates a project structure tailored for a library with the --lib option. This structure includes a src/ directory with a file named lib.rs, which contains the initial code for your library.</p>
+                    <p>This tells Cargo to generate a library project structure instead of a binary project. The key differences are as follows:</p>
+                    <ul>
+                        <li><strong>Library (--lib) versus binary (cargo init default)</strong>:
+                            <ul>
+                                <li>A binary project (default) creates a src/main.rs file, which acts as the entry point for execution.</li>
+                                <li>A library project (--lib) creates a src/lib.rs file instead, which contains reusable functions and modules but no main function.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Purpose</strong>:
+                            <ul>
+                                <li>Binary crates: Used for building applications that run as standalone programs.</li>
+                                <li>Library crates: Used for writing reusable Rust code that can be imported into other Rust projects via Cargo.toml.</li>
+                            </ul>
+                        </li>
+                        <li><strong>How it’s used</strong>:
+                            <ul>
+                                <li>A binary crate runs with cargo run.</li>
+                                <li>A library crate is imported into other Rust projects with the following:
+                                    <pre tabindex="0" role="region" aria-label="Code sample"><code>extern crate your_library_name;</code></pre>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="first-real-rust-program">
+                <h2 id="first-real-rust-program">Your first real Rust program: a CLI calculator</h2>
+                <p>While a "Hello, World!" program is an excellent first step, it only touches the surface of what Rust is capable of. Let’s take it a step further by building a simple command-line calculator that can perform basic arithmetic operations based on user input.</p>
+                <p>This small project will introduce you to key concepts in Rust, including the following:</p>
+                <ul>
+                    <li>Handling user input using std::io.</li>
+                    <li>Using functions to organize code efficiently.</li>
+                    <li>Error handling with match expressions.</li>
+                    <li>Working with numbers and string parsing using the parse() method.</li>
+                </ul>
+
+                <section tabindex="0" aria-labelledby="cli-step1">
+                    <h3 id="cli-step1">Step 1: Setting up your project</h3>
+                    <p>First, create a new Rust project using Cargo:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo new cli_calculator
+cd cli_calculator</code></pre>
+                    <p>Open src/main.rs in your favorite IDE and let’s start coding!</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cli-step2">
+                    <h3 id="cli-step2">Step 2: Writing the calculator logic</h3>
+                    <p>We will build a simple calculator that does the following:</p>
+                    <ul>
+                        <li>Prompts the user for two numbers.</li>
+                        <li>Asks for an operation (+, -, *, or /).</li>
+                        <li>Performs the calculation and displays the result.</li>
+                    </ul>
+                    <p>Here’s the complete code, followed by a deeper explanation (Don’t worry if you don’t fully understand the code below. This is just to get used to the Rust code. We will get into all the concepts and constructs used in the example below in the upcoming chapters. Take this as a trailer!):</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Import the standard input/output library to handle user input
+use std::io;
+
+fn main() {
+    // Display a welcome message to introduce the program
+    println!("Welcome to the Rust CLI Calculator!");
+
+    // Prompt the user to enter the first number
+    // We use a helper function `get_number` to handle input validation
+    let num1 = get_number("Enter the first number: ");
+
+    // Prompt the user to enter the second number
+    let num2 = get_number("Enter the second number: ");
+
+    // Prompt the user to enter an operation
+    println!("Enter an operation (+, -, *, /):");
+    // Create a mutable string to store the user's input
+    let mut operation = String::new();
+    // Read the user's input and store it in `operation`
+    io::stdin().read_line(&amp;mut operation).expect("Failed to read input");
+    // Trim any whitespace (e.g., newline) from the input
+    let operation = operation.trim();
+
+    // Perform the calculation based on the chosen operation
+    let result = match operation {
+        "+" => Some(num1 + num2),      // Addition
+        "-" => Some(num1 - num2),      // Subtraction
+        "*" => Some(num1 * num2),      // Multiplication
+        "/" => {
+            // Before dividing, check that the second number is not zero
+            if num2 != 0.0 {
+                Some(num1 / num2)      // Division
+            } else {
+                println!("Error: Division by zero is not allowed.");
+                None                   // Return None if division by zero is attempted
+            }
+        }
+        _ => {
+            // If the user enters an invalid operation, print an error message
+            println!("Invalid operation. Please enter +, -, *, or /.");
+            None                       // Return None to indicate an invalid operation
+        }
+    };
+
+    // If the result is valid (not None), print the result
+    if let Some(res) = result {
+        println!("Result: {}", res);
+    }
+}
+
+// This function prompts the user to enter a number and ensures valid input
+fn get_number(prompt: &str) -> f64 {
+    loop { // Infinite loop until valid input is provided
+        println!("{}", prompt); // Display the prompt message
+        let mut input = String::new(); // Create a new mutable string for user input
+        io::stdin().read_line(&amp;mut input).expect("Failed to read input"); // Read input
+        // Try to convert the input string into a floating-point number (f64)
+        match input.trim().parse::&lt;f64&gt;() {
+            Ok(num) => return num, // If parsing succeeds, return the number
+            Err(_) => println!("Invalid number. Please enter a valid numeric value."), // If parsing fails, prompt again
+        }
+    }
+}</code></pre>
+                    <p>Let’s look at a detailed explanation:</p>
+                    <ul>
+                        <li><strong>Handling user input</strong> (io::stdin().read_line()):
+                            <ul>
+                                <li>Reads input as a string, which is then trimmed to remove extra spaces and newlines.</li>
+                                <li>Used for both numbers and the operation selection.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Validating numeric input</strong> (the get_number() function):
+                            <ul>
+                                <li>Uses a loop to repeatedly ask the user for input until a valid number is provided.</li>
+                                <li>parse::&lt;f64&gt;() converts the input string into a floating-point number.</li>
+                                <li>If the input is not a number, it prints an error message and retries.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Using match for decision-making</strong>:
+                            <ul>
+                                <li>Determines which arithmetic operation to perform.</li>
+                                <li>Prevents division by zero, an important safety check.</li>
+                                <li>Returns None for invalid operations, preventing incorrect calculations.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Displaying the result</strong> (if let Some(res) = result):
+                            <ul>
+                                <li>If a valid result exists (Some(value)), it prints it.</li>
+                                <li>If an error occurred (e.g., invalid operation, division by zero), no incorrect result is shown.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cli-step3">
+                    <h3 id="cli-step3">Step 3: Running the program</h3>
+                    <p>Now, compile and run your calculator:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo run</code></pre>
+                    <p>Try entering different numbers and operations. If you enter invalid input, the program will prompt you until a valid number is provided.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="cli-what-you-learned">
+                    <h3 id="cli-what-you-learned">What you learned</h3>
+                    <p>This simple CLI calculator introduced several fundamental Rust concepts:</p>
+                    <ul>
+                        <li>Handling user input using std::io::stdin().</li>
+                        <li>Using functions to keep the code modular and readable.</li>
+                        <li>Error handling with match expressions and loops for input validation.</li>
+                        <li>String parsing and working with numbers using .trim() and .parse().</li>
+                    </ul>
+                    <p>This is just the beginning! Don’t worry if you don’t understand everything now; this was meant to give you an idea of what Rust code looks like and to help you become familiar with the Rust syntax!</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="functions-section">
+                <h2 id="functions-section">Functions</h2>
+                <p>In this final section of the chapter, we’ll explore functions, a fundamental building block of Rust programs. Functions allow you to encapsulate and reuse logic throughout your code, making it more modular and easier to maintain. Defining and using functions is essential for writing effective Rust programs.</p>
+                <p>Functions in Rust are defined using the fn keyword, followed by the function name, parameters, and the function body. Let’s define a simple function to see how it works.</p>
+
+                <section tabindex="0" aria-labelledby="functions-example">
+                    <h3 id="functions-example">Functions example</h3>
+                    <p>In Rust, functions can be defined globally (outside main) or locally (inside another function). This example shows both approaches:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Global function (available everywhere)
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+fn main() {
+    // Local function (only available inside main)
+    fn greet(name: &str) {
+        println!("Hello, {}!", name);
+    }
+
+    // Call the local function
+    greet("Alice");
+    greet("Bob");
+
+    // Call the global function
+    let sum = add(1, 2);
+    println!("The sum is: {}", sum);
+}</code></pre>
+                    <p>In this example, we see both the function definition and the function invocation:</p>
+                    <ul>
+                        <li><strong>Function definition</strong>:
+                            <ul>
+                                <li>The greet function takes a single parameter name of the &amp;str type (a string slice), and prints a greeting message. This demonstrates how to define a function and use parameters.</li>
+                                <li>The add function takes two parameters (a and b) of the i32 type (32-bit integers) and returns their sum. This demonstrates how to define a function that returns a value.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Function invocation</strong>:
+                            <ul>
+                                <li>We call the greet function twice with different arguments ("Alice" and "Bob"), demonstrating how to pass arguments to functions.</li>
+                                <li>We call the add function with arguments of 5 and 7, store the result in the variable sum, and print it.</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p>These are just a few of the core syntax concepts in Rust. In this chapter, we’ve introduced the basics of Rust programming, including variables and mutability, data types, control flow, and functions. Each of these topics is crucial for building a solid foundation in Rust.</p>
+                    <p>As we progress through the book, we’ll explore more advanced topics and dive deeper into Rust’s syntax and features. Each chapter will provide detailed explanations, practical examples, questions, and assignments to help you master Rust programming. By the end of this book, you’ll have a comprehensive understanding of Rust and be well equipped to tackle complex programming challenges confidently.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch1">
+                <h2 id="summary-ch1">Summary</h2>
+                <p>In this opening chapter, we took our first steps into Rust programming. We explored why Rust has become such a hot topic among developers and how its unique features make it stand out in various fields, such as system programming and web development.</p>
+                <p>Getting practical, we talked about setting up your Rust development environment. We ensured that you’re all set to start writing code, from installing Rust to initializing your first project.</p>
+                <p>We also introduced you to Cargo, Rust’s trusty package manager and build system. We showed you how to use it for project management, handling dependencies, and publishing your work.</p>
+                <p>As we wrap up this chapter, you now understand Rust’s basics and practical tools. Armed with this knowledge, you can confidently start your Rust journey. So, let’s dive in and explore what Rust has to offer!</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-ch1">
+                <h2 id="questions-ch1">Questions</h2>
+                <p>Before we proceed to the next chapter, let’s take a moment to reflect on a few key questions. Note that the answers to the questions can be found in Appendix B (Online).</p>
+                <p>These questions reinforce the concepts discussed in this chapter and ensure a solid understanding as we move forward:</p>
+                <ol>
+                    <li>What key features of Rust make it stand out among other programming languages?</li>
+                    <li>How does Rust ensure memory safety and prevent common programming errors?</li>
+                    <li>What is Cargo, and what role does it play in Rust development?</li>
+                    <li>Can you provide examples of projects or domains where Rust is commonly used?</li>
+                    <li>Considering its unique features and syntax, how can beginners approach learning Rust effectively?</li>
+                </ol>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./preface.html">← Preface</a>
+            <a class="nav-next" href="./chapter-02.html">Chapter 2 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 4: The Rust Debugging Stack – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch4-heading">
+            <h1 id="ch4-heading">Chapter 4: The Rust Debugging Stack</h1>
+
+            <p>A normal Rust debugging session involves several tools.</p>
+            <p>Each tool has a specific job. Understanding what each one does, and where the boundaries are between them, is the difference between a debugging session that flows and one that fights you.</p>
+            <p>In this chapter, we will look at the stack from top to bottom: Cargo, rustc, rust-lldb, LLDB, and the debug information that connects them all. We will also look at the boundary between the Rust world and the machine world, which is where most debugging confusion originates.</p>
+
+            <section tabindex="0" aria-labelledby="cargo">
+                <h2 id="cargo">Cargo</h2>
+                <p>Cargo builds and runs the project.</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build
+cargo run
+cargo test</code></pre>
+                <p>For debugging, the important point is that Cargo knows how to build the correct Rust target.</p>
+                <p>Cargo does not just compile code. It orchestrates an entire build pipeline:</p>
+                <ul>
+                    <li>It reads <code>Cargo.toml</code> and resolves dependencies.</li>
+                    <li>It downloads and compiles external crates.</li>
+                    <li>It chooses a profile (<code>dev</code> or <code>release</code>) and applies the corresponding compiler flags.</li>
+                    <li>It invokes <code>rustc</code> with the correct edition, features, and target.</li>
+                    <li>It runs any <code>build.rs</code> build scripts that the project or its dependencies define.</li>
+                    <li>It links the final binary or library.</li>
+                    <li>It places the output in a predictable location such as <code>target/debug/</code> or <code>target/release/</code>.</li>
+                </ul>
+                <p>When you launch LLDB, you are launching it on the artifact that Cargo produced. If Cargo is configured incorrectly, or if you are debugging a stale artifact, no amount of LLDB skill will produce useful results. This is why the first step of any debugging session is to confirm that Cargo has produced a fresh, correct binary.</p>
+                <p>A quick sanity check:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build
+ls -lt target/debug/ | head</code></pre>
+                <p>If the binary is older than your most recent source change, rebuild before debugging.</p>
+                <p><strong>Rust 2024 edition</strong>: When a project uses <code>edition = "2024"</code>, Cargo will pass <code>--edition 2024</code> to <code>rustc</code> automatically. If you inspect a build with <code>cargo build -v</code>, you will see the actual compiler invocation, including the edition flag. This is useful when you want to confirm exactly what toolchain is being used.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rustc">
+                <h2 id="rustc">rustc</h2>
+                <p><code>rustc</code> compiles Rust source code.</p>
+                <p>The <code>-g</code> option is equivalent to:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>-C debuginfo=2</code></pre>
+                <p>and enables debug information.</p>
+                <p>Cargo's normal debug profile provides debug information suitable for ordinary debugging.</p>
+                <p>The compiler is responsible for several things that affect debugging:</p>
+                <ul>
+                    <li><strong>Name mangling</strong>: The compiler encodes source-level names into linker symbols. When LLDB displays a symbol, it is showing you the mangled form, unless a Rust-aware demangler is active.</li>
+                    <li><strong>Monomorphization</strong>: The compiler generates a separate instance of each generic function for each concrete type used. This means one source-level generic function can become many binary symbols.</li>
+                    <li><strong>MIR and LLVM IR lowering</strong>: Between your Rust source and the final machine code, the compiler produces intermediate representations. Debug information is generated along the way, but the correspondence between a given machine instruction and a source line is not always one-to-one.</li>
+                    <li><strong>Optimization</strong>: When optimizations are enabled, the compiler may rearrange, eliminate, or merge code. Debug information is adjusted to reflect the optimized code, but the adjustment is not perfect.</li>
+                    <li><strong>Panic strategy</strong>: The compiler chooses whether panics unwind or abort. This choice affects what LLDB sees when a program panics.</li>
+                </ul>
+                <p>You will rarely invoke <code>rustc</code> directly for debugging. Cargo passes the right flags for you. But knowing that <code>rustc</code> is doing this work helps you interpret the debugger's output.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-lldb">
+                <h2 id="rust-lldb">rust-lldb</h2>
+                <p>Rust distributions provide:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb</code></pre>
+                <p>This launches LLDB with Rust-oriented debugger support. Rust has provided <code>rust-gdb</code> and <code>rust-lldb</code> specifically for this purpose.</p>
+                <p>For Rust work, prefer:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb</code></pre>
+                <p>over manually launching:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>lldb</code></pre>
+                <p>when the Rust wrapper is available.</p>
+                <p>What does <code>rust-lldb</code> actually do?</p>
+                <ul>
+                    <li>It finds the LLDB binary that ships with your Rust toolchain, or the system LLDB if the toolchain version is configured that way.</li>
+                    <li>It sets up the Rust-specific pretty-printers, which format complex Rust values in a readable way.</li>
+                    <li>It sets some environment variables that help LLDB find Rust source files, standard-library sources, and symbol demanglers.</li>
+                    <li>It may load additional configuration from the Rust installation, such as a <code>.lldbinit</code> file tailored to Rust.</li>
+                </ul>
+                <p>The effect of this is that when you type:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable greeting</code></pre>
+                <p>you see something like:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(std::string) greeting = "Hello, LLDB!"</code></pre>
+                <p>rather than a pile of pointers, lengths, and capacities. Both representations are technically the same value, but one is far more readable than the other.</p>
+                <p>If you launch plain <code>lldb</code> and see raw memory layouts, the most common cause is that the pretty-printers were not loaded. Launching via <code>rust-lldb</code> fixes this.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="lldb">
+                <h2 id="lldb">LLDB</h2>
+                <p>LLDB controls the running program.</p>
+                <p>It can:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>start the program
+stop execution
+set breakpoints
+step through instructions
+inspect variables
+inspect stack frames
+inspect threads
+evaluate expressions
+watch memory changes
+continue execution
+inspect crashes</code></pre>
+                <p>The Rust compiler produces the program.</p>
+                <p>LLDB investigates the program.</p>
+                <p>LLDB is a general-purpose debugger. It was not built specifically for Rust. It supports C, C++, Objective-C, Swift, and many other languages through a combination of language plug-ins, expression evaluators, and pretty-printers. The Rust integration in LLDB is provided by:</p>
+                <ul>
+                    <li>An <em>LLDB language plug-in</em> for Rust that understands how to parse certain Rust symbols and values.</li>
+                    <li>A demangler that can translate mangled Rust symbols back to readable names.</li>
+                    <li>Pretty-printers that format common Rust types such as <code>String</code>, <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, and <code>Result&lt;T, E&gt;</code>.</li>
+                    <li>Integration with debug information generated by <code>rustc</code>.</li>
+                </ul>
+                <p>Because this integration is layered on top of a general-purpose debugger, there are places where the Rust view is imperfect. When LLDB cannot understand something, it falls back to raw machine-level inspection. This is normal, and it is not a sign that anything has gone wrong.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-rust-lldb-boundary">
+                <h2 id="the-rust-lldb-boundary">The Rust/LLDB boundary</h2>
+                <p>Think of the debugging stack as two worlds:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>Rust world
+    source code
+    types
+    ownership
+    modules
+    async tasks
+
+Machine world
+    registers
+    memory
+    instructions
+    threads
+    addresses</code></pre>
+                <p>Debug information is the map between them.</p>
+                <p>LLDB lives in the machine world. It reads debug information to translate:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>address → source line
+symbol → function name
+stack slot → variable
+type ID → Rust type</code></pre>
+                <p>When that translation works, debugging feels source-level.</p>
+                <p>When it breaks, you see the machine world:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>?? 
+no variable available
+optimized out
+unknown type
+mangled symbol</code></pre>
+                <p>That does not mean the debugger is useless. It means the map is incomplete for that point in the program.</p>
+                <p><code>rust-lldb</code> is a wrapper that launches LLDB with Rust-oriented support. Prefer it over plain <code>lldb</code> when debugging Rust, because it can load Rust-specific pretty-printers and settings.</p>
+
+                <section tabindex="0" aria-labelledby="examples-of-the-boundary-in-action">
+                    <h3 id="examples-of-the-boundary-in-action">Examples of the boundary in action</h3>
+                    <p>Several concrete situations illustrate what happens when the translation is imperfect:</p>
+                    <ul>
+                        <li><strong>A variable shows <code>&lt;optimized out&gt;</code></strong>: The compiler decided not to keep the variable around at this point. Debug information says the variable existed, but no storage is currently associated with it. LLDB is doing its best, but there is nothing to read.</li>
+                        <li><strong>A frame shows <code>??</code> as its function name</strong>: The debug information for this frame is missing or does not correspond to the current address. This often happens in library code compiled without debug information, or in dynamically generated code.</li>
+                        <li><strong>A Rust type shows as an opaque blob</strong>: The pretty-printer for this type is not loaded, or the type is generic in a way the pretty-printer does not support. LLDB falls back to showing the raw memory layout.</li>
+                        <li><strong>A symbol shows as a mangled string</strong>: The Rust demangler did not process this symbol. This can happen for symbols that come from older Rust versions, from a mixed-language binary, or from code compiled with <code>#[unsafe(no_mangle)]</code> that overrides the mangled name.</li>
+                    </ul>
+                    <p>In all of these cases, the right response is not to assume the debugger is broken. The right response is to recognize that the translation between worlds has partially failed, and to fall back to a coarser form of observation: inspecting the address, the symbol table, or the raw memory.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-stack-in-other-languages">
+                <h2 id="the-stack-in-other-languages">How this stack compares to other languages</h2>
+                <p>If you have debugged C, C++, or Go with a debugger, you may wonder how the Rust stack differs. The differences are mostly about the information available at the boundary.</p>
+                <ul>
+                    <li><strong>C and C++</strong>: Debug information for C and C++ is well understood and has been for decades. Name mangling exists in C++ as well, but LLDB has extensive support for demangling. The main complication is that C and C++ do not enforce memory safety, so bugs often manifest as memory corruption, which the debugger can see but not always explain.</li>
+                    <li><strong>Go</strong>: Go's runtime is highly dynamic, with its own scheduler, garbage collector, and goroutine model. Debugging Go is different because much of the interesting state lives inside the Go runtime, not in the application frames. Rust has no garbage collector and no built-in scheduler, so the runtime is generally thinner.</li>
+                    <li><strong>Rust</strong>: The distinctive features of Rust debugging are monomorphization (leading to many instantiations of generic functions), the async state machine (leading to runtime frames between application frames), and the strict separation between static ownership and dynamic runtime state.</li>
+                </ul>
+                <p>None of these are obstacles. They are simply the shape of the territory. Once you know what to expect, you can plan your debugging strategy accordingly.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="when-each-tool-matters">
+                <h2 id="when-each-tool-matters">When each tool matters</h2>
+                <p>Each tool in the stack is best suited to particular kinds of questions:</p>
+                <ul>
+                    <li><strong>Cargo</strong> answers: Which target am I building? Which profile? Which dependencies? Where is the artifact?</li>
+                    <li><strong>rustc</strong> answers: Is the source well-typed? Does it satisfy ownership rules? What will the mangled symbol look like? Will this panic unwind or abort?</li>
+                    <li><strong>rust-lldb</strong> answers: What does the Rust-aware view of this program look like inside the debugger?</li>
+                    <li><strong>LLDB</strong> answers: What is the runtime state right now? What is on the stack? Which thread is executing? What does this memory address contain?</li>
+                </ul>
+                <p>Understanding which tool to reach for is a large part of becoming effective at debugging Rust. Many frustrating debugging sessions come from using the wrong tool for the question: reaching for LLDB when the compiler had already given the answer, or asking Cargo a question that only LLDB could resolve.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="a-worked-example-of-the-full-stack">
+                <h2 id="a-worked-example-of-the-full-stack">A worked example of the full stack</h2>
+                <p>To see how the tools fit together, consider a small project with a single binary and a single library.</p>
+                <p><code>Cargo.toml</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>[package]
+name = "debug_stack_demo"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "debug_stack_demo"
+path = "src/lib.rs"
+
+[[bin]]
+name = "debug_stack_demo"
+path = "src/main.rs"</code></pre>
+                <p><code>src/lib.rs</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}</code></pre>
+                <p><code>src/main.rs</code>:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>use debug_stack_demo::add;
+
+fn main() {
+    let x = 10;
+    let y = 20;
+    let result = add(x, y);
+
+    println!("{result}");
+}</code></pre>
+                <p>Build with Cargo:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                <p>Now examine the artifact. Cargo has produced a binary at <code>target/debug/debug_stack_demo</code>. The library code was compiled into the same binary, but the symbol for <code>add</code> exists in the binary’s symbol table.</p>
+                <p>Ask <code>rustc</code> a static question by introducing a temporary type error and observing the compiler output. Undo the change. The compiler answered a static question.</p>
+                <p>Ask Cargo a packaging question by running:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo metadata --format-version 1 | head</code></pre>
+                <p>The output describes the workspace. Cargo answered a packaging question.</p>
+                <p>Now launch the debugger with the wrapper:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/debug_stack_demo</code></pre>
+                <p>At the <code>(lldb)</code> prompt:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name add
+(lldb) run</code></pre>
+                <p>Execution stops at the entry of <code>add</code>. Inspect the arguments:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable a b</code></pre>
+                <p>You see the values 10 and 20, formatted by the Rust pretty-printers. Now inspect the backtrace:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                <p>You see the call chain from <code>main</code> to <code>add</code>. If the mangled name were displayed instead of <code>add</code>, the demangler would not be working. Since it displays correctly, the Rust integration is functioning.</p>
+                <p>Continue:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) continue</code></pre>
+                <p>Now ask LLDB a dynamic question that the compiler could not answer: which line of the source produced the current machine instruction? LLDB answers by combining the current program counter with debug information.</p>
+                <p>Quit:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) quit</code></pre>
+                <p>The point of this example is not to teach the individual commands. It is to show that each tool has a role. Cargo produced the artifact. The compiler answered static questions. LLDB answered dynamic questions. rust-lldb made the LLDB output readable to a Rust programmer.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch4">
+                <h2 id="summary-ch4">Summary</h2>
+                <p>The Rust debugging stack has four layers:</p>
+                <ul>
+                    <li><strong>Cargo</strong> builds the artifact, resolving dependencies, choosing profiles, and running build scripts.</li>
+                    <li><strong>rustc</strong> compiles the source, performs monomorphization, generates debug information, and selects a panic strategy.</li>
+                    <li><strong>rust-lldb</strong> launches LLDB with Rust-aware configuration, loading pretty-printers and demanglers.</li>
+                    <li><strong>LLDB</strong> controls the running program, sets breakpoints, inspects memory, and reports runtime state.</li>
+                </ul>
+                <p>The boundary between the Rust world (source, types, ownership) and the machine world (registers, memory, threads) is bridged by debug information. When that bridge is complete, debugging feels source-level. When the bridge is incomplete—because of optimization, missing debug information, or unsupported language features—LLDB falls back to the machine world, and you see raw addresses, mangled symbols, or opaque memory layouts.</p>
+                <p>Understanding this stack is the foundation for everything that follows. In the next chapter, we will take a first debugging session and put the pieces together into a concrete workflow.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-03.html">← Chapter 3</a>
+            <a class="nav-next" href="./chapter-05.html">Chapter 5 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

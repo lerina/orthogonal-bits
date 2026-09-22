@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 3: Functions in Rust – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch3-heading">
+            <h1 id="ch3-heading">Chapter 3: Functions in Rust</h1>
+
+            <p>Welcome to <em>Chapter 3</em>! Now that we’ve covered Rust’s basic data types, let’s explore how to make them <em>do</em> things. In this chapter, we’ll focus on <strong>functions</strong>, the primary way to organize code and behavior in Rust. Think of them as the named recipes of your program: they bundle up logic into reusable blocks that you can call whenever you need them, which is fundamental to writing clean and maintainable software. By breaking down a complex problem into smaller, named pieces, your code becomes much easier to read, debug, and update.</p>
+            <p>While the basic idea of a function might be familiar if you’ve worked with other languages, its behavior in Rust is deeply connected to its most unique feature: the ownership system. A very important part of this chapter will be understanding how data is passed to and returned from functions. We will look at the difference between moving ownership, making a copy of data, and borrowing data with references. Getting a good handle on this is a huge step in your journey to becoming a proficient Rust programmer.</p>
+            <p>We’ll start with the basic anatomy of a function, including its syntax and how it returns values. Then we’ll spend a good amount of time on how functions interact with ownership. Finally, we’ll get a quick preview of more advanced concepts, such as closures, to set the stage for later chapters.</p>
+            <p>Let’s get started!</p>
+
+            <section tabindex="0" aria-labelledby="importance-of-functions">
+                <h2 id="importance-of-functions">Importance of understanding functions</h2>
+                <p>Understanding why functions are so important is key to appreciating how to structure good software.</p>
+                <p>By breaking down a large, complex problem into smaller, named, and more manageable pieces, your code immediately becomes easier to read and understand. For example, when you suspect a bug, it’s much simpler to debug a small function with a clear purpose than to hunt through hundreds of lines of tangled logic. Functions also allow you to write a piece of code once and reuse it in many different places, which reduces repetition and makes your programs easier to update.</p>
+                <p>This practice of encapsulating logic into well-defined units is fundamental to writing clean and maintainable code in any language, and Rust is no exception.</p>
+                <p>With that in mind, let’s look at how you actually define and call a function in Rust.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="defining-and-calling-functions">
+                <h2 id="defining-and-calling-functions">Defining and calling functions</h2>
+                <p>Functions are fundamental to programming in Rust, allowing you to encapsulate logic, promote code reuse, and create modular programs.</p>
+                <p>Before we dive into the syntax, it’s worth mentioning a community convention: function and variable names in Rust are written in <strong>snake_case</strong>, where all letters are lowercase and words are separated by underscores (e.g., calculate_area). While the compiler doesn’t enforce this, following this convention is strongly recommended as it makes your code more readable and idiomatic, especially when working with others.</p>
+                <p>With that in mind, this section will cover the basics of defining and calling functions, including their syntax, how they handle parameters, and how they return values.</p>
+
+                <section tabindex="0" aria-labelledby="basic-function-syntax">
+                    <h3 id="basic-function-syntax">Basic function syntax</h3>
+                    <p>A function in Rust is defined using the fn keyword, followed by the function name, a list of parameters enclosed in parentheses, and the function body enclosed in curly braces. Here’s a simple example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let width = 10;
+    let height = 5;
+    let area = calculate_area(width, height);
+    println!("The area of the rectangle is: {}", area);
+}
+
+fn calculate_area(width: i32, height: i32) -> i32 {
+    width * height
+}</code></pre>
+                    <p>In this example, note the following:</p>
+                    <ul>
+                        <li>The main function is the entry point of the program. It calls the calculate_area function, passing width and height as arguments.</li>
+                        <li>The calculate_area function takes two parameters of type i32 and returns an i32. The return type is specified after the -&gt; symbol.</li>
+                        <li>The function body contains the logic to calculate the area and returns the result.</li>
+                    </ul>
+                    <p><strong>Tip: How to run this example</strong><br>
+                    Want to try this code on your own machine? It’s easy with Cargo!</p>
+                    <ol>
+                        <li><strong>Create a new project</strong>: Open your terminal and run cargo new functions_example --bin. This command creates a new directory called functions_example with all the necessary files for a Rust program.</li>
+                        <li><strong>Navigate into the project</strong>: Run cd functions_example.</li>
+                        <li><strong>Add the code</strong>: Open the src/main.rs file and replace its contents with the code from the preceding example.</li>
+                        <li><strong>Run it!</strong> In your terminal, just run cargo run. Cargo will compile your code and then execute it, and you should see the output printed directly to your console.</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="parameters-and-return-values">
+                    <h3 id="parameters-and-return-values">Parameters and return values</h3>
+                    <p>In Rust, you must declare the type of each function parameter.</p>
+                    <p>A function can also return a value, and if it does, you must declare the return type after an arrow, -&gt;.</p>
+                    <p>Let’s look at a function that takes two parameters and returns a string:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn greet(name: &amp;str, age: u32) -> String {
+    format!("Hello, {}! You are {} years old.", name, age)
+}
+
+fn main() {
+    let message = greet("Alice", 30);
+    println!("{}", message);
+}</code></pre>
+                    <p>Here is an explanation of the greet function:</p>
+                    <ul>
+                        <li>It takes two parameters: name (a string slice, &amp;str) and age (a 32-bit unsigned integer, u32).</li>
+                        <li>It declares a return type of String after the -&gt; character.</li>
+                        <li>The format! macro builds a new string and, because it’s the last expression in the function, it’s automatically returned.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="functions-no-return">
+                    <h3 id="functions-no-return">Functions that don’t return a value</h3>
+                    <p>What about functions that just perform an action and don’t return a meaningful value, such as println!? In Rust, a function that doesn’t explicitly return a value is said to return the <strong>unit type</strong>, which is written as (). The unit type is an empty tuple and represents the absence of a value.</p>
+                    <p>When you write a function without a -&gt; return type, the compiler implicitly understands that it returns (). For clarity, especially when learning, you can also write this explicitly. Both of the following functions are identical in behavior.</p>
+                    <p>Let’s see an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function implicitly returns the unit type ().
+fn log_message_implicit(message: &amp;str) {
+    println!("[LOG] {}", message);
+    // No return value, so () is returned implicitly.
+}
+
+// This function explicitly returns the unit type ().
+// It is functionally identical to the one above.
+fn log_message_explicit(message: &amp;str) -> () {
+    println!("[LOG] {}", message);
+    // We could write `return ();` here, but it's not necessary.
+}
+
+fn main() {
+    log_message_implicit("System online.");
+    log_message_explicit("User logged in.");
+    // You can see the unit type in action if you assign the result to a variable.
+    let result = log_message_implicit("Task finished.");
+    // The type of `result` is `()`.
+    // Printing it with debug formatting will show "()".
+    println!("The result of a function returning the unit type is: {:?}", result);
+}</code></pre>
+                    <ul>
+                        <li>log_message_implicit has no -&gt; arrow, so its return type defaults to ().</li>
+                        <li>log_message_explicit explicitly states -&gt; (), which does the exact same thing.</li>
+                        <li>As shown in main, the “return value” of such a function is (), the unit type. This is Rust’s way of being explicit about functions that perform actions but don’t return data.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="functions-no-params-no-return">
+                    <h3 id="functions-no-params-no-return">Functions with no parameters and no return values</h3>
+                    <p>Functions can also be defined without parameters and without return values. These functions perform actions but do not produce a value to return to the caller:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    print_greeting();
+}
+
+fn print_greeting() {
+    println!("Hello, world!");
+}</code></pre>
+                    <p>In this example, the print_greeting function takes no parameters and returns no value. It simply prints a greeting message to the console.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="function-syntax-best-practices">
+                <h2 id="function-syntax-best-practices">Function syntax and best practices</h2>
+                <p>Now that we’ve covered the basic syntax for defining functions, let’s discuss some common practices and conventions that will help you write clear, maintainable, and idiomatic Rust code. Adhering to these practices makes your code easier for others (and your future self!) to read and understand:</p>
+                <ul>
+                    <li><strong>Use descriptive names in snake_case</strong>: As a strong convention in the Rust community, function and variable names are written in snake_case, where all letters are lowercase and words are separated by underscores. Choose names that clearly describe the function’s purpose. For example, calculate_area is much clearer than calc_ar or area. Similarly, parameter names should be descriptive, such as width: u32 instead of just w: u32.</li>
+                    <li><strong>Keep functions small and focused</strong>: A function should ideally do one thing and do it well. If you find a function is becoming very long or is handling multiple distinct tasks, it’s often a good idea to break it down into smaller, more focused helper functions. This makes your code more modular, easier to test, and easier to reason about.</li>
+                    <li><strong>Prefer pure functions when possible</strong>: A “pure” function is one whose output depends only on its inputs, and that has no observable side effects (such as printing to the console, modifying a global variable, or writing to a file). While not all functions can be pure, favoring them where possible makes your code more predictable and easier to test, as you don’t have to worry about hidden state changes.</li>
+                    <li><strong>Document functions with doc comments</strong>: Rust has excellent built-in support for documentation. You should document your public functions using <strong>documentation comments</strong>, which start with ///. These comments support Markdown and have special sections for describing parameters, return values, and even panics. This documentation can be automatically converted into beautifully rendered HTML documentation by running cargo doc.</li>
+                </ul>
+                <p>Here is an example of a well-documented function that follows these practices:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>/// Calculates the area of a rectangle.
+///
+/// This function takes the width and height of a rectangle and returns its area.
+/// It demonstrates good naming conventions and clear documentation.
+///
+/// # Parameters
+///
+/// * `width`: A `u32` representing the width of the rectangle. Must be positive.
+/// * `height`: A `u32` representing the height of the rectangle. Must be positive.
+///
+/// # Returns
+///
+/// A `u32` representing the calculated area of the rectangle.
+///
+/// # Panics
+///
+/// This function will panic if either `width` or `height` is zero, as a rectangle
+/// with a zero dimension is considered invalid in this context.
+pub fn calculate_rectangle_area(width: u32, height: u32) -> u32 {
+    if width == 0 || height == 0 {
+        panic!("Both width and height must be non-zero.");
+    }
+    width * height
+}
+
+fn main() {
+    let area = calculate_rectangle_area(10, 20);
+    println!("The calculated area is: {}", area);
+}</code></pre>
+                <p>In the preceding example, the doc comments clearly explain the function’s purpose, its parameters (under # Parameters), what it returns (# Returns), and under what conditions it will panic (# Panics). This level of documentation, combined with descriptive naming and a focused purpose, makes the function robust and easy to use correctly.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="function-ownership-and-borrowing">
+                <h2 id="function-ownership-and-borrowing">Function ownership and borrowing</h2>
+                <p>In Rust, the concepts of ownership and borrowing are integral to understanding how data is passed to and returned from functions. These concepts ensure memory safety without a garbage collector, making Rust both efficient and reliable. This section will explain how ownership and borrowing apply to function parameters and return values.</p>
+                <p><strong>Important</strong>: Ownership and Borrowing will be covered in detail in the next <a href="./chapter-04.html"><em>Chapter 4</em></a>, so don’t worry if you don’t understand everything below. After reading <a href="./chapter-04.html"><em>Chapter 4</em></a>, feel free to come back here and learn more about ownership specifically related to functions!</p>
+
+                <section tabindex="0" aria-labelledby="ownership-in-functions">
+                    <h3 id="ownership-in-functions">Ownership in functions</h3>
+                    <p>When you pass a parameter to a function, Rust’s ownership model determines whether the function takes ownership of the parameter or borrows it. By default, parameters passed by value transfer ownership to the function:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let s = String::from("hello");
+    takes_ownership(s);
+    // println!("{}", s); // This line would cause a compile-time error because s is no longer valid
+}
+
+fn takes_ownership(some_string: String) {
+    println!("{}", some_string);
+}</code></pre>
+                    <p>In this example, note the following:</p>
+                    <ul>
+                        <li>The takes_ownership function takes ownership of the some_string parameter.</li>
+                        <li>After the function call, s is no longer valid in the main function, and attempting to use it results in a compile-time error.</li>
+                    </ul>
+                    <p>When a function takes ownership of a value, it is responsible for cleaning up the value when it goes out of scope. This transfer of ownership helps prevent memory leaks and other common issues in systems programming.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="borrowing-in-functions">
+                    <h3 id="borrowing-in-functions">Borrowing in functions</h3>
+                    <p>To allow a function to use a value without taking ownership, you can pass a reference to the value. This is known as borrowing. Borrowing allows multiple parts of your code to access a value without transferring ownership.</p>
+
+                    <section tabindex="0" aria-labelledby="immutable-borrowing">
+                        <h4 id="immutable-borrowing">Immutable borrowing</h4>
+                        <p>When you pass an immutable reference to a function, the function can read the value but cannot modify it. Immutable references are created using the &amp; symbol:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let s = String::from("hello");
+    takes_reference(&amp;s);
+    println!("{}", s); // s is still valid here
+}
+
+fn takes_reference(some_string: &amp;String) {
+    println!("{}", some_string);
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>The takes_reference function borrows the some_string parameter by taking an immutable reference to it.</li>
+                            <li>The original s variable remains valid in the main function after the function call.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="mutable-borrowing">
+                        <h4 id="mutable-borrowing">Mutable borrowing</h4>
+                        <p>When you pass a mutable reference to a function, the function can modify the value. Mutable references are created using the &amp;mut symbol:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut s = String::from("hello");
+    takes_mutable_reference(&amp;mut s);
+    println!("{}", s); // s has been modified
+}
+
+fn takes_mutable_reference(some_string: &amp;mut String) {
+    some_string.push_str(", world");
+}</code></pre>
+                        <p>In this example, note the following:</p>
+                        <ul>
+                            <li>The takes_mutable_reference function borrows the some_string parameter by taking a mutable reference to it.</li>
+                            <li>The original s variable can still be used in the main function and reflects the modifications made by the function.</li>
+                        </ul>
+                        <p><strong>Rust enforces a strict rule to prevent data races: you can only have <em>one mutable reference</em> to a particular piece of data in a particular scope at any given time. You also cannot have any immutable references if a mutable reference exists. The compiler will stop you if you try to break this rule. This is one of Rust’s most important safety guarantees.</strong></p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="returning-values-and-ownership">
+                    <h3 id="returning-values-and-ownership">Returning values and ownership</h3>
+                    <p>Functions can also return values, and the ownership of these values follows the same rules. If a function returns a value, the caller takes ownership of that value:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let s1 = gives_ownership();
+    let s2 = String::from("hello");
+    let s3 = takes_and_gives_back(s2);
+    println!("s1: {}", s1);
+    // println!("s2: {}", s2); // This line would cause a compile-time error because s2 has moved
+    println!("s3: {}", s3);
+}
+
+fn gives_ownership() -> String {
+    let some_string = String::from("hello");
+    some_string
+}
+
+fn takes_and_gives_back(a_string: String) -> String {
+    a_string
+}</code></pre>
+                    <p>In this example, note the following:</p>
+                    <ul>
+                        <li>The gives_ownership function returns a string, and the caller (main) takes ownership of it.</li>
+                        <li>The takes_and_gives_back function takes ownership of its parameter and then returns it, transferring ownership back to the caller.</li>
+                    </ul>
+                    <p>Understanding ownership and borrowing in the context of functions is crucial for writing safe and efficient Rust code. These concepts prevent common programming errors, such as null pointer dereferences and data races, ensuring your programs are both reliable and performant.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="advanced-function-features">
+                <h2 id="advanced-function-features">Advanced function features</h2>
+                <p>Rust offers several advanced features that enhance function flexibility and expressiveness. These include closures, higher-order functions, and anonymous functions. These features allow you to write more concise and powerful code, capturing the surrounding environment, passing functions as arguments, and returning functions from other functions.</p>
+
+                <section tabindex="0" aria-labelledby="closures">
+                    <h3 id="closures">Closures</h3>
+                    <p>In Rust, a <strong>closure</strong> is an anonymous function that you can define inline, store in a variable, pass as an argument, or return from another function. If you have experience with “lambda expressions” or “lambdas” from languages such as Python, Java, or C++, or “arrow functions” in JavaScript, you’ll find that Rust’s closures serve a very similar purpose. They are incredibly useful for short, one-off operations, especially when working with higher-order functions such as iterator methods.</p>
+                    <p>The key feature that makes closures powerful is their ability to <strong>capture</strong> variables from their surrounding scope or “environment.” While lambdas in other languages also do this, in Rust, this process is governed by the same strict ownership and borrowing rules that apply everywhere else, giving you compile-time safety for this powerful functional feature.</p>
+                    <p>The basic syntax uses vertical bars, | |, for parameters, followed by the closure body. Type annotations are often optional, as the compiler is excellent at inferring them from the context.</p>
+                    <p>Here is an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // The compiler infers that `x` is an i32 and the return type is i32.
+    let add_one = |x| x + 1;
+    println!("5 + 1 = {}", add_one(5));
+
+    // You can also add explicit type annotations for clarity.
+    let multiply = |a: i32, b: i32| -> i32 {
+        a * b
+    };
+    println!("3 * 4 = {}", multiply(3, 4));
+}</code></pre>
+
+                    <section tabindex="0" aria-labelledby="capturing-environment">
+                        <h4 id="capturing-environment">Capturing the environment</h4>
+                        <p>This is where closures truly shine. They can “capture” variables from the scope in which they are defined. The compiler automatically determines how to capture each variable based on how it’s used inside the closure. There are three ways a closure can capture a variable:</p>
+                        <ul>
+                            <li><strong>By immutable reference (&amp;T)</strong>: If the closure only reads the variable.</li>
+                            <li><strong>By mutable reference (&amp;mut T)</strong>: If the closure modifies the variable.</li>
+                            <li><strong>By taking ownership (T)</strong>: If the closure consumes the variable.</li>
+                        </ul>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let my_name = String::from("Alice");
+    let mut counter = 0;
+    let data = vec![1, 2, 3];
+
+    // 1. Captures `my_name` by immutable reference (&amp;String) because it only reads it.
+    let greet = || println!("Hello, {}!", my_name);
+    greet();
+    // `my_name` is still valid here.
+    println!("`my_name` can still be used: {}", my_name);
+
+    // 2. Captures `counter` by mutable reference (&amp;mut i32) because it modifies it.
+    let mut increment = || {
+        counter += 1;
+        println!("Counter is now: {}", counter);
+    };
+    increment();
+    increment();
+    // `counter` has been modified.
+    println!("Final counter value: {}", counter);
+
+    // 3. Captures `data` by taking ownership (Vec&lt;i32&gt;) because of the `move` keyword.
+    // We'll discuss `move` next.
+    let consume_data = move || {
+        println!("Consumed data: {:?}", data);
+        // `data` is dropped when this closure ends.
+    };
+    consume_data();
+    // The line below would cause a compile error because `data` was moved.
+    // println!("Can we use data after move? No: {:?}", data);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="move-keyword">
+                        <h4 id="move-keyword">The move keyword</h4>
+                        <p>Sometimes, you need to explicitly force a closure to take ownership of the variables it captures, even if it could just borrow them. You do this with the move keyword. This is most often necessary when a closure will outlive the scope of the captured variable, a common scenario when spawning new threads.</p>
+                        <p>The move keyword ensures the closure has its own copy of the data and won’t be left with a dangling reference:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::thread;
+
+fn main() {
+    let message = String::from("Data for the new thread");
+    // `thread::spawn` requires a closure that can live for the entire program ('static).
+    // If we didn't use `move`, the closure would try to borrow `message`, but the compiler
+    // can't prove that `message` will live as long as the new thread.
+    let handle = thread::spawn(move || {
+        // The `move` keyword forces the closure to take ownership of `message`.
+        println!("Thread received: {}", message);
+    });
+    // `message` is no longer valid in the main thread.
+    handle.join().unwrap();
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="closure-traits">
+                        <h4 id="closure-traits">The closure traits: Fn, FnMut, and FnOnce</h4>
+                        <p>The way a closure captures its environment determines which of three special traits it implements: FnOnce, FnMut, or Fn. These traits specify <em>how</em> the closure can be called. When you write a higher-order function that accepts a closure, you use these traits as bounds to specify what kind of closure you need:</p>
+                        <ul>
+                            <li><strong>FnOnce</strong>: This trait is for closures that can be called <em>at least once</em>. All closures implement FnOnce. A closure that consumes the variables it captures (by taking ownership) can <em>only</em> be called once, so it will only implement FnOnce. The name signifies that the closure consumes itself when called.</li>
+                            <li><strong>FnMut</strong>: This trait is for closures that might mutate the variables they capture. These closures can be called multiple times. Any closure that implements Fn also implements FnMut, and any closure that implements FnMut also implements FnOnce.</li>
+                            <li><strong>Fn</strong>: This trait is for closures that only immutably borrow values from their environment (or don’t capture anything). These closures can also be called multiple times without changing their environment.</li>
+                        </ul>
+                        <p>The compiler will always infer the most permissive trait that a closure can implement. For example, a closure that only reads a variable will implement all three traits (Fn, FnMut, and FnOnce), allowing it to be used in the widest range of situations.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="closures-higher-order-functions">
+                        <h4 id="closures-higher-order-functions">Closures in action: Higher-order functions and iterators</h4>
+                        <p>Closures are most powerful when used with <strong>higher-order functions</strong>, functions that take other functions (or closures) as arguments. The most common place you’ll see this in Rust is with <strong>iterators</strong>. Iterator methods such as map, filter, and fold are higher-order functions that take closures to define their behavior.</p>
+                        <p>This pattern is very similar to chaining methods such as .map() and .filter() on arrays in JavaScript:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let numbers = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    // Let's find the sum of the squares of all even numbers greater than 3.
+    let result: i32 = numbers
+        .iter() // Create an iterator that yields references (&amp;i32)
+        // Use a closure with `filter` to keep only even numbers greater than 3.
+        // `n` here is `&amp;&amp;i32`, so we need to dereference it twice.
+        .filter(|&amp;&amp;n| n > 3 &amp;&amp; n % 2 == 0)
+        // Use a closure with `map` to square each remaining number.
+        // `n` here is `&amp;i32`, so we dereference it once.
+        .map(|&amp;n| n * n)
+        // Use `sum()` to consume the iterator and add up the results.
+        .sum();
+
+    // The chain of operations would be:
+    // Original: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    // After filter: [4, 6, 8, 10]
+    // After map: [16, 36, 64, 100]
+    // After sum: 216
+    println!("The sum of the squares of even numbers greater than 3 is: {}", result);
+}</code></pre>
+                        <ul>
+                            <li><strong>filter(|&amp;&amp;n| n > 3 &amp;&amp; n % 2 == 0)</strong>: The filter method takes a closure that must return true or false. We pass it |&amp;&amp;n| n > 3 &amp;&amp; n % 2 == 0, an anonymous function that checks our condition.</li>
+                            <li><strong>map(|&amp;n| n * n)</strong>: The map method takes a closure that transforms each element. We pass it |&amp;n| n * n to square each number.</li>
+                            <li><strong>Concise and expressive</strong>: This “iterator chain” style, powered by closures, allows you to express complex data transformations in a very clear, readable, and efficient way, without needing to write manual loops and if statements. This is a cornerstone of idiomatic, functional-style Rust.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="anonymous-functions-iterator-methods">
+                        <h4 id="anonymous-functions-iterator-methods">Anonymous functions and iterator methods</h4>
+                        <p>Rust supports <strong>anonymous functions</strong>, which are functions defined inline without a specific name. If you’ve worked with other languages, you’ll recognize these as <strong>lambda expressions</strong> or, in JavaScript, often as <strong>arrow functions</strong>. They are most powerfully used with higher-order functions, especially the methods found on Rust’s iterators.</p>
+                        <p>For developers coming from a JavaScript background, this pattern will feel very familiar. Just as you might chain methods such as .map(), .filter(), and .reduce() on an array in JavaScript, you can do the same with iterators in Rust. Let’s look at a few common methods that take closures (our anonymous functions) as arguments:</p>
+                        <ul>
+                            <li><strong>map</strong>: Transforms each element.</li>
+                            <li><strong>filter</strong>: Keeps elements based on a condition.</li>
+                            <li><strong>fold</strong>: Accumulates a single value from all elements (similar to reduce in JavaScript).</li>
+                            <li><strong>for_each</strong>: Executes an action for each element.</li>
+                        </ul>
+                        <p>Here’s an example showing map and fold in action:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let numbers = vec![1, 2, 3, 4, 5];
+    // Use an anonymous function `|x| x * 2` with the map method.
+    let doubled: Vec&lt;i32&gt; = numbers.iter().map(|x| x * 2).collect();
+    println!("Doubled numbers: {:?}", doubled); // Output: [2, 4, 6, 8, 10]
+
+    // Use an anonymous function `|acc, &amp;x| acc + x` with the fold method to sum the values.
+    // The first argument to fold (0) is the initial value for the accumulator (`acc`).
+    let sum = numbers.iter().fold(0, |acc, &amp;x| acc + x);
+    println!("Sum of numbers: {}", sum); // Output: 15
+}</code></pre>
+                        <p>In this example, |x| x * 2 is an anonymous function passed to map to transform each element. Similarly, |acc, &amp;x| acc + x is passed to fold to define the accumulation logic. Using these inline, anonymous functions with iterator methods allows you to write data processing logic that is highly expressive, concise, and often more efficient than writing manual loops.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch3">
+                <h2 id="summary-ch3">Summary</h2>
+                <p>In this chapter, we’ve taken a deep dive into functions, the fundamental building blocks for organizing logic and behavior in any Rust program. We started with the basics of defining functions using the fn keyword, specifying typed parameters, and understanding how Rust’s expression-based nature allows for concise return values without an explicit return keyword. By mastering these essentials, you’ve learned how to break down complex problems into smaller, reusable, and more manageable pieces, which is a cornerstone of writing clean and maintainable code.</p>
+                <p>A central theme of this chapter was the critical interaction between functions and Rust’s ownership system. We explored the important distinction between passing simple types that are copied (such as i32) and passing owned types (such as String), which results in a move, transferring ownership into the function. We also saw how to use references (&amp;T and &amp;mut T) to allow functions to <em>borrow</em> data, either immutably for reading or mutably for modification, all without taking ownership. Grasping these concepts of moving, copying, and borrowing is one of the most significant steps in writing safe and efficient idiomatic Rust.</p>
+                <p>You are now well equipped with the knowledge to define and use functions effectively, managing data flow and ownership with confidence. These skills are essential, as nearly every Rust program you write will be built upon them. In the next chapter, we will explore Rust’s ownership and borrowing system in even greater detail, providing a comprehensive understanding of how Rust ensures memory safety and performance.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch3">
+                <h2 id="questions-and-assignments-ch3">Questions and assignments</h2>
+
+                <section tabindex="0" aria-labelledby="questions-ch3">
+                    <h3 id="questions-ch3">Questions</h3>
+                    <ul>
+                        <li><strong>Defining functions</strong>:
+                            <ol>
+                                <li>What is the syntax for defining a function in Rust?</li>
+                                <li>How do you specify parameters and return types in a function?</li>
+                                <li>What are the common practices for naming functions and parameters?</li>
+                            </ol>
+                        </li>
+                        <li><strong>Function ownership and borrowing</strong>:
+                            <ol>
+                                <li>How does Rust handle ownership when passing parameters to a function?</li>
+                                <li>What is the difference between passing a parameter by value and by reference?</li>
+                                <li>How can you modify a value inside a function without taking ownership of it?</li>
+                            </ol>
+                        </li>
+                        <li><strong>Advanced function features</strong>:
+                            <ol>
+                                <li>What are closures in Rust, and how do they differ from regular functions?</li>
+                                <li>How can you pass a function as an argument to another function?</li>
+                                <li>What is a higher-order function, and how can it be used in Rust?</li>
+                            </ol>
+                        </li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch3">
+                    <h3 id="assignments-ch3">Assignments</h3>
+                    <p>These questions and assignments will help reinforce your understanding of functions and modules in Rust, providing practical experience with these essential concepts.</p>
+                    <ul>
+                        <li><strong>Assignment 3.1: basic function implementation</strong><br>
+                            Write a function called calculate_triangle_area that takes the base and height of a triangle as parameters and returns the area. Call this function from main and print the result.</li>
+                        <li><strong>Assignment 3.2: ownership and borrowing in functions</strong><br>
+                            Modify the calculate_triangle_area function to take references to the base and height instead of values. Ensure the function works without taking ownership of the arguments.</li>
+                        <li><strong>Assignment 3.3: using closures</strong><br>
+                            Create a closure that takes two i32 parameters and returns their sum. Use this closure in a function that applies the closure to two numbers and prints the result.</li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-02.html">← Chapter 2</a>
+            <a class="nav-next" href="./chapter-04.html">Chapter 4 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

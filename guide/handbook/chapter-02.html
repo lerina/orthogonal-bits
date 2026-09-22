@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 2: Rust Syntax and Functions – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch2-heading">
+            <h1 id="ch2-heading">Chapter 2: Rust Syntax and Functions</h1>
+
+            <p>In this chapter, we will dive deep into the foundational aspects of Rust programming, focusing on the language’s syntax and functions. Understanding these basics is crucial as they form the building blocks for more advanced Rust programming concepts. This chapter aims to provide a comprehensive overview of variable declarations, data types, functions, control flow constructs, and error handling in Rust. By the end of this chapter, you will have a solid understanding of how to write basic Rust programs, manipulate data, and handle errors effectively.</p>
+            <p>Rust is known for its strict and expressive syntax, which enforces safety and correctness in your code. By learning Rust’s syntax, you will not only write more reliable programs but also gain a deeper understanding of how Rust ensures memory safety and performance. We will start with the fundamental concept of variable declarations and mutability, exploring how Rust handles data storage and manipulation. This foundation will help you appreciate the language’s design philosophy and how it guides you towards writing safe and efficient code.</p>
+            <p>Next, we will dive into Rust’s data types and structures, which are essential for organizing and managing data. Rust provides a rich set of built-in data types, including integers, floating-point numbers, booleans, and characters. Additionally, Rust’s compound types, such as tuples and arrays, allow you to group multiple values together. Understanding these types and how to use them effectively is crucial for building robust applications.</p>
+            <p>Functions are another critical aspect of Rust programming. We will explore how to define and use functions in Rust, including how Rust’s ownership model affects data passing in and out of functions. This section will cover the syntax for function definitions, parameter passing, and return values, providing you with the tools to write modular and reusable code.</p>
+            <p>Control flow constructs such as if, else, loops, and pattern matching are vital for writing dynamic and responsive programs. We will examine how Rust implements these constructs and how you can use them to control the flow of your programs effectively. Understanding control flow is key to writing programs that can respond to different conditions and inputs.</p>
+            <p>Finally, we will discuss Rust’s approach to error handling. Rust’s robust error handling mechanisms, including the Result and Option types, allow you to write programs that gracefully handle unexpected conditions. We will also look at the panic! macro, which provides a way to handle unrecoverable errors. Mastering Rust’s error handling strategies will enable you to build reliable and resilient applications.</p>
+            <p>Throughout this chapter, we will provide detailed explanations, examples, and exercises to help you grasp these concepts and apply them in your own Rust projects. By the end of this chapter, you will have a strong foundation in Rust syntax and functions, preparing you for more advanced topics in subsequent chapters.</p>
+
+            <section tabindex="0" aria-labelledby="variable-declarations-and-mutability">
+                <h2 id="variable-declarations-and-mutability">Variable declarations and mutability</h2>
+                <p>One of the first concepts you’ll encounter in Rust is how it handles variables, and this reveals a core piece of its design philosophy. In Rust, variables are <strong>immutable by default</strong>. This might feel different if you’re coming from languages such as Python, JavaScript, C++, or Java, where variables are typically mutable unless you explicitly mark them as constant (e.g., with const or final). Rust flips this convention on its head: you must <strong>explicitly</strong> opt in to mutability. This design choice is intentional; it encourages a safer programming style by preventing accidental or unintended changes to a variable’s value, which is a common source of bugs.</p>
+                <p>This emphasis on immutability makes your code easier to reason about, as you know that most variables won’t change their value after being initialized. However, Rust is a practical language and understands that mutability is often necessary. For those situations, it provides the mut keyword, allowing you to declare a variable as mutable when you truly need its value to change. This way, any mutation in your code is a deliberate, clearly marked action.</p>
+
+                <section tabindex="0" aria-labelledby="immutable-variables">
+                    <h3 id="immutable-variables">Immutable variables</h3>
+                    <p>In Rust, you declare an immutable variable using the let keyword. Immutable variables are a cornerstone of Rust’s safety guarantees, ensuring that values do not change unexpectedly, which can help avoid many common programming errors.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let x = 5;
+    println!("The value of x is: {}", x);
+    // x = 6; // This line would cause a compile-time error because x is immutable
+}</code></pre>
+                    <p>In the preceding example, x is declared as an immutable variable with a value of 5. Any attempt to modify x will result in a compile-time error, enforcing the immutability guarantee.</p>
+                    <p>Rust’s preference for immutability by default helps in maintaining a clear and predictable state throughout your program. This makes it easier to track how data changes over time, reducing the likelihood of bugs caused by unintended modifications.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="mutable-variables">
+                    <h3 id="mutable-variables">Mutable variables</h3>
+                    <p>While immutability is the default, there are cases where you need to change a variable’s value. Rust allows you to declare mutable variables using the mut keyword. Mutable variables provide the flexibility to update and manage state as needed while maintaining control over when and where changes can occur.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut x = 5;
+    println!("The value of x is: {}", x);
+    x = 6; // This is allowed because x is mutable
+    println!("The value of x is: {}", x);
+}</code></pre>
+                    <p>In this example, x is declared as mutable, allowing its value to be changed from 5 to 6. Using mut gives you the flexibility to modify variables while still adhering to Rust’s safety principles.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="shadowing">
+                    <h3 id="shadowing">Shadowing</h3>
+                    <p>Rust also supports a feature known as shadowing, where you can declare a new variable with the same name as a previous variable. The new variable shadows the previous one, effectively creating a new variable while retaining the name.</p>
+                    <p>A real-world analogy for understanding shadowing in Rust is the concept of “overwriting” a draft on a whiteboard.</p>
+                    <p>Imagine you are a teacher writing on a whiteboard. You start by writing the number 5 on the board:</p>
+                    <ol>
+                        <li>You write “5” on the whiteboard.</li>
+                        <li>Then, you decide to update this number by adding 1 to it. Instead of erasing the original number, you write a new number “6” on top of the old one, effectively “shadowing” the original number.</li>
+                    </ol>
+                    <p>In this analogy:</p>
+                    <ul>
+                        <li>The whiteboard represents the variable name.</li>
+                        <li>The numbers you write represent the values assigned to the variable.</li>
+                        <li>Each time you write a new number, you are creating a new value while keeping the same name (the whiteboard).</li>
+                    </ul>
+                    <p>This way, you can keep updating the value without changing the original number directly, similar to how shadowing works in Rust. Each new value is a fresh start, but it uses the same name, allowing you to transform the value step by step while maintaining immutability.</p>
+                    <p>Let’s see an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let x = 5;
+    let x = x + 1; // This shadows the previous x
+    println!("The value of x is: {}", x);
+}</code></pre>
+                    <p>In this example, the second declaration of x shadows the first one. This allows you to reuse variable names in a safe way, enabling transformations and updates without mutability.</p>
+                    <p>Shadowing is useful in situations where you want to perform a transformation on a value and maintain immutability. Each shadowed variable is a new variable, allowing you to apply transformations step by step without modifying the original value.</p>
+                    <p>Understanding variable declarations and mutability is the first step in mastering Rust’s syntax. With these concepts, you can start to write more complex and expressive Rust code, building a solid foundation for further exploration of the language’s features.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="data-types-and-structures">
+                <h2 id="data-types-and-structures">Data types and structures</h2>
+                <p>Rust provides a rich set of built-in data types that allow you to store and manipulate data efficiently. Understanding these types is essential for effective Rust programming. Rust’s data types can be broadly categorized into scalar types and compound types.</p>
+
+                <section tabindex="0" aria-labelledby="scalar-types">
+                    <h3 id="scalar-types">Scalar types</h3>
+                    <p>Scalar types represent a single value. Rust’s scalar types include integers, floating-point numbers, Booleans, and characters.</p>
+
+                    <section tabindex="0" aria-labelledby="integers">
+                        <h4 id="integers">Integers</h4>
+                        <p>Integers are whole numbers, and Rust provides a variety of types for them, giving you precise control over memory and data representation. Each integer type is defined by its <strong>size</strong> (the number of bits it uses, such as 8, 16, 32, 64, or 128) and whether it is <strong>signed</strong> (can be negative, starts with i) or <strong>unsigned</strong> (only zero and positive, starts with u). For example, an i8 can hold numbers from -128 to 127, while a u8 can hold numbers from 0 to 255. Choosing the appropriate type allows you to optimize memory usage and ensure your variables can hold the range of values you expect.</p>
+                        <p>The special types isize and usize have a size that matches the architecture of the target machine (e.g., 64 bits on a 64-bit system) and are the idiomatic choice for indexing collections such as arrays.</p>
+                        <p>These types differ in size and whether they can represent negative values.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let signed_int: i32 = -42;
+    let unsigned_int: u32 = 42;
+    println!("Signed integer: {}, Unsigned integer: {}", signed_int, unsigned_int);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="floating-point-numbers">
+                        <h4 id="floating-point-numbers">Floating-point numbers</h4>
+                        <p>Rust provides two floating-point types, f32 and f64, for representing decimal numbers. The default type is f64 because it is more precise.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let float_num: f64 = 3.14;
+    println!("Floating-point number: {}", float_num);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="booleans">
+                        <h4 id="booleans">Booleans</h4>
+                        <p>The boolean type bool represents a value that can be either true or false.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let is_rust_fun: bool = true;
+    println!("Is Rust fun? {}", is_rust_fun);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="characters">
+                        <h4 id="characters">Characters</h4>
+                        <p>The character type char represents a single Unicode scalar value, which can be used to store a wide range of characters, including letters, numbers, and symbols.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let letter: char = 'R';
+    let emoji: char = '🚀';
+    println!("Letter: {}, Emoji: {}", letter, emoji);
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="compound-types">
+                    <h3 id="compound-types">Compound types</h3>
+                    <p>Compound types can group multiple values into one type. The two primary compound types in Rust are tuples and arrays.</p>
+
+                    <section tabindex="0" aria-labelledby="tuples">
+                        <h4 id="tuples">Tuples</h4>
+                        <p>Tuples are a simple way to group together a fixed number of values with a variety of types into a single compound type. Once declared, a tuple’s length cannot change. They are great for bundling a few related pieces of data without the need to create a full struct.</p>
+                        <p>There are two primary ways to access the elements inside a tuple: <strong>destructuring</strong> and <strong>direct indexing</strong>.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // A tuple holding an integer, a float, and a character.
+    let my_tuple: (i32, f64, char) = (500, 6.4, 'R');
+
+    // Method 1: Destructuring with a `let` binding.
+    // This is a form of pattern matching that breaks the tuple into separate variables.
+    let (x, y, z) = my_tuple;
+    println!("Destructured values: x = {}, y = {}, z = {}", x, y, z);
+
+    // Method 2: Direct access using dot notation and the element's index.
+    // Indices start from 0.
+    let first_element = my_tuple.0;
+    let second_element = my_tuple.1;
+    println!("Direct access: First element is {}, second is {}", first_element, second_element);
+}</code></pre>
+                        <p>One of the most common and idiomatic uses for tuples in Rust is to return multiple values from a function. This is often cleaner and more lightweight than defining a new struct just for a single function’s return type.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function calculates a sum and a product and returns both in a tuple.
+fn calculate_sum_and_product(a: i32, b: i32) -> (i32, i32) {
+    (a + b, a * b) // The last expression in a function is its return value
+}
+
+fn main() {
+    let input1 = 10;
+    let input2 = 5;
+    // Call the function and destructure the returned tuple directly into variables.
+    let (sum_result, product_result) = calculate_sum_and_product(input1, input2);
+    println!("For {} and {}:", input1, input2);
+    println!("  Sum: {}", sum_result); // Output: 15
+    println!("  Product: {}", product_result); // Output: 50
+}</code></pre>
+                        <p>As you can see, tuples provide a convenient way to handle small, fixed-size collections of heterogeneous data. While the let binding is a simple form of pattern matching, you’ll see later, in the <em>Control flow constructs</em> section, how the match statement can be used for even more powerful pattern matching on tuples.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="arrays">
+                        <h4 id="arrays">Arrays</h4>
+                        <p>Arrays are collections of multiple values that must all have the same type. In Rust, an array is an <strong>owned type</strong>, which means the data it contains is stored directly as part of the array itself (usually contiguously on the stack). A key characteristic of arrays is that they have a fixed length, which is known at compile time and cannot be changed once declared.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let array: [i32; 3] = [1, 2, 3];
+    println!("Array values: {} {} {}", array[0], array[1], array[2]);
+}</code></pre>
+                        <p>Arrays are beneficial when you need to store a fixed-size list of elements. However, their fixed length can be a limitation in scenarios where you need a dynamically sized list.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="slices">
+                        <h4 id="slices">Slices</h4>
+                        <p>Slices provide a way to reference a contiguous sequence of elements within a collection (such as an array or a Vec) without needing to copy the data. A slice is a <strong>view</strong> or a <strong>borrowed reference</strong> into a portion of that collection. Crucially, slices <strong>do not own</strong> the data they point to; the ownership remains with the original collection. This makes them an incredibly safe and efficient way to work with sub-sections of data.</p>
+                        <p>To better visualize this, imagine an array in memory:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>Array: [ 10, 20, 30, 40, 50 ]
+Index: 0, 1, 2, 3, 4</code></pre>
+                        <p>If we create a slice that refers to the elements at index 1 and 2, the slice is simply a “view” pointing to that specific portion of the original array’s data:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>Slice:  &amp;[ 20, 30 ]
+                ^    ^
+                |    |
+Points to index 1 and 2 of the original array.</code></pre>
+                        <p>This is how you create a slice in code:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let array = [10, 20, 30, 40, 50];
+    // Create a slice that references elements from index 1 up to (but not including) index 3.
+    // The type of `slice` is `&amp;[i32]`.
+    let slice = &amp;array[1..3];
+    println!("Original array: {:?}", array);
+    println!("Slice (a view into the array): {:?}", slice); // Output: [20, 30]
+}</code></pre>
+                        <p>Slices are especially useful for working with parts of arrays or other collections without copying data. They provide a safe and efficient way to access sub-sections of data.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="strings">
+                        <h4 id="strings">Strings</h4>
+                        <p>Strings in Rust are a bit more complex than simple scalar types. Rust has two main types of strings: String and &amp;str (string slice).</p>
+
+                        <section tabindex="0" aria-labelledby="string-type">
+                            <h5 id="string-type">String</h5>
+                            <p>This is a growable, heap-allocated data structure. It is mutable and can store a dynamic number of characters.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut s = String::from("Hello");
+    s.push_str(", world!");
+    println!("{}", s);
+}</code></pre>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="str-type">
+                            <h5 id="str-type">&amp;str</h5>
+                            <p>This is an immutable reference to a string slice. It can refer to a part of a String or a string literal.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let s = "Hello, world!"; // string literal
+    println!("{}", s);
+}</code></pre>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="structs">
+                    <h3 id="structs">Structs</h3>
+                    <p>Structs are a fundamental feature in Rust that allow you to create custom data types. Structs group together related data, allowing you to create complex data structures with named fields. Rust has three types of structs: classic structs, tuple structs, and unit structs.</p>
+
+                    <section tabindex="0" aria-labelledby="classic-structs">
+                        <h4 id="classic-structs">Classic structs</h4>
+                        <p>Classic structs are the most commonly used type of struct. They allow you to define a data structure with named fields. Each field in a struct can have a different type, and you can access these fields using dot notation. We will see structs in more details in <a href="./chapter-05.html"><em>Chapter 5</em></a>.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    println!("Username: {}", user1.username);
+    println!("Email: {}", user1.email);
+    println!("Sign in count: {}", user1.sign_in_count);
+    println!("Active: {}", user1.active);
+}</code></pre>
+                        <p>In this example, the User struct has four fields: username, email, sign_in_count, and active. The main function creates an instance of User and prints the values of its fields.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="tuple-structs">
+                        <h4 id="tuple-structs">Tuple structs</h4>
+                        <p>Tuple structs are similar to classic structs but use unnamed fields. They are useful when you want to group a few values together without needing named fields.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Color(i32, i32, i32);
+fn main() {
+    let black = Color(0, 0, 0);
+    println!("Black: ({}, {}, {})", black.0, black.1, black.2);
+}</code></pre>
+                        <p>In this example, the Color struct is defined with three unnamed fields. The fields are accessed using dot notation with indices.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="unit-structs">
+                        <h4 id="unit-structs">Unit structs</h4>
+                        <p>Unit structs are the simplest form of structs and do not have any fields. They are useful for creating types that don’t need to store data but still need to implement certain traits.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct AlwaysEqual;
+fn main() {
+    let _subject = AlwaysEqual;
+}</code></pre>
+                        <p>In this example, the AlwaysEqual struct has no fields. It can be used to implement traits or mark specific types in your code.</p>
+                        <p><strong>Note</strong>: A struct can either hold its own data or borrowed data.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="struct-init-update">
+                        <h4 id="struct-init-update">Struct initialization and update syntax</h4>
+                        <p>When creating instances of structs, you can use the struct update syntax to create a new instance based on an existing one. This is especially useful when most of the fields in the new instance have the same values as an existing instance.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        username: String::from("user1"),
+        email: String::from("user1@example.com"),
+        sign_in_count: 1,
+        active: true,
+    };
+    let user2 = User {
+        email: String::from("user2@example.com"),
+        ..user1 // Copies the remaining fields from user1
+    };
+    println!("Username: {}", user2.username);
+    println!("Email: {}", user2.email);
+    println!("Sign in count: {}", user2.sign_in_count);
+    println!("Active: {}", user2.active);
+}</code></pre>
+                        <p>In this example, the user2 instance is created using the struct update syntax, copying the username, sign_in_count, and active fields from user1 and providing a new value for the email field.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="methods-associated-functions">
+                        <h4 id="methods-associated-functions">Methods and associated functions</h4>
+
+                        <section tabindex="0" aria-labelledby="methods">
+                            <h5 id="methods">Methods</h5>
+                            <p>You can define methods and associated functions for structs to provide behavior associated with your data types. Methods are defined within an impl block.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle {
+    fn area(&amp;self) -> u32 {
+        self.width * self.height
+    }
+    fn can_hold(&amp;self, other: &amp;Rectangle) -> bool {
+        self.width > other.width &amp;&amp; self.height > other.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle {
+        width: 30,
+        height: 50,
+    };
+    let rect2 = Rectangle {
+        width: 10,
+        height: 40,
+    };
+    let rect3 = Rectangle {
+        width: 60,
+        height: 45,
+    };
+    println!("The area of rect1 is {} square pixels.", rect1.area());
+    println!("Can rect1 hold rect2? {}", rect1.can_hold(&amp;rect2));
+    println!("Can rect1 hold rect3? {}", rect1.can_hold(&amp;rect3));
+}</code></pre>
+                            <p>In this example, the Rectangle struct has two methods: area and can_hold. The area method calculates the area of the rectangle, and the can_hold method checks if the rectangle can contain another rectangle.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="associated-functions">
+                            <h5 id="associated-functions">Associated functions</h5>
+                            <p>Associated functions are functions that are associated with a struct but do not take self as a parameter. They are often used to define constructors or other functions that are related to the struct but do not operate on a specific instance.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>impl Rectangle {
+    fn square(size: u32) -> Rectangle {
+        Rectangle {
+            width: size,
+            height: size,
+        }
+    }
+}
+
+fn main() {
+    let sq = Rectangle::square(3);
+    println!("The area of the square is {} square pixels.", sq.area());
+}</code></pre>
+                            <p>In this example, the square function is an associated function of the Rectangle struct. It creates a new Rectangle instance with equal width and height.</p>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="enums">
+                    <h3 id="enums">Enums</h3>
+                    <p>Enums, short for enumerations, are a powerful feature in Rust that allow you to define a type by enumerating its possible variants. Enums are particularly useful when you need to work with a value that can be one of several distinct types. We will explore more enums in <a href="./chapter-05.html"><em>Chapter 5</em></a>. Enums can also hold data, making them extremely versatile for various programming scenarios.</p>
+
+                    <section tabindex="0" aria-labelledby="defining-enums">
+                        <h4 id="defining-enums">Defining enums</h4>
+                        <p>Enums can hold different types of data. Each variant of an enum can have associated data of different types and structures, much like a struct. This is one of the features that makes enums in Rust so powerful.</p>
+                        <p>Let’s use a Color enum to see this in action. A color can be represented in multiple ways—for example, as an RGB triplet or by a name. An enum is a perfect way to model this.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)]
+enum Color {
+    // A variant that holds a tuple of three 8-bit unsigned integers
+    Rgb(u8, u8, u8),
+    // A variant that holds a single String
+    Named(String),
+}
+
+fn main() {
+    let red = Color::Rgb(255, 0, 0);
+    let custom_color = Color::Named(String::from("Forest Green"));
+    println!("An RGB color: {:?}", red);
+    println!("A named color: {:?}", custom_color);
+}</code></pre>
+                        <p>In this example, the Color enum has two variants that each hold different types of data. The Rgb variant holds a tuple of three u8 values, perfect for representing a standard RGB color, while the Named variant holds a String to represent a color by its name. This demonstrates the versatility of Rust enums: a single Color type can elegantly represent different ways of defining a color, each with its own associated data.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="matching-with-enums">
+                        <h4 id="matching-with-enums">Matching with enums</h4>
+                        <p>One of the most powerful features of enums is pattern matching. The match expression allows you to execute code based on which variant of the enum you have. We will see the match statement later in <a href="./chapter-05.html"><em>Chapter 5</em></a>. For now, you can just consider it as a switch statement on steroids.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+fn main() {
+    let msg = Message::Move { x: 10, y: 20 };
+    match msg {
+        Message::Quit => println!("Quit message"),
+        Message::Move { x, y } => println!("Move to x: {}, y: {}", x, y),
+        Message::Write(text) => println!("Write message: {}", text),
+        Message::ChangeColor(r, g, b) => println!("Change color to red: {}, green: {}, blue: {}", r, g, b),
+    }
+}</code></pre>
+                        <p>In this example, the Message enum has four variants, each capable of holding different types of data. The match expression checks which variant is present and executes the corresponding code block.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="enum-methods">
+                        <h4 id="enum-methods">Enum methods</h4>
+                        <p>Enums, like structs, can have methods associated with them. Methods are defined within an impl block.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+impl Message {
+    fn call(&amp;self) {
+        match self {
+            Message::Quit => println!("Quit message"),
+            Message::Move { x, y } => println!("Move to x: {}, y: {}", x, y),
+            Message::Write(text) => println!("Write message: {}", text),
+            Message::ChangeColor(r, g, b) => println!("Change color to red: {}, green: {}, blue: {}", r, g, b),
+        }
+    }
+}</code></pre>
+                        <p>In this example, we define a method call for the Message enum that matches on self and prints a message based on the variant. This encapsulates the behavior associated with each variant within the enum itself.</p>
+                        <p>Enums provide a powerful way to define types that can be one of a few different variants. This makes your code more expressive and type-safe, reducing the likelihood of errors and making your intentions clear.</p>
+                        <p>Beyond representing data such as colors, enums are also excellent for modeling different kinds of actions or commands that a program might need to process. This allows you to handle a variety of operations in a structured and type-safe way. For example, you could define a Command enum to represent different user actions.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Command {
+    Start,
+    Stop,
+    Move(i32, i32),
+}
+
+fn process_command(command: Command) {
+    match command {
+        Command::Start => println!("Starting..."),
+        Command::Stop => println!("Stopping..."),
+        Command::Move(x, y) => println!("Moving to coordinates: x = {}, y = {}", x, y),
+    }
+}
+
+fn main() {
+    process_command(Command::Start);
+    process_command(Command::Move(10, 20));
+    process_command(Command::Stop);
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="functions-in-rust">
+                    <h3 id="functions-in-rust">Functions in Rust</h3>
+                    <p>Functions are a core component of Rust programming. They provide the means to organize your code into reusable blocks. Functions encapsulate logic, making your code more modular, maintainable, and easier to understand. We will explore more function <a href="./chapter-03.html">in <em>Chapter 3</em></a>, but I want to give you a quick overview now.</p>
+                    <p>This section will explore Rust’s function syntax, parameter passing, return values, and how Rust’s ownership model impacts functions.</p>
+
+                    <section tabindex="0" aria-labelledby="function-syntax">
+                        <h4 id="function-syntax">Function syntax</h4>
+                        <p>In Rust, functions are defined using the fn keyword, followed by the function name, a list of parameters, and the function body enclosed in curly braces. Functions can take zero or more parameters and return a value.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    println!("Hello, world!");
+}
+
+fn greet(name: &amp;str) {
+    println!("Hello, {}!", name);
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}</code></pre>
+                        <p>Let’s break down the preceding example:</p>
+                        <ul>
+                            <li>main is the entry point of a Rust program and does not take any parameters.</li>
+                            <li>greet takes a single parameter of type &amp;str (a string slice) and prints a greeting message.</li>
+                            <li>add takes two parameters of type i32 and returns their sum. The return type is specified after the -&gt; symbol.</li>
+                        </ul>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="parameter-passing">
+                        <h4 id="parameter-passing">Parameter passing</h4>
+                        <p>Rust supports passing parameters to functions by value, by reference, and by mutable reference. Understanding how these different modes of parameter passing work is crucial for managing data ownership and borrowing in Rust.</p>
+
+                        <section tabindex="0" aria-labelledby="passing-by-value">
+                            <h5 id="passing-by-value">Passing by value</h5>
+                            <p>When you pass a parameter to a function “by value,” what happens depends on the type of data. For simple, fixed-size types that are stored entirely on the stack (such as integers, booleans, and floating-point numbers), Rust makes a full, bit-for-bit copy of the value. This means the function gets its own independent copy, and the original variable in the calling scope remains valid and unchanged.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn takes_value_copy(mut some_integer: i32) {
+    some_integer += 1;
+    println!("Value inside function: {}", some_integer);
+}
+
+fn main() {
+    let x = 5;
+    takes_value_copy(x);
+    println!("Original value of x after function call: {}", x); // x is still 5
+}</code></pre>
+                            <p>However, for more complex types that manage data on the heap (such as String or Vec&lt;T&gt;), passing by value results in an <strong>ownership transfer</strong>, also known as a <strong>move</strong>. The function takes ownership of the value, and the original variable in the calling scope is no longer valid and cannot be used. This is a key part of Rust’s memory safety, as it prevents multiple owners from trying to modify or deallocate the same data. We will discuss this in an upcoming chapter.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="passing-by-reference">
+                            <h5 id="passing-by-reference">Passing by reference</h5>
+                            <p>Often, you want a function to use a value without taking ownership of it. This is called <strong>borrowing</strong>, and you do it by passing a <strong>reference</strong> (&amp;T). A reference allows a function to access the data without owning it, which is highly efficient as it avoids copying large amounts of data. An immutable reference (&amp;T) allows the function to read the data but not modify it.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function borrows a String and calculates its length.
+fn calculate_length(s: &amp;String) -> usize {
+    s.len()
+} // `s` goes out of scope here, but since it doesn't have ownership, the data is not dropped.
+
+fn main() {
+    let s1 = String::from("hello");
+    // We pass a reference to s1 using the `&amp;` operator.
+    // s1 is borrowed, not moved.
+    let len = calculate_length(&amp;s1);
+    println!("The length of '{}' is {}.", s1, len);
+    // `s1` is still valid here because its ownership was never transferred.
+}</code></pre>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="passing-by-mutable-reference">
+                            <h5 id="passing-by-mutable-reference">Passing by mutable reference</h5>
+                            <p>Passing a parameter by mutable reference allows the function to borrow and modify the parameter. This is useful for allowing functions to update data.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut s = String::from("hello");
+    takes_mutable_reference(&amp;mut s);
+    println!("s in main: {}", s); // s is modified by the function
+}
+
+fn takes_mutable_reference(some_string: &amp;mut String) {
+    some_string.push_str(", world");
+}</code></pre>
+                            <p>In this example, takes_mutable_reference borrows s mutably, allowing it to modify the original String.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="return-values">
+                            <h5 id="return-values">Return values</h5>
+                            <p>Functions in Rust can return values, and the return type is specified after the -&gt; symbol. The return value can be any type, including custom types such as structs and enums.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let sum = add(5, 3);
+    println!("The sum is: {}", sum);
+}
+
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}</code></pre>
+                            <p>In this example, the add function returns the sum of its two parameters. The return value is specified as i32 after the -&gt; symbol.</p>
+                        </section>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="ownership-and-functions">
+                        <h4 id="ownership-and-functions">Ownership and functions</h4>
+                        <p>Rust’s ownership model, which we will explore in great detail in <a href="./chapter-04.html"><em>Chapter 4</em></a>, plays a significant role in how functions handle data. When you pass a parameter to a function, the ownership of that parameter can change depending on how it’s passed. Understanding these rules is essential for writing safe and efficient Rust code.</p>
+                        <p>Let’s look at a simple example that illustrates the difference between moving ownership and copying a value:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function takes ownership of the String passed to it.
+fn takes_ownership(some_string: String) {
+    println!("Inside takes_ownership: {}", some_string);
+} // `some_string` is dropped here, and its memory is freed.
+
+// This function takes a copy of the integer.
+fn makes_copy(some_integer: i32) {
+    println!("Inside makes_copy: {}", some_integer);
+} // `some_integer` goes out of scope, but nothing special happens.
+
+fn main() {
+    let s = String::from("hello");
+    // `s`'s value is moved into the function...
+    takes_ownership(s);
+    // ...so `s` is no longer valid here.
+    // The next line would cause a compile-time error:
+    // println!("Trying to use s after move: {}", s);
+
+    let x = 5;
+    // `x`'s value is copied into the function...
+    makes_copy(x);
+    // ...so `x` is still valid and can be used here.
+    println!("x is still valid after makes_copy: {}", x);
+}</code></pre>
+                        <p>In this example, when we pass the String s to takes_ownership, ownership is moved. After the function call, s is no longer valid in main. However, when we pass the i32 x to makes_copy, a copy is made because i32 is a simple type with a known size that is stored on the stack.</p>
+                        <p>This raises a common question: what if you want to give a function an owned value like a String but still need to use the original variable afterward? For types that support it, you can create an explicit “deep copy” using the .clone() method. This creates a brand-new instance of the data, allowing you to move the clone into the function while retaining ownership of the original. Be mindful that cloning can have a performance cost for large data structures.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn takes_ownership(some_string: String) {
+    println!("Function received ownership of: {}", some_string);
+}
+
+fn main() {
+    let s1 = String::from("hello");
+    // We pass a clone of `s1`. The function takes ownership of the clone,
+    // not the original `s1`.
+    takes_ownership(s1.clone());
+    // Because we only moved a clone, `s1` is still valid and can be used here.
+    println!("We can still use s1 after cloning: {}", s1);
+}</code></pre>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="control-flow-constructs">
+                    <h3 id="control-flow-constructs">Control flow constructs</h3>
+                    <p>Control flow constructs are essential in any programming language, as they allow you to dictate the flow of execution in your programs. Rust provides a variety of control flow mechanisms, including conditional statements (if and else), loops (loop, while, and for), and pattern matching (match). These constructs enable you to build dynamic and responsive applications by controlling how and when different parts of your code are executed.</p>
+
+                    <section tabindex="0" aria-labelledby="if-and-else">
+                        <h4 id="if-and-else">if and else statements</h4>
+                        <p>Conditional statements in Rust allow you to execute code based on certain conditions. The most common conditional statements are if and else.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let number = 7;
+    if number < 5 {
+        println!("The number is less than 5");
+    } else if number > 5 {
+        println!("The number is greater than 5");
+    } else {
+        println!("The number is exactly 5");
+    }
+}</code></pre>
+                        <p>In this example, the if statement checks if number is less than 5, greater than 5, or exactly 5, and executes the corresponding block of code. Rust requires that the condition in an if statement be a boolean expression. This ensures clarity and reduces potential errors that can arise from using non-boolean conditions.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="loop-constructs">
+                        <h4 id="loop-constructs">Loop constructs</h4>
+                        <p>Rust provides several types of loops for repeating code: loop, while, and for. Each type of loop is suited to different use cases.</p>
+
+                        <section tabindex="0" aria-labelledby="loop-keyword">
+                            <h5 id="loop-keyword">The loop keyword</h5>
+                            <p>The loop keyword creates an infinite loop that will run forever until you explicitly tell it to stop. You can exit the loop using the break statement.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut counter = 0;
+    loop {
+        counter += 1;
+        println!("Counter is now: {}", counter);
+        if counter == 5 {
+            break; // Exits the loop
+        }
+    }
+    println!("Loop finished.");
+}</code></pre>
+                            <p>In this example, the loop runs until the break statement is executed when counter reaches 5. In addition to break, Rust provides the continue keyword to control loop flow. While break exits the loop entirely, continue skips over the rest of the current iteration and immediately starts the next one. This is useful when you want to bypass processing for certain values but keep the loop running.</p>
+                            <p>Let’s look at an example using a for loop (which we’ll cover next) to see continue in action.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    for number in 1..=10 {
+        // If the number is odd, skip the println! and go to the next iteration.
+        if number % 2 != 0 {
+            continue;
+        }
+        // This line only runs for even numbers.
+        println!("Found an even number: {}", number);
+    }
+}</code></pre>
+                            <p>In this example, the for loop iterates from 1 to 10. The if statement checks if a number is odd. If it is, continue is called, and the loop immediately proceeds to the next number, skipping println!. As a result, only the even numbers are printed. In summary, break and continue give you fine-grained control over your loops: use break to stop the loop entirely and continue to skip the current iteration and move to the next.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="while-keyword">
+                            <h5 id="while-keyword">The while keyword</h5>
+                            <p>The while keyword creates a loop that runs as long as a condition is true.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let mut number = 3;
+    while number != 0 {
+        println!("{}!", number);
+        number -= 1;
+    }
+    println!("Liftoff!");
+}</code></pre>
+                            <p>In this example, the while loop runs until number is 0, printing each countdown number.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="for-keyword">
+                            <h5 id="for-keyword">The for keyword</h5>
+                            <p>The for keyword creates a loop that iterates over a collection of items, such as an array or a range.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let a = [10, 20, 30, 40, 50];
+    for element in a.iter() {
+        println!("The value is: {}", element);
+    }
+}</code></pre>
+                            <p>In this example, a.iter() creates an iterator over the elements of the array a. The for loop then iterates over each element, printing its value.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="using-ranges">
+                            <h5 id="using-ranges">Using ranges with the for loop</h5>
+                            <p>Rust’s range syntax is highly versatile, allowing you to define both inclusive and exclusive ranges. This is particularly useful for looping a specific number of times without needing to manually manage loop counters.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    for number in 1..5 {
+        println!("Exclusive range value: {}", number);
+    }
+    for number in 1..=5 {
+        println!("Inclusive range value: {}", number);
+    }
+}</code></pre>
+                            <p>In the first for loop, the range 1..5 is exclusive, meaning it includes numbers from 1 to 4. In the second for loop, the range 1..=5 is inclusive, meaning it includes numbers from 1 to 5.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="nesting-loops">
+                            <h5 id="nesting-loops">Nesting loops</h5>
+                            <p>You can also nest for loops to iterate over multiple collections or ranges simultaneously. This is useful for multidimensional data structures such as matrices or grids.</p>
+                            <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let matrix = [
+        [1, 2, 3],
+        [4, 5, 6],
+        [7, 8, 9],
+    ];
+    for row in matrix.iter() {
+        for element in row.iter() {
+            print!("{} ", element);
+        }
+        println!();
+    }
+}</code></pre>
+                            <p>In this example, the outer for loop iterates over each row of the matrix, and the inner for loop iterates over each element within the row, printing the matrix in a grid format.</p>
+                        </section>
+
+                        <section tabindex="0" aria-labelledby="pattern-matching">
+                            <h5 id="pattern-matching">Pattern matching with match</h5>
+                            <p>Pattern matching with the match statement is one of Rust’s most powerful features. It allows you to handle complex control flow by matching values against patterns and executing code based on which pattern is matched. The match statement can match literals, variables, and wildcards, and can even destructure structs and enums.</p>
+
+                            <section tabindex="0" aria-labelledby="matching-literals">
+                                <h6 id="matching-literals">Matching literals</h6>
+                                <p>You can match literals directly in a match statement. This is useful for handling specific values differently.</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let number = 1;
+    match number {
+        1 => println!("One"),
+        2 => println!("Two"),
+        3 => println!("Three"),
+        _ => println!("Other"),
+    }
+}</code></pre>
+                                <p>In this example, the match statement matches the value of number against the literals 1, 2, and 3. The underscore _ serves as a catch-all pattern for any value that does not match the specified literals.</p>
+                            </section>
+
+                            <section tabindex="0" aria-labelledby="matching-with-variables">
+                                <h6 id="matching-with-variables">Matching with variables</h6>
+                                <p>You can bind values to variables within a match statement, which is useful for extracting parts of a complex value.</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let pair = (2, -2);
+    match pair {
+        (x, y) if x == y => println!("The numbers are equal"),
+        (x, y) if x + y == 0 => println!("The numbers are opposites"),
+        (x, y) => println!("Different numbers: ({}, {})", x, y),
+    }
+}</code></pre>
+                                <p>In this example, the match statement matches the tuple pair and binds its elements to x and y. The additional if conditions (called guards) allow for more complex matching logic.</p>
+                            </section>
+
+                            <section tabindex="0" aria-labelledby="destructuring-enums">
+                                <h6 id="destructuring-enums">Destructuring enums</h6>
+                                <p>Pattern matching is particularly powerful with enums, allowing you to destructure and handle each variant differently.</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+fn main() {
+    let msg = Message::Move { x: 10, y: 20 };
+    match msg {
+        Message::Quit => println!("Quit message"),
+        Message::Move { x, y } => println!("Move to x: {}, y: {}", x, y),
+        Message::Write(text) => println!("Write message: {}", text),
+        Message::ChangeColor(r, g, b) => println!("Change color to red: {}, green: {}, blue: {}", r, g, b),
+    }
+}</code></pre>
+                                <p>In this example, the Message enum has four variants, each capable of holding different types of data. The match expression checks which variant is present and executes the corresponding block of code.</p>
+                            </section>
+
+                            <section tabindex="0" aria-labelledby="combining-patterns">
+                                <h6 id="combining-patterns">Combining patterns</h6>
+                                <p>Rust allows you to combine multiple patterns in a match arm using the | operator, which acts like “or.” This lets you execute the same code for several possible values without duplicating logic.</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let x = 1;
+    match x {
+        1 | 2 => println!("The number is one or two"),
+        3 => println!("The number is three"),
+        _ => println!("It's some other number"),
+    }
+}</code></pre>
+                                <p>In this example, the pattern 1 | 2 will match if the value of x is either 1 or 2.</p>
+                            </section>
+
+                            <section tabindex="0" aria-labelledby="match-guards">
+                                <h6 id="match-guards">Adding conditional logic with match guards</h6>
+                                <p>Sometimes, a pattern alone isn’t specific enough. You might want to execute a match arm only if an additional condition is met. For this, Rust provides <strong>match guards</strong>, which are if conditions that can be added after a pattern. The code for that arm will only be executed if both the pattern matches <em>and</em> the match guard’s condition evaluates to true.</p>
+                                <p>Let’s look at an example where we only want to match Point if it lies on one of the axes, but we also want to check if its coordinates are within a certain range.</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() {
+    let point = Point { x: 0, y: 10 };
+    match point {
+        // This arm matches only if x is 0 AND the guard `if y < 5` is true.
+        Point { x: 0, y } if y < 5 => {
+            println!("On the y-axis, but close to the origin (y < 5).");
+        }
+        // This arm matches for any other point where x is 0.
+        Point { x: 0, y } => {
+            println!("On the y-axis at y = {}", y);
+        }
+        // This arm matches only if y is 0 AND the guard `if x > 5` is true.
+        Point { x, y: 0 } if x > 5 => {
+            println!("On the x-axis, far from the origin (x > 5).");
+        }
+        // This arm matches for any other point where y is 0.
+        Point { x, y: 0 } => {
+            println!("On the x-axis at x = {}", x);
+        }
+        // This arm matches any other point.
+        Point { x, y } => {
+            println!("Point is at ({}, {})", x, y);
+        }
+    }
+}</code></pre>
+                                <p>In this example, the if y < 5 and if x > 5 expressions are match guards. They allow you to add more complex conditional logic to your patterns, making match an even more expressive and powerful tool for controlling your program’s flow.</p>
+                            </section>
+
+                            <section tabindex="0" aria-labelledby="matching-ranges">
+                                <h6 id="matching-ranges">Matching ranges</h6>
+                                <p>You can also match ranges of values using the ..= syntax.</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let x = 5;
+    match x {
+        1..=5 => println!("One through five"),
+        _ => println!("Something else"),
+    }
+}</code></pre>
+                                <p>In this example, the pattern 1..=5 matches if x is any value from 1 to 5 inclusive.</p>
+                            </section>
+
+                            <section tabindex="0" aria-labelledby="pattern-matching-with-option">
+                                <h6 id="pattern-matching-with-option">Pattern matching with Option</h6>
+                                <p>The Option type is a commonly used enum in Rust, representing a value that can be either Some (containing a value) or None (no value).</p>
+                                <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let some_number = Some(5);
+    let absent_number: Option&lt;i32&gt; = None;
+    match some_number {
+        Some(x) => println!("The number is: {}", x),
+        None => println!("No number"),
+    }
+    match absent_number {
+        Some(x) => println!("The number is: {}", x),
+        None => println!("No number"),
+    }
+}</code></pre>
+                                <p>In this example, the match statements handle both Some and None variants of the Option type, demonstrating how to work with optional values safely.</p>
+                            </section>
+                        </section>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="rust-error-handling">
+                    <h3 id="rust-error-handling">Understanding Rust’s approach to error handling</h3>
+                    <p>Before we wrap up this chapter, I want to dedicate some time to understanding a very important aspect and feature of Rust: error handling. We will dive deeper into error handling in <a href="./chapter-06.html"><em>Chapter 6</em></a>, but I want to give you an overview of it in this chapter.</p>
+                    <p>Error handling is crucial to building robust and reliable applications. Rust provides a powerful and flexible approach to error handling that ensures your programs can gracefully manage unexpected conditions and recover from errors. In this section, we’ll explore Rust’s primary error handling tools: the Result and Option types and the panic! macro.</p>
+                    <p>This short section will give you a basic understanding of these concepts, but error handling in Rust is rich and multifaceted. We will dedicate an entire chapter to diving deeper into these topics later in the book. For now, let’s scratch the surface and get acquainted with Rust’s fundamental error handling mechanisms.</p>
+
+                    <section tabindex="0" aria-labelledby="fundamentals-of-error-handling">
+                        <h4 id="fundamentals-of-error-handling">Fundamentals of error handling</h4>
+                        <p>In Rust, some operations are not guaranteed to succeed. For example, trying to convert a piece of text such as “hello” into a number will fail. When faced with an operation that might fail, you have a choice. For now, we’ll look at the simplest, most direct approach: deciding that if an operation fails, it’s an unrecoverable error and the program should stop immediately. This is called a <strong>panic</strong>.</p>
+                        <p>Rust provides a couple of helper methods that are shortcuts for this “succeed or panic” logic. You’ll often see these in examples and simple programs:</p>
+                        <ul>
+                            <li><strong>.unwrap()</strong>: This method is called on the result of an operation. If the operation was successful, .unwrap() gives you the successful value. If the operation failed, it will cause your program to panic and crash.</li>
+                            <li><strong>.expect(“error message”)</strong>: This works exactly like .unwrap(), but it lets you provide a custom error message that will be displayed when the program panics. This is more helpful for debugging.</li>
+                        </ul>
+                        <p>These methods are useful when you are confident that an operation will not fail, and a failure would indicate a bug in your program.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    // This string can be successfully parsed into a number.
+    let number_str = "42";
+    // .parse() attempts the conversion. .unwrap() gets the successful value.
+    let number = number_str.parse::&lt;i32&gt;().unwrap();
+    println!("Successfully parsed number: {}", number);
+
+    // This string CANNOT be parsed into a number.
+    let invalid_str = "hello world";
+
+    // The line below would cause the program to panic and crash.
+    // We use .expect() to provide a clear message upon failure.
+    // let invalid_number = invalid_str.parse::&lt;i32&gt;()
+    //     .expect("Failed to parse the string into a number!");
+
+    // Because the line above is commented out, this program will run without error.
+    // If you uncomment it, the program will panic and this line will not be reached.
+    println!("This line will not be reached if the expect() call panics.");
+}</code></pre>
+                        <p>While unwrap() and expect() are convenient, they should be used with care because they can make your program crash. In the chapter dedicated to error handling, we will explore much more robust ways to handle operations that can fail without panicking.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="result-type">
+                        <h4 id="result-type">The Result type</h4>
+                        <p>The Result type is a powerful tool for error handling in Rust. It is an enum that can be either Ok or Err, representing success and failure, respectively. The Result type is commonly used for functions that can return an error.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn divide(dividend: f64, divisor: f64) -> Result&lt;f64, String&gt; {
+    if divisor == 0.0 {
+        Err(String::from("Cannot divide by zero"))
+    } else {
+        Ok(dividend / divisor)
+    }
+}
+
+fn main() {
+    match divide(10.0, 2.0) {
+        Ok(result) => println!("Result: {}", result),
+        Err(e) => println!("Error: {}", e),
+    }
+    match divide(10.0, 0.0) {
+        Ok(result) => println!("Result: {}", result),
+        Err(e) => println!("Error: {}", e),
+    }
+}</code></pre>
+                        <p>In this example, the divide function returns Result&lt;f64, String&gt;. If the division is successful, it returns Ok with the result. If the divisor is zero, it returns Err with an error message. The match statement in main handles both cases, ensuring the program responds appropriately.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="option-type">
+                        <h4 id="option-type">The Option type</h4>
+                        <p>The Option type is used when a value can be either something or nothing. It is an enum with two variants: Some (containing a value) and None (no value). The Option type is useful for functions that might not return a value, providing a safe way to handle absence without resorting to null values.</p>
+                        <p>The most exhaustive way to handle Option is with a match statement, which forces you to handle both the Some and None cases.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn find_element(arr: &amp;[i32], target: i32) -> Option&lt;usize&gt; {
+    for (index, &amp;element) in arr.iter().enumerate() {
+        if element == target {
+            return Some(index); // Found it, return Some(index)
+        }
+    }
+    None // Didn't find it, return None
+}
+
+fn main() {
+    let numbers = [1, 2, 3, 4, 5];
+    // Case 1: The element is found
+    match find_element(&amp;numbers, 3) {
+        Some(index) => println!("Using match: Found element at index: {}", index),
+        None => println!("Using match: Element not found"),
+    }
+    // Case 2: The element is not found
+    match find_element(&amp;numbers, 6) {
+        Some(index) => println!("Using match: Found element at index: {}", index),
+        None => println!("Using match: Element not found"),
+    }
+}</code></pre>
+                        <p>In this example, the find_element function returns Option&lt;usize&gt;. If the target element is found in the array, it returns Some with the index. If the target is not found, it returns None. The match statement in main handles both cases.</p>
+                        <p>For common scenarios where you want to get the value inside Some or use a default value if it’s None, Rust provides a convenient method called unwrap_or(). This can make your code more concise than a full match block.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let maybe_number: Option&lt;i32&gt; = Some(5);
+    // If maybe_number is Some(5), `number` becomes 5.
+    // If it were None, `number` would become 0.
+    let number = maybe_number.unwrap_or(0);
+    println!("Using unwrap_or: The number is: {}", number);
+
+    let nothing: Option&lt;i32&gt; = None;
+    // Since `nothing` is None, `default_number` becomes 10.
+    let default_number = nothing.unwrap_or(10);
+    println!("Using unwrap_or: The default number is: {}", default_number);
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="error-destructuring">
+                        <h4 id="error-destructuring">Error destructuring</h4>
+                        <p>Error destructuring is the process of extracting the specific error information contained within the Err variant of a Result type. When an operation fails, the Err variant holds a value that describes the error. By using pattern matching with match or if let, you can “destructure” the Err to bind this inner value to a variable, allowing you to inspect it, log it, or handle it in a specific way.</p>
+                        <p>For example, in the following code, Err(e) is the pattern that destructures Result. It matches the Err variant and binds the error value inside it to the variable e, which we can then print.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>let failed_parse: Result&lt;i32, _&gt; = "hello".parse();
+match failed_parse {
+    Ok(number) => println!("Success: {}", number),
+    Err(e) => println!("Failed to parse. The error was: {}", e), // Here, 'e' is the destructured error.
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="panic-macro">
+                        <h4 id="panic-macro">The panic! macro</h4>
+                        <p>The panic! macro is used to indicate a program failure and immediately terminate execution. It is typically used in scenarios where the program cannot continue due to an unrecoverable error.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>fn main() {
+    let result = divide(10.0, 0.0);
+    if let Err(e) = result {
+        panic!("Application error: {}", e);
+    }
+}
+
+fn divide(dividend: f64, divisor: f64) -> Result&lt;f64, String&gt; {
+    if divisor == 0.0 {
+        Err(String::from("Cannot divide by zero"))
+    } else {
+        Ok(dividend / divisor)
+    }
+}</code></pre>
+                        <p>In this example, if the divide function returns an error, the program will panic and terminate. While panic! is useful for handling unrecoverable errors, it should be used sparingly and only when absolutely necessary.</p>
+                        <p>Understanding these basic error handling mechanisms is essential for writing robust Rust programs. While this section provides an introduction, we will dive deeper into Rust’s error handling capabilities in a dedicated chapter later in this book. There, we will explore more advanced techniques and best practices for managing errors in Rust.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch2">
+                <h2 id="summary-ch2">Summary</h2>
+                <p>In this chapter, we covered the fundamental aspects of Rust syntax and functions, focusing on variable declarations, data types, structs, enums, control flow constructs, and error handling. Here’s a quick recap:</p>
+                <ul>
+                    <li><strong>Variable declarations and mutability</strong>: Understanding the importance of immutability by default and the use of the mut keyword for mutable variables. The concept of shadowing to safely reuse variable names.</li>
+                    <li><strong>Data types and structures</strong>: A comprehensive look at Rust’s scalar and compound types, including integers, floating-point numbers, booleans, characters, tuples, arrays, and slices.</li>
+                    <li><strong>Structs and enums</strong>: Defining and using custom data types with structs and enums, including methods and associated functions.</li>
+                    <li><strong>Control flow constructs</strong>: Utilizing if and else statements, loops (loop, while, and for), and pattern matching with match to manage the flow of your programs.</li>
+                    <li><strong>Error handling</strong>: An introduction to Rust’s approach to error handling with the Result and Option types, and the panic! macro.</li>
+                </ul>
+                <p>By understanding these foundational elements, you are now well-equipped to write basic Rust programs that are both robust and efficient. These concepts form the building blocks for more advanced Rust programming techniques, which we will explore in subsequent chapters. In the next chapter, we will examine functions and modules.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch2">
+                <h2 id="questions-and-assignments-ch2">Questions and assignments</h2>
+                <p>Note that the answers to the questions and assignment solutions can be found in Appendix B (Online).</p>
+
+                <section tabindex="0" aria-labelledby="questions-ch2">
+                    <h3 id="questions-ch2">Questions</h3>
+                    <ul>
+                        <li><strong>Variable declarations and mutability</strong>:
+                            <ol>
+                                <li>How do you declare a variable in Rust?</li>
+                                <li>What is the difference between immutable and mutable variables?</li>
+                                <li>What is shadowing, and how does it differ from mutability?</li>
+                            </ol>
+                        </li>
+                        <li><strong>Data types and structures</strong>:
+                            <ol>
+                                <li>What are the basic scalar types in Rust?</li>
+                                <li>How do you define and use a tuple in Rust?</li>
+                                <li>What is the difference between arrays and slices in Rust?</li>
+                                <li>How do you define a struct in Rust, and what are the methods and associated functions for structs?</li>
+                                <li>What is an enum, and how can you use it to define different types of values?</li>
+                            </ol>
+                        </li>
+                        <li><strong>Control flow constructs</strong>:
+                            <ol>
+                                <li>How do you use if and else statements in Rust?</li>
+                                <li>What are the different types of loops in Rust, and how do you use them?</li>
+                                <li>How does pattern matching with match work in Rust?</li>
+                                <li>What is the purpose of the if let and while let constructs?</li>
+                            </ol>
+                        </li>
+                        <li><strong>Functions in Rust</strong>:
+                            <ol>
+                                <li>What is the basic syntax for defining a function in Rust?</li>
+                                <li>How do you handle parameters and return values in functions?</li>
+                                <li>How do ownership and borrowing affect function parameters and return values?</li>
+                            </ol>
+                        </li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch2">
+                    <h3 id="assignments-ch2">Assignments</h3>
+                    <ul>
+                        <li><strong>Assignment 2.1: Variable declarations and mutability</strong><br>
+                            Write a Rust program that declares an immutable variable and then shadows it with a new value. Also, declare a mutable variable and change its value.</li>
+                        <li><strong>Assignment 2.2: Data types and structures</strong><br>
+                            Create a struct to represent a rectangle with width and height. Implement a method to calculate the area of the rectangle.</li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-01.html">← Chapter 1</a>
+            <a class="nav-next" href="./chapter-03.html">Chapter 3 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 8: Object-Oriented Programming in Rust – The Rust Programming Handbook</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Book header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch8-heading">
+            <h1 id="ch8-heading">Chapter 8: Object-Oriented Programming in Rust</h1>
+
+            <p>Welcome to <em>Chapter 8</em>!</p>
+            <p>In previous chapters, we’ve enjoyed exploring Rust’s core features like ownership and error handling together. Now, let’s warmly dive into how concepts from <strong>Object-Oriented Programming</strong> (<strong>OOP</strong>) connect with Rust.</p>
+            <p>Although Rust isn’t a traditional OOP language like Java or C++, you’ll discover that it thoughtfully includes many of the same principles, all woven into its own unique, safety-focused approach to achieving object-oriented goals.</p>
+            <p>This distinctive approach isn’t by chance; it’s a natural result of Rust’s motivations: ensuring memory safety without a garbage collector, enabling fearless concurrency by preventing data races, and delivering performance comparable to C. These foundational goals have guided specific design decisions, such as choosing traits for shared behavior instead of traditional inheritance.</p>
+
+            <section tabindex="0" aria-labelledby="understanding-oop-principles">
+                <h2 id="understanding-oop-principles">Understanding OOP principles</h2>
+                <p>Rust isn’t a traditional object-oriented language, but it offers features that let you write code in an object-oriented style, crafted around its core values of safety and performance.</p>
+                <ul>
+                    <li><strong>Encapsulation</strong>: Instead of using classes, Rust employs structs and enums to hold data, and you can add behavior with impl blocks. Access control is managed through Rust’s module system and the pub keyword, which keeps things private by default.</li>
+                    <li><strong>Polymorphism</strong>: Rust mainly uses traits for polymorphism. Traits let you define shared behavior that different structs and enums can implement. This allows you to write versatile code that works with any type implementing a specific trait (static dispatch), or you can use trait objects (dyn Trait) for runtime polymorphism (dynamic dispatch).</li>
+                    <li><strong>No class inheritance</strong>: Rust intentionally skips implementation inheritance, where a struct would inherit fields and methods from a parent struct. Instead, it prefers composition over inheritance, sharing behavior through traits or building complex types from simpler ones. This design avoids common issues with deep inheritance hierarchies in traditional OOP, such as the “fragile base class problem,” and encourages more flexible, loosely connected designs.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="how-rust-approaches-oop-differently">
+                <h2 id="how-rust-approaches-oop-differently">How Rust approaches OOP differently</h2>
+                <p>Rust implements OOP concepts differently, prioritizing memory safety and performance, often without direct equivalents to traditional OOP features:</p>
+                <ul>
+                    <li><strong>Data encapsulation:</strong> Rust uses structs and enums (as seen in <a href="./chapter-05.html"><em>Chapter 5</em></a>) to define custom data structures. Encapsulation (controlling access) is achieved through Rust’s module system and privacy rules (pub, private by default), which we’ll explore.</li>
+                    <li><strong>Behavior encapsulation:</strong> Methods are associated with structs/enums using impl blocks, bundling data and behavior.</li>
+                    <li><strong>Abstraction and polymorphism (via traits):</strong> Instead of classes and inheritance, Rust uses <strong>traits</strong>. Traits define shared interfaces (a set of method signatures) that different types can implement. This allows for polymorphism (treating different types implementing the same trait uniformly) through generics (static dispatch) and trait objects (dynamic dispatch).</li>
+                    <li><strong>No class inheritance:</strong> Rust deliberately omits implementation inheritance (inheriting fields and method implementations directly from a superclass). It favors <strong>composition</strong> and <strong>trait-based code reuse</strong>, which often leads to more flexible and maintainable designs.</li>
+                </ul>
+                <p>Rust’s approach provides many benefits of OOP while avoiding common pitfalls such as complex inheritance hierarchies, null pointer issues, and data races, thanks to its ownership and borrowing system.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="encapsulation-structs-methods-privacy">
+                <h2 id="encapsulation-structs-methods-privacy">Encapsulation: structs, methods, and privacy</h2>
+                <p>As we learned <a href="./chapter-05.html">in <em>Chapter 5</em></a>, structs allow us to define custom data types by grouping related fields. Associating behavior with this data is done using impl blocks, where we define methods.</p>
+                <p><strong>A deeper look at privacy: pub(crate) and pub(super)</strong><br>
+                While pub makes an item fully public, Rust offers more control over visibility, useful in larger projects.</p>
+                <ul>
+                    <li><strong>pub(crate)</strong>: Visible within the same crate but private outside, ideal for internal helpers shared across your library.</li>
+                    <li><strong>pub(super)</strong>: Visible to the parent module, suitable for encapsulating implementation details.</li>
+                </ul>
+                <p>These features, which we’ll explore later, highlight Rust’s precise control over code visibility.</p>
+                <p>This combination of data (struct fields) and behavior (impl methods) is Rust’s primary way of achieving the OOP principle of <strong>encapsulation</strong>: bundling data and the operations that act upon it into a cohesive unit.</p>
+                <p>A key part of encapsulation is controlling access. By default in Rust, struct fields are <strong>private</strong> to the module they are defined in. This prevents external code from directly accessing or modifying the internal state of a struct, promoting data integrity. Methods defined in an impl block are also private by default. To allow external access, we use the pub keyword.</p>
+                <p>Let’s illustrate with an AveragedCollection that maintains a list of numbers and their average, ensuring the average is always correct.</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>// Define the struct in its own scope (like a module would provide)
+pub mod math_utils { // Using a module to demonstrate privacy
+    #[derive(Debug)] // Allow printing the struct
+    pub struct AveragedCollection {
+        list: Vec&lt;i32&gt;, // Private: External code cannot directly modify the list
+        average: f64,   // Private: External code cannot directly set the average
+    }
+
+    impl AveragedCollection {
+        // Public constructor (associated function)
+        pub fn new() -> AveragedCollection {
+            AveragedCollection {
+                list: Vec::new(),
+                average: 0.0,
+            }
+        }
+        // Public method to add an element, updating the average correctly
+        pub fn add(&amp;mut self, value: i32) {
+            self.list.push(value);
+            self.update_average(); // Call private helper method
+        }
+        // Public method to remove an element (if present)
+        pub fn remove(&amp;mut self) -> Option&lt;i32&gt; {
+            let result = self.list.pop(); // pop() returns Option&lt;i32&gt;
+            match result {
+                Some(_) => {
+                    self.update_average(); // Update average if removal happened
+                    result
+                }
+                None => None, // List was empty
+            }
+        }
+        // Public method to get the current average (read-only access)
+        pub fn average(&amp;self) -> f64 {
+            self.average
+        }
+        // Private helper method to recalculate the average
+        // Not marked 'pub', so only usable within this module/impl block
+        fn update_average(&amp;mut self) {
+            let total: i32 = self.list.iter().sum();
+            self.average = if self.list.is_empty() {
+                0.0
+            } else {
+                total as f64 / self.list.len() as f64
+            };
+        }
+    }
+} // end module math_utils
+
+fn main() {
+    // We need 'use' to bring the public items into scope
+    use math_utils::AveragedCollection;
+    let mut collection = AveragedCollection::new();
+    // We can only interact via public methods
+    collection.add(10);
+    collection.add(20);
+    collection.add(30);
+    println!("Average after adds: {}", collection.average()); // Output: 20.0
+    // Cannot do this - fields are private:
+    // collection.list.push(100); // Compile Error!
+    // collection.average = 50.0; // Compile Error!
+    collection.remove();
+    println!("Average after remove: {}", collection.average()); // Output: 15.0
+    // Cannot call private methods:
+    // collection.update_average(); // Compile Error!
+    println!("Final collection state: {:?}", collection);
+}</code></pre>
+                <p>In this AveragedCollection example, the following happens:</p>
+                <ul>
+                    <li>The list and average fields are private because they lack the pub keyword. Code outside the math_utils module cannot access them directly. This isn’t just a convention; it’s a strict rule enforced by the Rust compiler. By catching these invalid access attempts at compile time, Rust prevents common bugs, such as accidental data corruption, which might only appear as hard-to-debug runtime errors in less encapsulated languages.</li>
+                    <li>Methods such as add, remove, average, and the new constructor are explicitly marked pub, forming the public API of the struct.</li>
+                    <li>The update_average method is private (no pub), serving as an internal implementation detail. It can only be called by other methods within the same impl block (such as add and remove). This enforces encapsulation: the internal state (list, average) is protected, and modifications can only happen through the public methods, ensuring the average remains consistent with the list’s contents. This is a common and recommended pattern in Rust.</li>
+                </ul>
+            </section>
+
+            <section tabindex="0" aria-labelledby="shared-behavior-with-traits">
+                <h2 id="shared-behavior-with-traits">Shared behavior with traits</h2>
+                <p>While structs encapsulate data and specific behavior, how do we define <em>shared</em> behavior across different types? In traditional OOP, this is often done via inheritance or interfaces. Rust’s answer is <strong>traits</strong>. In the previous chapter, we already introduced traits, but we will discuss them again here with more examples.</p>
+                <p>A trait defines a collection of method signatures (and sometimes associated types or constants) that declare a set of capabilities needed to perform some task. Think of them as defining an “interface” or a “contract” that types can agree to implement.</p>
+
+                <section tabindex="0" aria-labelledby="defining-and-implementing-traits">
+                    <h3 id="defining-and-implementing-traits">Defining and implementing traits</h3>
+                    <p>You define a trait using the trait keyword, followed by the trait name and the method signatures within curly braces. To make a specific type adhere to the trait’s contract, you implement the trait for that type using an impl TraitName for Type block, providing concrete implementations for the required methods.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Define a trait for things that can provide a summary
+pub trait Summarizable {
+    fn summary(&amp;self) -> String; // Method signature: takes &amp;self, returns String
+    // Traits can also have default method implementations
+    fn default_summary(&amp;self) -> String {
+        String::from("(Read more...)") // Default implementation
+    }
+}
+
+// Define some structs
+pub struct NewsArticle {
+    pub headline: String,
+    pub location: String,
+    pub author: String,
+    pub content: String,
+}
+
+pub struct Tweet {
+    pub username: String,
+    pub content: String,
+    pub reply: bool,
+    pub retweet: bool,
+}
+
+// Implement the trait for NewsArticle
+impl Summarizable for NewsArticle {
+    fn summary(&amp;self) -> String {
+        format!("{}, by {} ({})", self.headline, self.author, self.location)
+    }
+    // We don't need to implement default_summary, we can use the default
+}
+
+// Implement the trait for Tweet
+impl Summarizable for Tweet {
+    fn summary(&amp;self) -> String {
+        format!("{}: {}", self.username, self.content)
+    }
+    // We can override the default implementation if we want
+    fn default_summary(&amp;self) -> String {
+        if self.retweet {
+            format!("Retweeted: {}", self.summary())
+        } else {
+            self.summary() // Or just call the required method
+        }
+    }
+}
+
+fn main() {
+    let tweet = Tweet {
+        username: String::from("rustacean"),
+        content: String::from("Traits are cool!"),
+        reply: false,
+        retweet: false,
+    };
+    let article = NewsArticle {
+        headline: String::from("Rust 1.XX Released!"),
+        location: String::from("Online"),
+        author: String::from("The Rust Team"),
+        content: String::from("A new version of Rust brings many improvements..."),
+    };
+    println!("Tweet summary: {}", tweet.summary());
+    println!("Article summary: {}", article.summary());
+    println!("Tweet default summary: {}", tweet.default_summary());
+    println!("Article default summary: {}", article.default_summary());
+}</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="traits-for-polymorphism-impl-trait">
+                    <h3 id="traits-for-polymorphism-impl-trait">Traits for polymorphism: impl Trait</h3>
+                    <p>One of the main benefits of traits is enabling polymorphism. We can write functions that accept any type implementing a specific trait. The simplest way is to use impl Trait syntax in the parameter type. This uses <strong>static dispatch</strong> (monomorphization) – the compiler generates specialized code for each concrete type used.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This function accepts any type that implements Summarizable
+pub fn notify(item: &amp;impl Summarizable) {
+    // Using `impl Trait` syntax
+    println!("Breaking news! {}", item.summary());
+}
+
+// Main function calling notify with different types
+fn main() {
+    // ... (tweet and article definitions from previous example) ...
+    let tweet = Tweet {
+        username: String::from("rustacean"),
+        content: String::from("Traits are cool!"),
+        reply: false,
+        retweet: false,
+    };
+    let article = NewsArticle {
+        headline: String::from("Rust 1.XX Released!"),
+        location: String::from("Online"),
+        author: String::from("The Rust Team"),
+        content: String::from("A new version of Rust brings many improvements..."),
+    };
+    notify(&amp;tweet);
+    notify(&amp;article);
+}</code></pre>
+                </section>
+
+                <section tabindex="0" aria-labelledby="traits-for-polymorphism-trait-bounds">
+                    <h3 id="traits-for-polymorphism-trait-bounds">Traits for polymorphism: trait bounds</h3>
+                    <p>An alternative, more verbose syntax for the same static dispatch is using <strong>trait bounds</strong> with generic type parameters. This is necessary in more complex scenarios, such as when multiple parameters need the same generic type or when implementing traits for generic types.</p>
+                    <p>Let’s see an example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Equivalent to the previous notify function, using trait bounds
+pub fn notify_generic&lt;T: Summarizable&gt;(item: &amp;T) { // Using generic T with trait bound
+    println!("Breaking news (generic)! {}", item.summary());
+}
+
+// Can also use the 'where' clause for more complex bounds
+pub fn notify_complex&lt;T&gt;(item1: &amp;T, item2: &amp;T)
+    where T: Summarizable + std::fmt::Debug // Requires T to implement both traits
+{
+    println!("Item 1: {} ({:?})", item1.summary(), item1);
+    println!("Item 2: {} ({:?})", item2.summary(), item2);
+}
+
+// main function would call notify_generic similarly to notify
+// (Need to add #[derive(Debug)] to Tweet and NewsArticle for notify_complex)</code></pre>
+                    <p>Both impl Trait and trait bounds &lt;T: Trait&gt; achieve polymorphism via static dispatch, which is highly performant as the compiler optimizes the calls for each specific type at compile time.</p>
+                    <p>Both fn notify(item: &amp;impl Summarizable) and fn notify_generic&lt;T: Summarizable&gt;(item: &amp;T) achieve the same goal, but choosing one depends on context. The impl Trait syntax is preferred for simplicity, enhancing readability. The more verbose generic syntax, such as &lt;T: Trait&gt; or the where clause, is better in the following situations:</p>
+                    <ul>
+                        <li>Ensuring multiple parameters have the exact same type, as in notify_complex&lt;T: Summarizable&gt;(item1: &amp;T, item2: &amp;T). The &lt;T: ...&gt; syntax enforces this, unlike (item1: &amp;impl Summarizable, item2: &amp;impl Summarizable), which allows different types.</li>
+                        <li>When the generic type is used in the return type, requiring &lt;T: Trait&gt; syntax.</li>
+                        <li>For complex trait bounds involving multiple traits, where a where clause improves clarity over inline bounds.</li>
+                    </ul>
+                    <p><strong>A common pitfall: impl Trait versus “Any” Trait</strong><br>
+                    It’s important to clarify a common point of confusion about impl Trait. When you see fn notify(item: &amp;impl Summarizable), it means the function can be called with a reference to <em>any single, concrete type</em> that implements Summarizable. For example, you can call it with &amp;Tweet or call it with &amp;NewsArticle. However, it does not mean you can mix different concrete types within the same data structure. The compiler resolves impl Trait to a specific, single type at compile time for each use case. This means you cannot, for example, create a Vec that holds both Tweets and NewsArticles and pass it to a function expecting Vec&lt;impl Summarizable&gt;.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// This is fine:
+// notify(&amp;my_tweet);
+// notify(&amp;my_article);
+
+// This will NOT compile:
+// let items: Vec&lt;&amp;impl Summarizable&gt; = vec![&amp;my_tweet, &amp;my_article];
+// error: `impl Trait` not allowed in path parameters</code></pre>
+                    <p>The compiler needs to know the exact size of the elements in the Vec at compile time, and Tweet and NewsArticle are different types with different sizes. To handle collections of different types that share a trait, you need dynamic dispatch using trait objects (&amp;dyn Summarizable), which we will cover in the next section.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="understanding-static-dispatch-monomorphization">
+                    <h3 id="understanding-static-dispatch-monomorphization">Understanding static dispatch (monomorphization)</h3>
+                    <p>When you write a generic function with a trait bound in Rust, such as fn process&lt;T: MyTrait&gt;(item: T), you’re essentially creating a template rather than just one function. During compilation, the compiler produces specialized versions for each specific type you use, a process known as monomorphization. In the end, only concrete functions are left, which makes static dispatch fast: calls go directly, without any lookup delays, and this allows for optimizations such as inlining.</p>
+                    <p>Here’s a simple example to illustrate this:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt::Debug;
+use std::ops::Add;
+
+// A generic function that takes any type `T` that can be added to itself
+// and can be printed with the Debug trait.
+// The `Copy` trait is needed so `value` can be used after being moved into the `+` operation.
+fn add_and_print&lt;T&gt;(value: T)
+where
+    T: Add&lt;Output = T&gt; + Copy + Debug,
+{
+    let result = value + value; // `value` must implement `Add` and `Copy`
+    println!("[Generic Function] {:?} + {:?} = {:?}", value, value, result);
+}
+
+fn main() {
+    let my_integer: i32 = 10;
+    let my_float: f64 = 5.5;
+    // When the compiler sees this call, it generates a specialized version of `add_and_print` for `i32`.
+    // It's as if you had written a function `add_and_print_i32(value: i32)`.
+    add_and_print(my_integer);
+    // When the compiler sees this call, it generates another specialized version for `f64`.
+    // It's as if you had written a function `add_and_print_f64(value: f64)`.
+    add_and_print(my_float);
+}
+
+// Conceptual code generated by the compiler (monomorphization)
+/*
+fn add_and_print_i32(value: i32) {
+    let result = value + value;
+    println!("[Generic Function] {:?} + {:?} = {:?}", value, value, result);
+}
+fn add_and_print_f64(value: f64) {
+    let result = value + value;
+    println!("[Generic Function] {:?} + {:?} = {:?}", value, value, result);
+}
+fn main() {
+    let my_integer: i32 = 10;
+    let my_float: f64 = 5.5;
+    add_and_print_i32(my_integer);
+    add_and_print_f64(my_float);
+}
+*/</code></pre>
+                    <p>This process of monomorphization is what allows Rust’s generics to have zero runtime cost compared to non-generic code, making them a powerful tool for writing abstract code without sacrificing performance. The trade-off is a potentially larger binary size, as code is duplicated for each concrete type used.</p>
+                    <p>Static dispatch is very efficient, but since it needs to know specific types at compile time, it can’t, for example, allow you to have a collection with different types like Tweet and NewsArticle, even if they both implement Summarizable. To add more flexibility during runtime, Rust provides an alternative kind of polymorphism: dynamic dispatch.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="dynamic-polymorphism-with-trait-objects">
+                    <h3 id="dynamic-polymorphism-with-trait-objects">Dynamic polymorphism with trait objects</h3>
+                    <p>When you’re managing a collection of items that are of different types but share the same behavior, it’s helpful to defer the method call decision from compile time to runtime. Rust handles this beautifully with trait objects: pointers that can hold any type implementing a trait. This makes it possible to have diverse collections and creates more flexible, dynamic code that adapts to various needs.</p>
+
+                    <section tabindex="0" aria-labelledby="introduction-to-trait-objects">
+                        <h4 id="introduction-to-trait-objects">Introduction to trait objects</h4>
+                        <p>Static dispatch via generics (impl Trait or &lt;T: Trait&gt;) works when the compiler knows the concrete types involved at compile time. But what if you need a collection (like a Vec) that holds items of <em>different</em> concrete types, as long as they all implement the same trait? Or, if you need to return different types implementing a trait from a function? This requires <strong>dynamic dispatch</strong>, where the specific method to call is determined at <em>runtime</em>. Rust achieves this using <strong>trait objects</strong>.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="creating-trait-objects-dyn-trait">
+                        <h4 id="creating-trait-objects-dyn-trait">Creating trait objects: dyn Trait</h4>
+                        <p>A trait object is created by taking a reference (or a smart pointer like Box or Rc) to an instance of a type that implements a trait and specifying the type as &amp;dyn Trait or Box&lt;dyn Trait&gt;. The dyn keyword indicates that method calls on this object will use <strong>dynamic dispatch</strong>.</p>
+                        <p>When you want to create a collection that holds different types that all share the same trait, like a Vec containing both NewsArticle and Tweet, you must use a smart pointer like Box. This is a fundamental requirement of Rust’s memory model. Rust needs to know the exact size of every element in a Vec at compile time to allocate memory for it on the stack. However, NewsArticle and Tweet are different structs and have different sizes. This is the problem that Box&lt;dyn Trait&gt; solves. Box is a smart pointer, and the pointer itself has a known, fixed size, regardless of how big the data it points to is. By wrapping our differently sized objects in Box, we place them on the heap and store the consistently sized Box pointers in our Vec. This satisfies Rust’s size requirements and allows us to create a heterogeneous collection.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// Using the Summarizable trait and types from before
+pub trait Summarizable { fn summary(&amp;self) -> String; }
+pub struct NewsArticle { pub headline: String, pub location: String, pub author: String, pub content: String }
+impl Summarizable for NewsArticle { fn summary(&amp;self) -> String { format!("{}, by {} ({})", self.headline, self.author, self.location) } }
+pub struct Tweet { pub username: String, pub content: String, pub reply: bool, pub retweet: bool }
+impl Summarizable for Tweet { fn summary(&amp;self) -> String { format!("{}: {}", self.username, self.content) } }
+
+fn main() {
+    let article = NewsArticle {
+        headline: String::from("New Rust Feature"),
+        location: String::from("Blog"),
+        author: String::from("Dev Team"),
+        content: String::from("..."),
+    };
+    let tweet = Tweet {
+        username: String::from("user123"),
+        content: String::from("Learning Rust traits!"),
+        reply: false,
+        retweet: false,
+    };
+    // Create a vector that holds trait objects.
+    // We use Box&lt;dyn Summarizable&gt; because the concrete types (NewsArticle, Tweet)
+    // have different sizes, so we need an indirection (Box puts them on the heap).
+    let items_to_summarize: Vec&lt;Box&lt;dyn Summarizable&gt;&gt; = vec![
+        Box::new(article), // Box::new creates a Box&lt;NewsArticle&gt;, which converts to Box&lt;dyn Summarizable&gt;
+        Box::new(tweet),   // Box::new creates a Box&lt;Tweet&gt;, which converts to Box&lt;dyn Summarizable&gt;
+    ];
+    // We can iterate and call methods via the trait object
+    for item in items_to_summarize {
+        // item here is Box&lt;dyn Summarizable&gt;
+        println!("Summary: {}", item.summary()); // Dynamic dispatch happens here
+    }
+}</code></pre>
+                        <p>This code demonstrates <strong>dynamic polymorphism</strong>. It defines a Summarizable trait that two different structs, NewsArticle and Tweet, both implement. To store these different-sized structs in the same Vec, each is wrapped in Box (a smart pointer), creating a Vec&lt;Box&lt;dyn Summarizable&gt;&gt;. When the code iterates through this vector and calls .summary() on each item, Rust determines the correct method to run at runtime, this is dynamic dispatch in action.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="dynamic-versus-static-dispatch-recap">
+                        <h4 id="dynamic-versus-static-dispatch-recap">Dynamic versus static dispatch recap</h4>
+                        <p>Dynamic dispatch, achieved through trait objects, determines the method to call at runtime. This is different from static dispatch, where the method to call is determined at compile time.</p>
+                        <ul>
+                            <li><strong>Static dispatch</strong> (impl Trait, &lt;T: Trait&gt;):
+                                <ul>
+                                    <li>Compiler generates specific code for each concrete type.</li>
+                                    <li>No runtime lookup cost; calls can often be inlined.</li>
+                                    <li>Requires knowing concrete types at compile time. Cannot store different types in the same homogeneous collection directly.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Dynamic dispatch</strong> (&amp;dyn Trait, Box&lt;dyn Trait&gt;):
+                                <ul>
+                                    <li>Compiler uses a <em>vtable</em> (virtual method table) pointer stored alongside the data pointer to find the correct method implementation at runtime.</li>
+                                    <li>Incurs a small runtime lookup cost; prevents inlining.</li>
+                                    <li>Allows storing different types implementing the same trait together (e.g., in Vec&lt;Box&lt;dyn Trait&gt;&gt;).</li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <p>Choose static dispatch when possible for performance. Use dynamic dispatch when you need the flexibility to handle heterogeneous collections or return different implementing types.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="object-safety">
+                        <h4 id="object-safety">Object safety</h4>
+                        <p>Not all traits can be made into trait objects. For a trait to be used with dyn Trait, it must be <strong>object-safe</strong>. This is a set of rules that ensures the compiler can work with the trait when the concrete type is unknown at compile time. The main rules for object safety are that all methods in the trait must meet the following criteria:</p>
+                        <ol>
+                            <li>Have a receiver (self, &amp;self, or &amp;mut self) as the first parameter.</li>
+                            <li>Not use Self as a return type or in parameter types (except for the receiver).</li>
+                            <li>Not have generic type parameters.</li>
+                        </ol>
+                        <p>Most common traits are object-safe. However, let’s look at a simple example of a trait that is <strong>not</strong> object-safe to understand why these rules exist. The Clone trait is a perfect example from the standard library that is not object-safe because its clone method returns Self.</p>
+                        <p>Let’s create our own version to see the problem:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>// A trait that is NOT object-safe because its method returns `Self`.
+pub trait Cloneable {
+    fn clone_self(&amp;self) -> Self;
+}
+
+// Let's implement it for our Tweet struct from earlier.
+#[derive(Debug)] // Added for printing
+pub struct Tweet {
+    pub username: String,
+    pub content: String,
+}
+
+impl Cloneable for Tweet {
+    fn clone_self(&amp;self) -> Self {
+        Tweet {
+            username: self.username.clone(),
+            content: self.content.clone(),
+        }
+    }
+}
+
+fn main() {
+    let tweet = Tweet {
+        username: "rustacean".to_string(),
+        content: "Object safety is important!".to_string(),
+    };
+    // This is fine, because the compiler knows the concrete type is Tweet.
+    let tweet_clone = tweet.clone_self();
+    println!("Cloned tweet: {:?}", tweet_clone);
+
+    // Now, let's try to create a trait object.
+    // The line below will cause a compile-time error.
+    // let cloneable_object: Box&lt;dyn Cloneable&gt; = Box::new(tweet);
+    //
+    // The compiler error would be something like:
+    // error[E0038]: the trait `Cloneable` cannot be made into an object
+    //   --&gt; src/main.rs:31:31
+    //    |
+    // 31 |     let cloneable_object: Box&lt;dyn Cloneable&gt; = Box::new(tweet);
+    //    |                               ^^^^^^^^^^^^^ `Cloneable` cannot be made into an object
+    //    |
+    // note: for a trait to be "object-safe" it must not have any methods that return `Self`
+    //   --&gt; src/main.rs:5:28
+    //    |
+    // 5  |     fn clone_self(&amp;self) -> Self;
+    //    |                            ^^^^ ...because `Self` is treated as a type parameter
+}</code></pre>
+                        <p>The compiler will let you know if a trait isn’t object-safe when you try to create a trait object from it. The reason that fn clone_self(&amp;self) -> Self; breaks object safety is because of the way trait objects work. When you have a trait object such as Box&lt;dyn Cloneable&gt;, Rust doesn’t know the exact type inside Box at compile time, just that it’s some type that implements Cloneable. If you call clone_self() on this trait object, Rust needs to create and return a new value of that unknown specific type. But how much memory should it allocate for this return? It doesn’t know the size of the concrete type (such as Tweet, but it could be something else!!). Because the size of Self isn’t known at runtime in a trait object, the compiler can’t generate the proper code to handle the return value, so it blocks creating the trait object in the first place.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="simulating-inheritance-patterns">
+                <h2 id="simulating-inheritance-patterns">Simulating inheritance patterns</h2>
+
+                <section tabindex="0" aria-labelledby="composition-over-inheritance">
+                    <h3 id="composition-over-inheritance">Composition over inheritance</h3>
+                    <p>As emphasized before, Rust intentionally omits traditional class-based inheritance. Instead, it warmly promotes the idea of composition, creating complex types by including other types, such as structs and enums, as fields, and using traits to share behaviors. This approach often results in more flexible and adaptable designs compared to deep inheritance hierarchies.</p>
+                    <p>This preference for composition is a deliberate design choice that Rust developers generally favor. It is particularly effective for modeling <strong>“has-a” relationships</strong>, where one type contains another as a component (for example, a car <em>has an</em> engine). Compared to inheritance (which models an “is-a” relationship), composition often leads to designs with <strong>less tight coupling</strong> between components. This modularity provides <strong>greater flexibility</strong>, as you can easily swap out different implementations of a component, and makes your code <strong>easier to test</strong> because each small, focused part can be tested in isolation.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="sharing-behavior-via-traits">
+                    <h3 id="sharing-behavior-via-traits">Sharing behavior via traits</h3>
+                    <p>The primary way to share <em>behavior</em> (methods) is by defining that behavior in a trait and having multiple structs implement it. We saw this with the Summarizable trait implemented by both NewsArticle and Tweet. Each type provides its own data and its own implementation of the shared behavior.</p>
+
+                    <section tabindex="0" aria-labelledby="default-implementations">
+                        <h4 id="default-implementations">Default implementations</h4>
+                        <p>Traits can offer default implementations for some or all of their methods, making code reuse easier and more efficient. It’s helpful to see how this differs from traditional inheritance. In Rust, default implementations let you reuse behavior, such as the logic inside methods, without sharing data, such as struct fields. This is quite different from many object-oriented languages, where subclasses typically inherit both methods and data from their parents. By keeping data and behaviors separated, Rust promotes more flexible and loosely connected designs. Types that implement a trait can simply use the default methods or choose to create their own custom versions if needed.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>trait Clickable {
+    fn click(&amp;self); // Required method
+    // Method with a default implementation
+    fn hover_text(&amp;self) -> String {
+        String::from("Click me!") // Default text
+    }
+}
+
+struct Button {
+    label: String,
+}
+impl Clickable for Button {
+    fn click(&amp;self) {
+        println!("Button '{}' clicked!", self.label);
+    }
+    // Uses the default hover_text()
+}
+
+struct ImageLink {
+    src: String,
+}
+impl Clickable for ImageLink {
+    fn click(&amp;self) {
+        println!("Navigating to image link '{}'...", self.src);
+    }
+    // Overrides the default hover_text()
+    fn hover_text(&amp;self) -> String {
+        format!("View image: {}", self.src)
+    }
+}
+
+fn main() {
+    let button = Button { label: "Submit".into() };
+    let image = ImageLink { src: "logo.png".into() };
+    button.click();
+    println!("Button hover: {}", button.hover_text()); // Uses default
+    image.click();
+    println!("Image hover: {}", image.hover_text()); // Uses override
+}</code></pre>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="trait-bounds-as-subclassing-constraints-supertraits">
+                        <h4 id="trait-bounds-as-subclassing-constraints-supertraits">Trait bounds as “subclassing” constraints: supertraits</h4>
+                        <p>You can require that a type implementing one trait must also implement another. This is done by specifying a supertrait in the trait definition using the : Trait syntax. This setup resembles an “is-a” relationship, similar to inheritance, and helps you build upon existing trait agreements. While this is a powerful way to create layered abstractions, it’s usually best to keep these trait hierarchies simple and not too deep, as overly complex bounds can sometimes make your code more difficult to understand and work with.</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt::Display; // Import the standard Display trait
+
+// Define a trait that REQUIRES the implementing type to also implement Display
+trait PrintableSummary: Display { // PrintableSummary is a sub-trait of Display
+    fn print_summary(&amp;self);
+}
+
+struct Report {
+    title: String,
+    content: String,
+}
+
+// To implement PrintableSummary, Report MUST first implement Display
+impl Display for Report {
+    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -> std::fmt::Result {
+        write!(f, "Report: '{}'", self.title)
+    }
+}
+
+// NOW we can implement PrintableSummary
+impl PrintableSummary for Report {
+    fn print_summary(&amp;self) {
+        println!("--- Summary ---");
+        println!("{}", self); // We can use Display methods because of the trait bound
+        println!("Content length: {}", self.content.len());
+        println!("---------------");
+    }
+}
+
+fn main() {
+    let report = Report {
+        title: "Q1 Results".into(),
+        content: "Sales were strong...".into(),
+    };
+    report.print_summary();
+}</code></pre>
+                        <p>Here, PrintableSummary: Display means any type implementing PrintableSummary <em>must</em> also implement Display. This allows methods within PrintableSummary (such as print_summary) to rely on the methods provided by Display (such as printing self directly).</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="requiring-multiple-traits-with-plus">
+                        <h4 id="requiring-multiple-traits-with-plus">Requiring multiple traits with +</h4>
+                        <p>In addition to specifying supertraits, you can also require a generic type to implement <em>multiple</em> traits using the + syntax. This is very common in function signatures. For example, if you wanted a function to take any item that is both printable for debugging (Debug) and can be cloned (Clone), you would write the following:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::fmt::Debug;
+
+// This function accepts any type `T` that implements both `Debug` and `Clone`.
+fn process_item&lt;T: Debug + Clone&gt;(item: T) {
+    let item_clone = item.clone();
+    println!("Processing item: {:?}", item);
+    println!("And its clone: {:?}", item_clone);
+}</code></pre>
+                        <p>T: Debug + Clone is a <strong>trait bound</strong> that enforces multiple requirements on the type T. While not inheritance, traits, default methods, composition, and supertrait bounds provide powerful tools for code reuse and structuring behavior in Rust.</p>
+                    </section>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="associated-types">
+                <h2 id="associated-types">Associated types</h2>
+                <p>Sometimes, a trait needs to refer to a specific related type that isn’t chosen until the trait is actually implemented. We achieve this using associated types. While it’s possible to use generic type parameters on the trait for a similar purpose, like in Iterator&lt;T&gt; { fn next(&amp;mut self) -> Option&lt;T&gt;; }, associated types are often preferred, especially for traits like Iterator. The main reason is that a type can only implement a trait with a particular set of associated types once, which helps prevent confusion. For example, Vec&lt;i32&gt; can only be an iterator over one kind of item, which is i32. By using an associated type Item, we clarify this one-to-one relationship, making the type system more intuitive and supporting both the compiler and programmers.</p>
+                <p>In fact, the standard Iterator trait also uses an associated type to indicate the kind of item it produces!</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>// Simplified Iterator-like trait
+pub trait SimpleIterator {
+    // 'Item' is an associated type. Each implementor specifies what Item is.
+    type Item;
+    // next() returns an Option of the associated Item type
+    fn next(&amp;mut self) -> Option&lt;Self::Item&gt;;
+}
+
+// Implement the trait for a simple counter
+struct Counter {
+    current: u32,
+    max: u32,
+}
+
+impl SimpleIterator for Counter {
+    // Specify that for Counter, the Item type is u32
+    type Item = u32;
+    fn next(&amp;mut self) -> Option&lt;Self::Item&gt; { // Returns Option&lt;u32&gt;
+        if self.current &lt; self.max {
+            let val = self.current;
+            self.current += 1;
+            Some(val)
+        } else {
+            None
+        }
+    }
+}
+
+fn main() {
+    let mut counter = Counter { current: 0, max: 3 };
+    // We can call next() and get Option&lt;u32&gt;
+    println!("{:?}", counter.next()); // Some(0)
+    println!("{:?}", counter.next()); // Some(1)
+    println!("{:?}", counter.next()); // Some(2)
+    println!("{:?}", counter.next()); // None
+}</code></pre>
+                <p>In the SimpleIterator trait, type Item; declares an associated type. When Counter implements SimpleIterator, it specifies type Item = u32;. This links the Item placeholder to the concrete type u32 <em>for that specific implementation</em>. The next method can then refer to Self::Item (which means u32 when implemented for Counter) in its signature. Associated types are crucial for defining generic abstractions such as iterators, futures, and collections, where the trait needs to work with types determined by the implementor.</p>
+                <p>Now that we have our toolkit of structs, enums, and powerful traits, let’s explore how they can come together to beautifully implement some of the most effective and commonly used object-oriented design patterns in a genuinely idiomatic Rust style.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="object-oriented-design-patterns-in-rust">
+                <h2 id="object-oriented-design-patterns-in-rust">Object-oriented design patterns in Rust</h2>
+
+                <section tabindex="0" aria-labelledby="introduction-to-patterns-in-rust">
+                    <h3 id="introduction-to-patterns-in-rust">Introduction to patterns in Rust</h3>
+                    <p>While Rust isn’t traditionally OOP, many common software design patterns can be effectively implemented by leveraging traits, enums, and composition. What makes this particularly powerful is how Rust’s core features often lead to more robust and type-safe versions of these patterns than in other languages. For example, Rust’s expressive enums are perfect for creating compile-time verified state machines (the State pattern), while the ownership system provides a natural and safe way to manage resource construction (the Builder pattern). The borrow checker adds another layer of safety, preventing invalid state mutations at compile time. This means you can implement familiar patterns with a higher degree of confidence in their correctness.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="builder-pattern">
+                    <h3 id="builder-pattern">Builder pattern</h3>
+                    <p>The <strong>Builder</strong> pattern is useful when constructing an object with many fields, especially if many are optional or require complex setup. For the reader and user of your code, this pattern dramatically improves API usability and readability. Instead of confronting them with a single, complex constructor function with a long, confusing list of parameters, the builder provides a clean, step-by-step, and self-documenting process. Each optional parameter is set with a descriptive method call (e.g., .with_feature_x(), .set_timeout()), making it immediately clear which specific options are being configured for the new object.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>#[derive(Debug)] // To allow printing the final struct
+pub struct WindowConfig {
+    title: String,
+    width: u32,
+    height: u32,
+    is_resizable: bool,
+    has_decorations: bool,
+}
+
+// The builder struct
+pub struct WindowConfigBuilder {
+    title: String, // Required field
+    width: Option&lt;u32&gt;,
+    height: Option&lt;u32&gt;,
+    is_resizable: Option&lt;bool&gt;,
+    has_decorations: Option&lt;bool&gt;,
+}
+
+impl WindowConfigBuilder {
+    // Start building with the required field(s)
+    pub fn new(title: String) -> Self {
+        WindowConfigBuilder {
+            title,
+            width: None,
+            height: None,
+            is_resizable: None,
+            has_decorations: None,
+        }
+    }
+    // Methods to set optional fields, consuming and returning self (fluent interface)
+    pub fn width(mut self, width: u32) -> Self {
+        self.width = Some(width);
+        self
+    }
+    pub fn height(mut self, height: u32) -> Self {
+        self.height = Some(height);
+        self
+    }
+    pub fn resizable(mut self, resizable: bool) -> Self {
+        self.is_resizable = Some(resizable);
+        self
+    }
+    pub fn decorations(mut self, decorations: bool) -> Self {
+        self.has_decorations = Some(decorations);
+        self
+    }
+    // Finalize the build, providing defaults for unset options
+    pub fn build(self) -> WindowConfig {
+        WindowConfig {
+            title: self.title,
+            width: self.width.unwrap_or(800), // Default width
+            height: self.height.unwrap_or(600), // Default height
+            is_resizable: self.is_resizable.unwrap_or(true), // Default resizable
+            has_decorations: self.has_decorations.unwrap_or(true), // Default decorations
+        }
+    }
+}
+
+fn main() {
+    let basic_window = WindowConfigBuilder::new("My App".to_string())
+        .build(); // Uses all defaults
+    let custom_window = WindowConfigBuilder::new("Game Window".to_string())
+        .width(1024)
+        .height(768)
+        .resizable(false)
+        .build(); // Sets some fields, uses defaults for others
+    let fullscreen_window = WindowConfigBuilder::new("Fullscreen".to_string())
+        .decorations(false) // Only set decorations
+        .build();
+    println!("Basic Window: {:?}", basic_window);
+    println!("Custom Window: {:?}", custom_window);
+    println!("Fullscreen Window: {:?}", fullscreen_window);
+}</code></pre>
+                    <p>The WindowConfigBuilder provides a clear, step-by-step way to construct a WindowConfig, handling optional fields and defaults cleanly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="state-pattern-typed-states">
+                    <h3 id="state-pattern-typed-states">State pattern/typed states</h3>
+                    <p>Another common pattern involves handling an object whose behavior depends on its internal state. While many languages use flags or string fields (e.g., if post.status == "draft"), this approach can be a bit fragile and might lead to runtime errors if the state isn’t checked before calling a method. Rust’s enums and match system offer a wonderfully powerful and safe way to implement the State pattern. Instead of relying on simple flags, you can encode the various states of an object directly within the type system, making your code both robust and clear. This enables the Rust compiler to double-check state changes and make sure that certain methods are only called when the object is in the right state. It helps catch potential bugs early, during compilation instead of at runtime.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// Define the states and the context
+struct DraftPost { content: String }
+struct PendingReviewPost { content: String }
+struct PublishedPost { content: String }
+
+// The main object holding the current state
+enum PostState {
+    Draft(DraftPost),
+    PendingReview(PendingReviewPost),
+    Published(PublishedPost),
+}
+
+pub struct Post {
+    state: PostState,
+}
+
+impl Post {
+    pub fn new() -> Post {
+        Post { state: PostState::Draft(DraftPost { content: String::new() }) }
+    }
+    pub fn add_text(&amp;mut self, text: &amp;str) {
+        // Only allowed in Draft state
+        if let PostState::Draft(ref mut draft) = self.state {
+            draft.content.push_str(text);
+        } else {
+            println!("Cannot add text in current state.");
+            // In a real app, might return Result&lt;(), Error&gt;
+        }
+    }
+    pub fn request_review(&amp;mut self) {
+        // Transition from Draft to PendingReview
+        if let PostState::Draft(draft) = std::mem::replace(&amp;mut self.state, PostState::Draft(DraftPost{content: String::new()})) { // Temporary replace to take ownership
+            self.state = PostState::PendingReview(PendingReviewPost { content: draft.content });
+        } else {
+            println!("Post must be in Draft state to request review.");
+        }
+    }
+    pub fn approve(&amp;mut self) {
+        // Transition from PendingReview to Published
+        if let PostState::PendingReview(pending) = std::mem::replace(&amp;mut self.state, PostState::Draft(DraftPost{content: String::new()})) {
+            self.state = PostState::Published(PublishedPost { content: pending.content });
+        } else {
+            println!("Post must be Pending Review to approve.");
+        }
+    }
+    pub fn content(&amp;self) -> &amp;str {
+        // Access content based on current state
+        match &amp;self.state {
+            PostState::Draft(s) => &amp;s.content,
+            PostState::PendingReview(s) => &amp;s.content,
+            PostState::Published(s) => &amp;s.content,
+        }
+    }
+}
+
+fn main() {
+    let mut post = Post::new();
+    post.add_text("Learning about state patterns in Rust. ");
+    println!("Content (Draft): {}", post.content());
+    post.request_review();
+    post.add_text("This won't be added."); // Tries adding text in wrong state
+    post.approve();
+    println!("Content (Published): {}", post.content());
+    post.request_review(); // Tries invalid transition
+}</code></pre>
+                    <p>This Post example uses an enum (PostState) to represent the possible states. The main Post struct holds the <em>current</em> state. Methods on Post check the current state (using if let or match) and only allow valid actions or transitions. This enforces the state machine logic at compile time to a large degree, preventing invalid operations based on the current state. You may have noticed the use of std::mem::replace in transition methods such as request_review; this is a handy technique used to temporarily take ownership of the state from &amp;mut self.state. It allows us to move the Draft variant out so we can use its data to construct the new PendingReview state, all while upholding Rust’s ownership rules. This is often considered more robust than using simple boolean flags or string-based states. Rust’s features enable implementing many design patterns effectively, often with enhanced type safety compared to traditional OOP languages.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="observer-pattern">
+                    <h3 id="observer-pattern">Observer pattern</h3>
+                    <p>The Observer pattern is a helpful way for objects to stay connected and communicate smoothly. It creates a one-to-many relationship, so when the main object, called the subject, changes, all the dependents, known as observers, are easily notified and updated. This makes it perfect for building event-driven systems where different parts of an app can respond to changes without being tightly tied to the object that changes. In Rust, this pattern is often put into practice using traits and smart pointers.</p>
+                    <p>The main idea is to define an Observer trait with a method such as update(). Then, the Subject struct keeps a collection of objects that follow this trait. To manage shared ownership and allow observers to change their state after being notified, this collection is usually a Vec of smart pointers, such as Vec&lt;Rc&lt;RefCell&lt;dyn Observer&gt;&gt;&gt; for single-threaded environments or Vec&lt;Arc&lt;Mutex&lt;dyn Observer&gt;&gt;&gt; when working with multiple threads.</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::rc::Rc;
+use std::cell::RefCell;
+
+// The trait that all observers must implement.
+trait Observer {
+    // The subject calls this method to notify the observer of a change.
+    fn update(&amp;self, new_state: &amp;str);
+}
+
+// The subject holds the state and a list of observers.
+struct Subject {
+    state: String,
+    // We use Rc&lt;RefCell&lt;...&gt;&gt; to allow shared ownership and interior mutability of the observers list.
+    observers: RefCell&lt;Vec&lt;Rc&lt;dyn Observer&gt;&gt;&gt;,
+}
+
+impl Subject {
+    fn new(initial_state: &amp;str) -> Self {
+        Subject {
+            state: initial_state.to_string(),
+            observers: RefCell::new(Vec::new()),
+        }
+    }
+    // Add a new observer to the list.
+    fn attach(&amp;self, observer: Rc&lt;dyn Observer&gt;) {
+        self.observers.borrow_mut().push(observer);
+    }
+    // Change the state and notify all observers.
+    fn set_state(&amp;mut self, new_state: &amp;str) {
+        self.state = new_state.to_string();
+        println!("\nSubject: State changed to '{}'. Notifying observers...", self.state);
+        // We borrow the observers list immutably to iterate and notify.
+        for observer in self.observers.borrow().iter() {
+            observer.update(&amp;self.state);
+        }
+    }
+}
+
+// A concrete observer that logs updates.
+struct Logger {
+    name: String,
+}
+
+impl Observer for Logger {
+    fn update(&amp;self, new_state: &amp;str) {
+        println!("[Logger {}]: Received update! New state is: '{}'", self.name, new_state);
+    }
+}
+
+// Another concrete observer that might perform a different action.
+struct Notifier {
+    email: String,
+}
+
+impl Observer for Notifier {
+    fn update(&amp;self, new_state: &amp;str) {
+        println!("[Notifier]: Sending email to {}. Subject: State changed to '{}'", self.email, new_state);
+    }
+}
+
+fn main() {
+    let mut subject = Subject::new("Initial State");
+    // Create observers. We wrap them in Rc to manage shared ownership.
+    let logger = Rc::new(Logger { name: "FileLogger".to_string() });
+    let notifier = Rc::new(Notifier { email: "admin@example.com".to_string() });
+    // Attach the observers to the subject.
+    subject.attach(Rc::clone(&amp;logger) as Rc&lt;dyn Observer&gt;);
+    subject.attach(Rc::clone(&amp;notifier) as Rc&lt;dyn Observer&gt;);
+    // Change the subject's state. This should trigger notifications.
+    subject.set_state("State A");
+    subject.set_state("State B");
+}</code></pre>
+                    <ul>
+                        <li><strong>Observer trait</strong>: Defines the common interface with an update method that the subject will call.</li>
+                        <li><strong>Subject struct</strong>: Holds its own state and the list of observers.</li>
+                        <li><strong>RefCell&lt;Vec&lt;Rc&lt;dyn Observer&gt;&gt;&gt;</strong>: This is the core data structure for the observers list:
+                            <ul>
+                                <li><strong>Rc</strong>: Enables shared ownership, allowing multiple parts of the application to hold a reference to an observer.</li>
+                                <li><strong>RefCell</strong>: Provides interior mutability, allowing the list of observers to be modified (e.g., adding a new observer) even through an immutable reference to the Subject.</li>
+                                <li><strong>dyn Observer</strong>: A trait object that allows the Vec to store different concrete types of observers (such as Logger and Notifier) as long as they all implement the Observer trait.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Concrete observers</strong>: These are the specific structs (Logger, Notifier) that implement the Observer trait, each providing its own unique logic for the update method.</li>
+                        <li><strong>Execution flow</strong>: The main function creates a Subject instance and one or more observer instances (wrapped in Rc). It then attaches the observers to the subject. When the subject’s set_state() method is called, it iterates through its list of observers and calls the update() method on each one.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="strategy-pattern">
+                    <h3 id="strategy-pattern">Strategy pattern</h3>
+                    <p>The Strategy pattern is a helpful behavioral design pattern that allows you to pick an algorithm while your program is running. It involves creating a set of interchangeable algorithms, each housed in its own type, so you can easily swap them out. This pattern is especially handy when you have a task that can be done in multiple ways, giving you the flexibility to select or switch the specific method (the “strategy”) without changing the rest of your code. In Rust, this pattern is typically implemented with traits. You define a common Strategy trait that all different algorithm types will share. The main object (the “context”) can then hold a reference to any object that implements this trait, making it easy to switch strategies on the fly. This is often done using a trait object (Box&lt;dyn Strategy&gt;).</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>// The trait that defines the common interface for all our strategies.
+trait TextFormattingStrategy {
+    fn format(&amp;self, text: &amp;str) -> String;
+}
+
+// A concrete strategy: formats text to all uppercase.
+struct UpperCaseFormatter;
+
+impl TextFormattingStrategy for UpperCaseFormatter {
+    fn format(&amp;self, text: &amp;str) -> String {
+        text.to_uppercase()
+    }
+}
+
+// Another concrete strategy: formats text to all lowercase.
+struct LowerCaseFormatter;
+
+impl TextFormattingStrategy for LowerCaseFormatter {
+    fn format(&amp;self, text: &amp;str) -> String {
+        text.to_lowercase()
+    }
+}
+
+// The "context" that uses a formatting strategy.
+// It holds a trait object, allowing the strategy to be changed at runtime.
+struct TextProcessor {
+    strategy: Box&lt;dyn TextFormattingStrategy&gt;,
+}
+
+impl TextProcessor {
+    // Creates a new processor with an initial strategy.
+    fn new(strategy: Box&lt;dyn TextFormattingStrategy&gt;) -> Self {
+        TextProcessor { strategy }
+    }
+    // Allows swapping the strategy at runtime.
+    fn set_strategy(&amp;mut self, strategy: Box&lt;dyn TextFormattingStrategy&gt;) {
+        self.strategy = strategy;
+    }
+    // Executes the current strategy on the given text.
+    fn process(&amp;self, text: &amp;str) -> String {
+        self.strategy.format(text)
+    }
+}
+
+fn main() {
+    // Start with an uppercase formatting strategy.
+    let mut processor = TextProcessor::new(Box::new(UpperCaseFormatter));
+    let text = "Hello, Strategy Pattern!";
+    let uppercase_result = processor.process(text);
+    println!("Using uppercase strategy: {}", uppercase_result);
+    // Now, change the strategy to lowercase at runtime.
+    processor.set_strategy(Box::new(LowerCaseFormatter));
+    let lowercase_result = processor.process(text);
+    println!("Using lowercase strategy: {}", lowercase_result);
+}</code></pre>
+                    <ul>
+                        <li><strong>TextFormattingStrategy Trait</strong>: This defines the common contract for all formatting algorithms. Any strategy we create must provide a format method.</li>
+                        <li><strong>Concrete strategies (UpperCaseFormatter, LowerCaseFormatter)</strong>: These are the individual, interchangeable algorithms. Each is a simple struct that implements the TextFormattingStrategy trait with its own specific logic.</li>
+                        <li><strong>TextProcessor (The Context)</strong>: This struct is the user of the strategy. It holds a strategy field of type Box&lt;dyn TextFormattingStrategy&gt;.</li>
+                        <li><strong>Box&lt;dyn TextFormattingStrategy&gt;</strong>: This is a trait object. It allows the TextProcessor to hold <em>any</em> concrete type that implements TextFormattingStrategy, without the TextProcessor needing to know which specific strategy it is. This is what enables dynamic, runtime selection.</li>
+                        <li><strong>Execution flow</strong>: In main, create a TextProcessor with an UpperCaseFormatter and call .process() to see the result. Then, use .set_strategy() to switch to a LowerCaseFormatter and call .process() again. The code remains unchanged; only its strategy object changes.</li>
+                    </ul>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch8">
+                <h2 id="summary-ch8">Summary</h2>
+                <p>This chapter gently guided us through the fascinating ways Rust integrates core object-oriented programming ideas. We discovered that encapsulation is like wrapping data in structs or enums and connecting behavior with impl blocks, making everything neat and organized. Rust’s module system and privacy rules help us control access, adding a layer of security.</p>
+                <p>When it comes to abstraction and polymorphism, traits come into play as Rust’s way of defining shared interfaces, enabling both static and dynamic dispatch, kind of like versatile tools for different tasks. Instead of relying on traditional inheritance, Rust embraces composition and uses traits with default methods and supertrait bounds to promote code reuse and build hierarchical relationships smoothly.</p>
+                <p>All these features work together beautifully, allowing us to implement popular OOP design patterns, such as the Builder and State patterns, with perhaps even better type safety and confidence!</p>
+                <p>Now that we’ve seen how to define behavior on individual data structures, get ready to explore Rust’s functional side, where we’ll learn how to process entire sequences of data with the power and elegance of iterators and closures.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="questions-and-assignments-ch8">
+                <h2 id="questions-and-assignments-ch8">Questions and assignments</h2>
+
+                <section tabindex="0" aria-labelledby="questions-ch8">
+                    <h3 id="questions-ch8">Questions</h3>
+                    <ol>
+                        <li>In Rust, what two fundamental components are used to achieve the OOP principle of encapsulation by bundling data and associated methods?</li>
+                        <li>If a function accepts a parameter using the syntax item: &amp;impl Summarizable, what kind of method dispatch (static or dynamic) will the compiler use for method calls on item?</li>
+                        <li>What is the Box&lt;dyn Trait&gt; syntax necessary for when creating a Vec that needs to hold different concrete types (e.g., NewsArticle and Tweet)?</li>
+                        <li>Instead of traditional implementation inheritance, what two main mechanisms does Rust favor for code reuse and sharing behavior?</li>
+                        <li>What is the purpose of a supertrait (e.g., trait PrintableSummary: Display) in a trait definition?</li>
+                        <li>The process where the compiler generates specialized, concrete versions of a generic function for each type it is used with is known as what?</li>
+                        <li>What kind of pointer-based mechanism does dynamic dispatch use at runtime to find the correct method implementation?</li>
+                        <li>If a trait method uses Self as a return type (like fn clone_self(&amp;self) -> Self;), why does this prevent the trait from being object-safe?</li>
+                        <li>In the Builder pattern (e.g., WindowConfigBuilder), what technique is used for the methods that set optional fields (like .width()) to allow method chaining?</li>
+                        <li>In the Observer pattern, the Subject holds its observer list using RefCell. What problem in Rust’s ownership system does RefCell solve in this context?</li>
+                    </ol>
+                </section>
+
+                <section tabindex="0" aria-labelledby="assignments-ch8">
+                    <h3 id="assignments-ch8">Assignments</h3>
+                    <ul>
+                        <li><strong>Assignment 8.1: The private bank account (encapsulation)</strong>
+                            <p><strong>Goal</strong>: Practice creating a struct with private data and a public method to modify it safely.</p>
+                            <p><strong>Define a module</strong>: Create a module named finance so you can test privacy rules (or just imagine it’s in a separate file).</p>
+                            <p><strong>Create a struct</strong>: Inside the module, define a struct named BankAccount with one field: balance: i32.</p>
+                            <p><strong>Crucial step</strong>: Do not make the balance field public (do not put pub in front of balance). This ensures external code cannot change it directly.</p>
+                            <p><strong>Add a method</strong>: Use an impl block to add a public method called deposit(&amp;mut self, amount: i32). This method should add the amount to self.balance.</p>
+                            <p><strong>Add a constructor</strong>: Add a public new() function that returns a BankAccount starting with 0 balance.</p>
+                            <p><strong>Test in Main</strong>:</p>
+                            <ol>
+                                <li>Create a new account using BankAccount::new().</li>
+                                <li>Call .deposit(100).</li>
+                            </ol>
+                            <p><strong>Try (and fail)</strong>: Attempt to print account.balance directly. It should fail to compile because the field is private.</p>
+                            <p><strong>Fix</strong>: Add a public get_balance(&amp;self) method to read the value safely, and print that instead.</p>
+                        </li>
+                        <li><strong>Assignment 8.2: Animal sounds (basic traits)</strong>
+                            <p><strong>Goal</strong>: Practice defining a shared behavior (trait) and implementing it for two different things.</p>
+                            <p><strong>Define a trait</strong>: Define a trait named Voice with one method signature: fn speak(&amp;self);.</p>
+                            <p><strong>Create structs</strong>: Create two empty structs: Dog and Cat.</p>
+                            <p><strong>Implement the trait</strong>:</p>
+                            <ol>
+                                <li>Implement Voice for Dog. Inside speak, print "Woof!".</li>
+                                <li>Implement Voice for Cat. Inside speak, print "Meow!".</li>
+                            </ol>
+                            <p><strong>Test in Main</strong>:</p>
+                            <ol>
+                                <li>Create an instance of Dog and Cat.</li>
+                                <li>Call .speak() on both of them to see their different behaviors.</li>
+                            </ol>
+                        </li>
+                    </ul>
+                </section>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-07.html">← Chapter 7</a>
+            <a class="nav-next" href="./chapter-09.html">Chapter 9 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

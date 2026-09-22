@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 2: What Debugging Actually Is – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch2-heading">
+            <h1 id="ch2-heading">Chapter 2: What Debugging Actually Is</h1>
+
+            <p>Debugging is not guessing what the program does.</p>
+            <p>Debugging is observing what the program actually does.</p>
+            <p>When a program behaves incorrectly, there are usually several possible explanations.</p>
+            <p>The debugger lets you replace speculation with evidence.</p>
+            <p>A useful debugging loop is:</p>
+            <pre tabindex="0" role="region" aria-label="Code sample"><code>Observe
+→ Stop
+→ Locate
+→ Inspect
+→ Trace
+→ Form a hypothesis
+→ Test the hypothesis
+→ Fix
+→ Verify</code></pre>
+            <p>LLDB is the instrument used to perform that investigation.</p>
+            <p>Rust adds another layer:</p>
+            <pre tabindex="0" role="region" aria-label="Code sample"><code>Rust source
+→ Cargo
+→ rustc
+→ executable + debug information
+→ LLDB</code></pre>
+            <p>The debugger sees the compiled program.</p>
+            <p>Debug information connects that compiled program back to Rust source locations, functions, types, variables, and lines.</p>
+
+            <section tabindex="0" aria-labelledby="debugging-is-observation">
+                <h2 id="debugging-is-observation">Debugging is observation, not guessing</h2>
+                <p>Many programmers, when they first learn to debug, start by reading source code and forming a theory. They read a function, decide what it “should” do, and then search for the place where reality might diverge from that theory. This is a fine starting point, but it is not debugging. It is speculation.</p>
+                <p>Real debugging has a different shape. It starts from a concrete, observable behavior: the program printed the wrong number, returned <code>None</code> when it should have returned <code>Some</code>, hung during an <code>.await</code>, or panicked on some specific input. From that observation, we make a hypothesis, and then we run an experiment that the debugger can verify.</p>
+                <p>The experiment is what makes it debugging rather than guesswork. In an experiment, we do the following:</p>
+                <ul>
+                    <li>Choose one specific fact we want to establish.</li>
+                    <li>Choose the smallest observation that will confirm or refute that fact.</li>
+                    <li>Run the program under the debugger.</li>
+                    <li>Look at the actual value at that point.</li>
+                    <li>Update our understanding based on what we observed.</li>
+                </ul>
+                <p>This is why the debugger matters. Without it, we are forced to reason about a program from the outside, using only the code and the observable output. With it, we can stand inside the program at a specific point in time and look at the actual state.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-debugging-loop-in-detail">
+                <h2 id="the-debugging-loop-in-detail">The debugging loop in detail</h2>
+                <p>The loop we introduced at the beginning of this chapter is worth expanding, because each step has a specific purpose.</p>
+
+                <section tabindex="0" aria-labelledby="observe">
+                    <h3 id="observe">Observe</h3>
+                    <p>Something happened. The program printed the wrong output. A test failed. A panic occurred. A request timed out. The first task of debugging is to describe the observation clearly, in terms the debugger can help you investigate.</p>
+                    <p>A weak observation:</p>
+                    <blockquote>
+                        <p>“The program is broken.”</p>
+                    </blockquote>
+                    <p>A strong observation:</p>
+                    <blockquote>
+                        <p>“When I run the program with input <code>config.json</code>, it prints <code>no config</code> instead of <code>loaded</code>.”</p>
+                    </blockquote>
+                    <p>The stronger observation gives you a place to attach a hypothesis, and it gives you a way to know when you have fixed the bug.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="stop">
+                    <h3 id="stop">Stop</h3>
+                    <p>Debugging is easier when the program is paused. A breakpoint stops the program at a specific point so you can inspect the state. Without a stop, you are watching a moving target.</p>
+                    <p>This is why almost every debugging session begins with a breakpoint. The breakpoint does not have to be perfect. It just has to be somewhere near the behavior you are investigating.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="locate">
+                    <h3 id="locate">Locate</h3>
+                    <p>Once the program is stopped, ask where it is. Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame info</code></pre>
+                    <p>You want to know the function, the source file, and the line. If you do not know where you are, everything else you inspect will be difficult to interpret.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="inspect">
+                    <h3 id="inspect">Inspect</h3>
+                    <p>Now that you know where you are, look at what you have. Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable</code></pre>
+                    <p>This shows the arguments and locals available in the current frame. This is the moment where you compare what the program thinks the state is with what you expected the state to be.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="trace">
+                    <h3 id="trace">Trace</h3>
+                    <p>If the state you see is not yet enough, trace how it got there. Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                    <p>The backtrace shows the call stack: the path of function calls that led to this point. It answers the question, “how did I get here?”</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="form-a-hypothesis">
+                    <h3 id="form-a-hypothesis">Form a hypothesis</h3>
+                    <p>Now you have evidence. Form a hypothesis that explains the evidence. A useful hypothesis is specific enough to be tested.</p>
+                    <p>A weak hypothesis:</p>
+                    <blockquote>
+                        <p>“The config loading is broken.”</p>
+                    </blockquote>
+                    <p>A strong hypothesis:</p>
+                    <blockquote>
+                        <p>“The environment variable <code>CONFIG_PATH</code> is empty, so <code>find_config</code> returns <code>None</code>.”</p>
+                    </blockquote>
+                </section>
+
+                <section tabindex="0" aria-labelledby="test-the-hypothesis">
+                    <h3 id="test-the-hypothesis">Test the hypothesis</h3>
+                    <p>Place a breakpoint where the hypothesis predicts the evidence. Inspect the state. If the prediction is confirmed, the hypothesis is supported. If it is refuted, you have learned something, and you can form a new hypothesis.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="fix">
+                    <h3 id="fix">Fix</h3>
+                    <p>Once the cause is understood, change the code. A fix that is based on a verified cause is much more likely to work than a fix based on a guess.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="verify">
+                    <h3 id="verify">Verify</h3>
+                    <p>Run the program again, with the same input that produced the bug, and confirm that the behavior has changed. If possible, add a regression test. A bug that cannot be reproduced by a test is easier to reintroduce.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="debugging-is-a-skill">
+                <h2 id="debugging-is-a-skill">Debugging is a skill, not a command list</h2>
+                <p>It is tempting to think of debugging as a collection of commands. Run the program. Set a breakpoint. Print the variable. Step. Continue. That is a beginning, but it is not the whole skill.</p>
+                <p>The skill is in knowing <em>which</em> observation will be most informative, <em>when</em> to stop and inspect, <em>what</em> to inspect, and <em>how</em> to interpret what you see. Commands are the vocabulary. The sentence is written by the programmer.</p>
+                <p>You will get much further by learning a small number of commands and using them thoughtfully than by memorizing dozens of commands and using them randomly. The rest of this manual is designed with that in mind.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="the-cost-of-guessing">
+                <h2 id="the-cost-of-guessing">The cost of guessing</h2>
+                <p>Why is guessing so costly? Several reasons:</p>
+                <ul>
+                    <li><strong>Guessing produces plausible but wrong fixes.</strong> A guess that matches a symptom can easily produce a change that hides the symptom without addressing the cause. The bug returns in a slightly different form, and the original understanding was never corrected.</li>
+                    <li><strong>Guessing does not compose.</strong> If you fix one bug by guessing, you have not learned anything that transfers to the next bug. Debugging with evidence, on the other hand, builds a growing model of the system that makes future debugging faster.</li>
+                    <li><strong>Guessing damages trust.</strong> When you cannot explain why a fix works, you cannot defend it in a review. When you can explain it, with evidence from the debugger, the conversation is entirely different.</li>
+                    <li><strong>Guessing wastes time.</strong> It feels fast, because it lets you start typing immediately. But it often leads to a chain of changes that never quite find the cause. Evidence-based debugging feels slower at first, but almost always ends sooner.</li>
+                </ul>
+                <p>The debugger is what makes evidence-based debugging practical. It is the instrument that turns “maybe” into “yes” or “no.”</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="two-kinds-of-questions">
+                <h2 id="two-kinds-of-questions">Two kinds of questions: static and dynamic</h2>
+                <p>Rust programmers ask two kinds of questions about their code, and it is important to keep them separate.</p>
+
+                <section tabindex="0" aria-labelledby="static-questions">
+                    <h3 id="static-questions">Static questions</h3>
+                    <p>Static questions are about the code as written, independent of any execution. For example:</p>
+                    <ul>
+                        <li>Does this type implement this trait?</li>
+                        <li>Does this value get moved or borrowed here?</li>
+                        <li>Will this generic instantiate for the type I intend?</li>
+                        <li>Is this <code>unsafe</code> block sound?</li>
+                        <li>Does this lifetime satisfy the borrow checker?</li>
+                    </ul>
+                    <p>These questions are answered by the compiler, by static analysis tools such as <code>cargo check</code>, by reading the source, and by running <code>cargo clippy</code> or Miri. LLDB is not the right instrument for these questions.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="dynamic-questions">
+                    <h3 id="dynamic-questions">Dynamic questions</h3>
+                    <p>Dynamic questions are about a specific execution. For example:</p>
+                    <ul>
+                        <li>Which concrete implementation of this trait method was actually called?</li>
+                        <li>What was the value of this variable at this point in this run?</li>
+                        <li>Which branch of this <code>match</code> was taken?</li>
+                        <li>Which thread first observed this state as invalid?</li>
+                        <li>Which <code>.await</code> suspended the task that is now hung?</li>
+                    </ul>
+                    <p>These questions cannot be answered by static analysis alone. They require observing a program that is running. This is where LLDB comes in.</p>
+                </section>
+
+                <p>The distinction matters because a very common mistake is to reach for the debugger when the problem is static, or to reach for the compiler when the problem is dynamic. A borrow-checker error is a static problem: the fix is in the source, and the compiler already told you why. A variable holding the wrong value at runtime is a dynamic problem: the compiler has no opinion on it, and the debugger is the right instrument.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="what-lldb-sees">
+                <h2 id="what-lldb-sees">What LLDB sees</h2>
+                <p>LLDB does not see Rust. It sees machine code, registers, memory, threads, and addresses. What makes LLDB useful for Rust debugging is the <em>debug information</em> that <code>rustc</code> embeds in the binary. Debug information tells LLDB how to map machine-level facts back to source-level concepts.</p>
+                <p>Concretely, when you write:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable greeting</code></pre>
+                <p>what actually happens is:</p>
+                <ol>
+                    <li>LLDB looks at the current program counter to determine the current instruction address.</li>
+                    <li>It consults the debug information to find which source-level frame and variable <code>greeting</code> corresponds to that address.</li>
+                    <li>It reads the runtime storage associated with <code>greeting</code> (a stack slot, a register, or a piece of a heap allocation).</li>
+                    <li>It reads the type of <code>greeting</code> from debug information.</li>
+                    <li>It renders the value using a Rust-aware pretty-printer, if one is available.</li>
+                </ol>
+                <p>Every step in that sequence can fail. Debug information might be missing for a given function. The optimizer might have moved the variable into a register that is now reused for something else. The pretty-printer might not be loaded. Understanding what LLDB sees, and how it sees it, helps you interpret its output when things go wrong.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="why-this-shapes-the-rest-of-the-manual">
+                <h2 id="why-this-shapes-the-rest-of-the-manual">Why this shapes the rest of the manual</h2>
+                <p>The rest of this manual is organized around two ideas:</p>
+                <ul>
+                    <li><strong>Use the right tool for the question.</strong> Compiler diagnostics for static questions. LLDB for dynamic questions. Logging for long-running observations. Tests for reproducibility.</li>
+                    <li><strong>Use the debugger to gather evidence.</strong> Not to guess. Not to prove a hypothesis you already believe. But to observe what is actually true about a specific execution, so that your reasoning about the program is grounded in reality.</li>
+                </ul>
+                <p>With that mental model, we can turn to the features of Rust that make this kind of debugging different from debugging a simpler language, and then to the actual mechanics of using LLDB on a Rust program.</p>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch2">
+                <h2 id="summary-ch2">Summary</h2>
+                <p>In this chapter, we established the foundation for everything that follows:</p>
+                <ul>
+                    <li><strong>Debugging is observation, not guessing.</strong> It replaces speculation with evidence gathered from the running program.</li>
+                    <li><strong>The debugging loop</strong> moves through observe, stop, locate, inspect, trace, hypothesize, test, fix, and verify.</li>
+                    <li><strong>Debugging is a skill</strong>, not a command list. The commands are the vocabulary; the sentences are written by the programmer.</li>
+                    <li><strong>Guessing is costly.</strong> It produces plausible but wrong fixes, does not compose, damages trust, and often wastes more time than evidence-based investigation.</li>
+                    <li><strong>Static and dynamic questions are different.</strong> Compilers and static tools answer static questions. LLDB answers dynamic ones.</li>
+                    <li><strong>LLDB sees machine code</strong>, and debug information is the translation layer that lets it map machine facts back to Rust source concepts.</li>
+                </ul>
+                <p>In the next chapter, we will look at what makes Rust debugging different from debugging a simpler language: name mangling, optimization, the expression evaluator, async, generics, traits, macros, and the divide between static ownership and dynamic runtime state.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-01.html">← Chapter 1</a>
+            <a class="nav-next" href="./chapter-03.html">Chapter 3 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

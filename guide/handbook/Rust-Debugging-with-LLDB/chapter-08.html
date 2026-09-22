@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 8: Stepping, Frames, and Backtraces – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch8-heading">
+            <h1 id="ch8-heading">Chapter 8: Stepping, Frames, and Backtraces</h1>
+
+            <p>A breakpoint stops the program at a chosen point. Once it is stopped, the debugger gives you three interlocking tools to explore what happened and what is about to happen:</p>
+            <ul>
+                <li><strong>Stepping</strong>: moving execution forward one instruction, one line, or one function at a time.</li>
+                <li><strong>Frames</strong>: the individual levels of the call stack, each with its own function, locals, and arguments.</li>
+                <li><strong>Backtraces</strong>: the full list of frames, from the current function outward to the program entry.</li>
+            </ul>
+            <p>Mastering these three tools turns a session from a sequence of isolated stops into a continuous, readable narrative of execution. In this chapter, we will look at each in turn, with attention to the ways Rust makes them different from debugging a simpler language.</p>
+
+            <section tabindex="0" aria-labelledby="the-three-step-commands">
+                <h2 id="the-three-step-commands">The three step commands</h2>
+                <p>LLDB provides three step commands for source-level navigation:</p>
+                <ul>
+                    <li><code>next</code> — step over the next source line.</li>
+                    <li><code>step</code> — step into the next function call.</li>
+                    <li><code>finish</code> — run until the current function returns.</li>
+                </ul>
+                <p>Each answers a different question. Learning the distinction is more important than memorizing dozens of LLDB commands.</p>
+
+                <section tabindex="0" aria-labelledby="step-over-next">
+                    <h3 id="step-over-next">Step over: <code>next</code></h3>
+                    <p>Suppose execution is stopped here:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = add(x, y);</code></pre>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next</code></pre>
+                    <p>or:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>n</code></pre>
+                    <p>LLDB executes the current source line without entering the called function.</p>
+                    <p>This is:</p>
+                    <blockquote>
+                        <p>Execute this line and stay at this level.</p>
+                    </blockquote>
+                    <p>Use <code>next</code> when:</p>
+                    <ul>
+                        <li>You trust the called function.</li>
+                        <li>You want to see what happens after the call.</li>
+                        <li>You want to avoid stepping through library code.</li>
+                    </ul>
+                    <p>After <code>next</code>, execution is on the following line of the same function. Any side effects of the call have occurred, but you did not observe them from inside.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="step-into-step">
+                    <h3 id="step-into-step">Step into: <code>step</code></h3>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>step</code></pre>
+                    <p>or:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>s</code></pre>
+                    <p>When the current line calls another function, LLDB attempts to enter that function.</p>
+                    <p>For:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let result = add(x, y);</code></pre>
+                    <p><code>step</code> takes you into:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn add(...)</code></pre>
+                    <p>This is:</p>
+                    <blockquote>
+                        <p>Show me what happens inside this call.</p>
+                    </blockquote>
+                    <p>Use <code>step</code> when:</p>
+                    <ul>
+                        <li>You suspect the bug is inside the called function.</li>
+                        <li>You need to inspect the arguments the function received.</li>
+                        <li>You need to see how the function transforms its input.</li>
+                    </ul>
+                    <p>In Rust, <code>step</code> may enter code the compiler generated. When stepping into a method call on a trait object, for instance, LLDB steps into the concrete implementation that is actually invoked. When stepping into an iterator chain, LLDB may enter a <code>next</code> implementation for one of the intermediate adapters. This is rarely what you want; use <code>next</code> to step over these calls, or place a source-line breakpoint inside the specific function you care about.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="step-out-finish">
+                    <h3 id="step-out-finish">Step out: <code>finish</code></h3>
+                    <p>If you are inside a function and have seen enough:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>finish</code></pre>
+                    <p>This runs until the current function returns.</p>
+                    <p>Conceptually:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>main
+  ↓
+add
+  ↓
+finish
+  ↓
+main</code></pre>
+                    <p>LLDB documents this as <code>thread step-out</code>.</p>
+                    <p>Use <code>finish</code> when:</p>
+                    <ul>
+                        <li>You have seen enough inside the current function.</li>
+                        <li>You want to know what the function returns.</li>
+                        <li>You want to return to the caller.</li>
+                    </ul>
+                    <p>When <code>finish</code> returns, LLDB prints the return value of the function that just completed, if it can determine it. This is often a fast way to see what a function produced without stepping through its body.</p>
+                    <p>In Rust, this is particularly useful for small helper functions such as parsers, converters, or constructors. You set a breakpoint at the entry, inspect the arguments, call <code>finish</code>, and observe the return value. The whole function has been checked in three commands.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="the-mental-model">
+                    <h3 id="the-mental-model">The mental model</h3>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>next   → stay at this level
+step   → go down one level
+finish → go up one level</code></pre>
+                    <p>Three commands, three directions. Once this is internalized, most source-level navigation becomes a matter of choosing the right direction for the question you are asking.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="stepping-in-the-presence-of-rust-constructs">
+                    <h3 id="stepping-in-the-presence-of-rust-constructs">Stepping in the presence of Rust constructs</h3>
+                    <p>A few Rust constructs make stepping behave in ways you might not expect:</p>
+                    <ul>
+                        <li><strong>Inlined functions</strong>: When a small function is inlined by the optimizer, <code>step</code> may not descend into it at all. The source line still shows the call, but the compiled code has no separate symbol for the callee. In the debug build, inlining is less aggressive, so this is mostly a release-mode issue.</li>
+                        <li><strong>Iterator chains</strong>: A single source line such as <code>items.iter().filter(...).map(...).collect()</code> expands into multiple nested calls. <code>step</code> into this line can lead you through several layers of adapter code. It is often more productive to introduce a named intermediate value or to set a breakpoint inside the closure you want to inspect.</li>
+                        <li><strong>Trait method dispatch</strong>: When you step into a call on a trait object, the function you enter is the concrete implementation of the trait method for the value’s runtime type. In source, you saw a trait method call; in the debugger, you are inside a specific struct’s method.</li>
+                        <li><strong>Macros</strong>: A call inside a macro may appear as a single source line at the macro invocation. Stepping may jump to the expansion site instead of the invocation site, or vice versa, depending on how the macro expanded and how debug information was generated.</li>
+                        <li><strong>Async functions</strong>: Stepping into an <code>async fn</code> call does not enter the function body in the way you might expect. The <code>async fn</code> returns a future immediately; execution of the body only happens when the future is polled. We cover this in more detail in the async chapter.</li>
+                    </ul>
+                    <p>None of these are bugs in LLDB. They reflect the shape of the compiled code that Rust produces. Knowing what to expect makes stepping productive rather than frustrating.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="frames">
+                <h2 id="frames">Frames</h2>
+                <p>A <em>frame</em> is one level of the call stack. When the debugger is stopped, exactly one frame is <em>selected</em>: the current frame, conventionally numbered <code>#0</code>. The other frames are the callers of the current frame, and their callers, and so on, out to the program entry.</p>
+
+                <section tabindex="0" aria-labelledby="what-a-frame-contains">
+                    <h3 id="what-a-frame-contains">What a frame contains</h3>
+                    <p>Every frame contains:</p>
+                    <ul>
+                        <li><strong>A function</strong>: which function this frame corresponds to.</li>
+                        <li><strong>A source location</strong>: which file and line the current instruction belongs to.</li>
+                        <li><strong>Arguments</strong>: the values the function was called with.</li>
+                        <li><strong>Locals</strong>: the variables in scope at the current point.</li>
+                        <li><strong>A return address</strong>: where execution will go when this function returns.</li>
+                    </ul>
+                    <p>When you ask LLDB to inspect variables, it inspects the variables of the selected frame. Understanding this is the single most important lesson about frames: <em>if a variable does not exist in the selected frame, LLDB cannot show it to you.</em></p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="where-am-i-in-the-call-stack">
+                    <h3 id="where-am-i-in-the-call-stack">Where am I in the call stack?</h3>
+                    <p>When the debugger stops, ask:</p>
+                    <blockquote>
+                        <p>Where is execution?</p>
+                    </blockquote>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread backtrace</code></pre>
+                    <p>or:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt</code></pre>
+                    <p>A backtrace shows the call stack.</p>
+                    <p>For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0  parse_config
+frame #1  load_application
+frame #2  main</code></pre>
+                    <p>Read this as:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>main
+→ load_application
+→ parse_config</code></pre>
+                    <p>The current location is the first frame.</p>
+                    <p>LLDB’s official tutorial uses <code>thread backtrace</code> to inspect the current call stack.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="read-the-current-frame">
+                    <h3 id="read-the-current-frame">Read the current frame</h3>
+                    <p>Use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame info</code></pre>
+                    <p>This gives information about the current stack frame.</p>
+                    <p>You want to know:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Which function?
+
+Which source file?
+
+Which line?
+
+Which module?</code></pre>
+                    <p>This is the first orientation step after every unexpected stop.</p>
+                    <p>The output typically includes the frame number, the function name, the file and line, and sometimes the source line itself. In compact form, it is one line:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: first_session`first_session::main at src/main.rs:6</code></pre>
+                    <p>For a screen-reader workflow, this line is a compact orientation point that you can read on every stop without overwhelming output.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="selecting-a-frame">
+                    <h3 id="selecting-a-frame">Selecting a frame</h3>
+                    <p>Suppose a backtrace shows:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0
+frame #1
+frame #2
+frame #3</code></pre>
+                    <p>Select frame 2:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame select 2</code></pre>
+                    <p>Then:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                    <p>Now the variables belong to frame 2.</p>
+                    <p>This is extremely important. If you inspect a variable and LLDB says it is unavailable, first ask:</p>
+                    <blockquote>
+                        <p>Am I in the frame where this variable exists?</p>
+                    </blockquote>
+                    <p>Selecting a frame changes the target of subsequent inspection commands. <code>frame variable</code>, <code>frame info</code>, <code>expression</code>, and most other inspection commands operate on the selected frame.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="moving-up-and-down-the-call-stack">
+                    <h3 id="moving-up-and-down-the-call-stack">Moving up and down the call stack</h3>
+                    <p>You can move through frames without counting indices.</p>
+                    <p>Up toward the caller:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>up</code></pre>
+                    <p>Down toward the callee:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>down</code></pre>
+                    <p>Or explicitly:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame select 3</code></pre>
+                    <p>The conceptual direction is:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>callee
+↑
+caller
+↑
+caller</code></pre>
+                    <p>When investigating a failure, move outward until you find the frame where the relevant state was created.</p>
+                    <p>For a screen-reader workflow, <code>up</code> and <code>down</code> are convenient because they do not require you to remember the frame index. They simply move the selection one level in the corresponding direction. The two commands are symmetric: if <code>up</code> moves you from frame 1 to frame 2, <code>down</code> moves you back from frame 2 to frame 1.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="frames-in-rust-what-to-expect">
+                    <h3 id="frames-in-rust-what-to-expect">Frames in Rust: what to expect</h3>
+                    <p>Rust programs have a few predictable patterns in their call stacks:</p>
+                    <ul>
+                        <li><strong>The bottom of the stack</strong> contains the C runtime startup: <code>__libc_start_main</code>, followed by Rust runtime frames such as <code>std::rt::lang_start</code> and <code>std::rt::lang_start_internal</code>.</li>
+                        <li><strong>The next frames up</strong> contain the <code>main</code> symbol, which is Rust’s <code>main</code> function or the wrapper the runtime generates around it.</li>
+                        <li><strong>Application frames</strong> begin above <code>main</code>. These are the frames from your own code and from the libraries you use.</li>
+                        <li><strong>The top of the stack</strong> (frame #0) is where execution is currently stopped.</li>
+                    </ul>
+                    <p>In a debugging session, the frames you care about are almost always the application frames. Runtime and C library frames are the machinery that started and is now driving your program. Unless the bug is specifically in the runtime, you can ignore them.</p>
+                    <p>One practical consequence: when a program panics, the backtrace may show many runtime frames above the panic site. The first frame belonging to your own crate is usually the one worth inspecting; the runtime frames above it are unwinding the stack.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="frames-and-inlining">
+                    <h3 id="frames-and-inlining">Frames and inlining</h3>
+                    <p>When the optimizer inlines a function, that function no longer has its own frame. The backtrace shows the caller instead, and the source location may still point to a line inside the inlined function, depending on how debug information was generated.</p>
+                    <p>In a debug build, inlining is usually minimal, so the backtrace reflects your source-level call structure closely. In a release build, inlining can collapse many frames into one. If a backtrace does not show a function you expected, ask whether that function was inlined. The answer is almost always yes if the function was small and the build was optimized.</p>
+                    <p>LLDB sometimes indicates inlined frames in the backtrace with an annotation such as <code>[inlined]</code>. If you see such a frame, you know the compiler merged the call into its caller, and the frame is provided purely from debug information.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="backtraces">
+                <h2 id="backtraces">Backtraces</h2>
+                <p>A backtrace is the list of frames from the current location outward to the program entry. It answers the question:</p>
+                <blockquote>
+                    <p>How did execution reach this point?</p>
+                </blockquote>
+
+                <section tabindex="0" aria-labelledby="reading-a-backtrace-as-a-map">
+                    <h3 id="reading-a-backtrace-as-a-map">Reading a backtrace as a map</h3>
+                    <p>When stopped unexpectedly:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt</code></pre>
+                    <p>is often the first useful command.</p>
+                    <p>Read it as a path:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0
+current failure
+
+frame #1
+caller
+
+frame #2
+caller of caller
+
+...</code></pre>
+                    <p>Do not immediately read every frame.</p>
+                    <p>Ask:</p>
+                    <blockquote>
+                        <p>Which frame belongs to my code?</p>
+                    </blockquote>
+                    <p>Then inspect that frame.</p>
+                    <p>For a Rust program, the frames belonging to your code are usually easy to recognize: they show your crate name and your source file. Frames from the standard library and third-party crates show their own crate names. Frames from the C runtime show C-style names.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="limiting-backtrace-output">
+                    <h3 id="limiting-backtrace-output">Limiting backtrace output</h3>
+                    <p>A backtrace in a large program can contain dozens of frames. For a screen-reader workflow, reading dozens of frames at once is overwhelming and often unnecessary.</p>
+                    <p>Limit the output:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt 5</code></pre>
+                    <p>This shows the five most recent frames. If you need more, ask for more:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt 15</code></pre>
+                    <p>You can also use the repeat-with-Enter behavior to page through a longer backtrace one screen at a time, as described in Chapter 6. For a screen-reader workflow, controlling the size of each output is often more important than controlling the total amount, because it keeps the mental model current.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="backtraces-and-async-code">
+                    <h3 id="backtraces-and-async-code">Backtraces and async code</h3>
+                    <p>Async code produces backtraces that are not the same as synchronous call stacks. In an async program, the “caller” of a function may be the runtime scheduler, not another application function. The frames you see in a backtrace may include:</p>
+                    <ul>
+                        <li>Runtime frames from the executor (Tokio, async-std, or another runtime).</li>
+                        <li>Poll frames from the future’s state machine.</li>
+                        <li>Waker machinery frames from the runtime.</li>
+                        <li>Your own application frames, which may appear in a different order than in synchronous code.</li>
+                    </ul>
+                    <p>We will cover async debugging in a dedicated chapter. For now, the important point is that a backtrace in async code is a snapshot of the current stack at the moment of the stop, not a full logical trace of the async task. The logical trace may be split across multiple polls at different times.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="backtraces-in-panic-situations">
+                    <h3 id="backtraces-in-panic-situations">Backtraces in panic situations</h3>
+                    <p>When a Rust program panics and you are running under LLDB, the debugger may stop on the underlying signal that the panic ultimately raised. At that point, <code>bt</code> shows the current stack, which is often the unwinding stack rather than the panic site.</p>
+                    <p>To find the panic site, look for the deepest frame that belongs to your own crate and that is inside the function you suspect. Frames above it are the panic machinery; frames below it are the application code that led to the panic.</p>
+                    <p>We will cover panic debugging in detail in a later chapter. For now, the discipline is the same: read the backtrace as a map, identify the frames that belong to your code, and inspect them one at a time.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="backtraces-across-threads">
+                    <h3 id="backtraces-across-threads">Backtraces across threads</h3>
+                    <p>Rust programs can have multiple threads. Each thread has its own stack, and the currently selected thread determines which stack <code>bt</code> shows.</p>
+                    <p>To see the backtrace for all threads at once:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread backtrace all</code></pre>
+                    <p>For programs with many threads, this output can be very long. A more focused workflow is:</p>
+                    <ol>
+                        <li>Use <code>thread list</code> to see the threads.</li>
+                        <li>Identify the thread you care about by its stop reason or its name.</li>
+                        <li>Use <code>thread select N</code> to select it.</li>
+                        <li>Use <code>bt</code> to see its backtrace.</li>
+                    </ol>
+                    <p>This is the same workflow we will use in the chapter on threads and async Rust. The backtrace itself is per-thread; the thread selection determines which backtrace you see.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="stepping-and-frames-together">
+                <h2 id="stepping-and-frames-together">Stepping and frames together</h2>
+                <p>Stepping and frames are not separate tools. They work together. Every step either stays in the current frame, moves to a new frame, or returns to an old frame.</p>
+
+                <section tabindex="0" aria-labelledby="a-worked-example">
+                    <h3 id="a-worked-example">A worked example</h3>
+                    <p>Consider this short program:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>fn double(x: i32) -&gt; i32 {
+    x * 2
+}
+
+fn quadruple(x: i32) -&gt; i32 {
+    let doubled = double(x);
+    double(doubled)
+}
+
+fn main() {
+    let value = 5;
+    let result = quadruple(value);
+    println!("{result}");
+}</code></pre>
+                    <p>Set a breakpoint on <code>quadruple</code> and run. The debugger stops at the entry of <code>quadruple</code>.</p>
+                    <p>Backtrace:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0  quadruple
+frame #1  main
+frame #2  std::rt::lang_start_internal
+...</code></pre>
+                    <p>Step over to the first call to <code>double</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                    <p>Now you are at the call <code>let doubled = double(x);</code>. Step into it:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) step</code></pre>
+                    <p>Now the backtrace shows:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0  double
+frame #1  quadruple
+frame #2  main
+frame #3  std::rt::lang_start_internal
+...</code></pre>
+                    <p>Inspect the argument <code>x</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable x</code></pre>
+                    <p>You see the value 5. Step over the multiplication:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                    <p>Finish and observe the return value:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) finish</code></pre>
+                    <p>You are back in <code>quadruple</code>. The value <code>doubled</code> is now 10.</p>
+                    <p>Step over to the next call:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) next</code></pre>
+                    <p>Step into the second call:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>(lldb) step</code></pre>
+                    <p>Inspect <code>x</code> again:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable x</code></pre>
+                    <p>Now you see 10, the doubled value. This is a concrete demonstration of how each call carries different data into the same function.</p>
+                    <p>Finish:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>(lldb) finish</code></pre>
+                    <p>Back in <code>quadruple</code>. The final value is 20.</p>
+                    <p>Finish again:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) finish</code></pre>
+                    <p>Back in <code>main</code>. Inspect <code>result</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable result</code></pre>
+                    <p>You see 20.</p>
+                    <p>This small session demonstrates the interplay of stepping and frames:</p>
+                    <ul>
+                        <li>Every <code>step</code> pushed a new frame onto the stack.</li>
+                        <li>Every <code>finish</code> popped the current frame and returned to the caller.</li>
+                        <li>The frame selection always matched the current execution point, so <code>frame variable</code> always showed the right locals.</li>
+                    </ul>
+                </section>
+
+                <section tabindex="0" aria-labelledby="frame-selection-in-practice">
+                    <h3 id="frame-selection-in-practice">Frame selection in practice</h3>
+                    <p>A subtle but useful technique: when the program stops inside a function, the frame selection is automatically set to the top frame. But you can then manually select a caller frame to inspect its state, without changing where execution is stopped.</p>
+                    <p>For example, suppose you are stopped inside <code>double</code>, and you want to see what value <code>quadruple</code> passed. You already know it from inspecting <code>x</code>, but for a more complex case, you might want to inspect <code>quadruple</code>’s local <code>doubled</code> before <code>double</code> modified anything. Use:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>(lldb) frame select 1</code></pre>
+                    <p>Now inspect <code>doubled</code>:</p>
+                    <pre tabindex="0" aria-label="Code sample" role="region"><code>(lldb) frame variable doubled</code></pre>
+                    <p>The current execution point is still inside <code>double</code>. You have not moved execution. You have simply changed which frame your inspection commands target. When you are done, you can use <code>frame select 0</code> to return to the top frame, or <code>down</code> if you are only one level up.</p>
+                    <p>This is a very useful discipline: <em>frame selection is separate from execution position.</em> It lets you look at caller state without disturbing the program.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-stepping-is-not-the-right-tool">
+                    <h3 id="when-stepping-is-not-the-right-tool">When stepping is not the right tool</h3>
+                    <p>Stepping is powerful, but it is not always the best tool.</p>
+                    <p>Consider a loop that runs ten thousand times. Stepping through each iteration would take hours. Set a conditional breakpoint, or break only when a value satisfies a condition, or use a watchpoint. These are covered in a later chapter.</p>
+                    <p>Consider a piece of code that you trust, but that calls many functions you do not trust. Use <code>next</code> to step over the trusted code and place a breakpoint inside the functions you want to inspect. This avoids stepping through thousands of lines you do not care about.</p>
+                    <p>Consider async code with a long chain of <code>.await</code> calls. Stepping through each await would lead you into runtime machinery. Instead, place breakpoints at meaningful application boundaries and use <code>continue</code>.</p>
+                    <p>The general rule:</p>
+                    <blockquote>
+                        <p>Stepping is for tracing a short, specific path. Breakpoints are for selecting exactly where to stop in a long or branching path.</p>
+                    </blockquote>
+                    <p>Knowing when to step and when to break is one of the marks of a mature debugging practitioner.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-stepping-and-frames">
+                <h2 id="rust-2024-notes-on-stepping-and-frames">Rust 2024 notes on stepping and frames</h2>
+                <p>A few Rust 2024 specifics affect how stepping and frames behave.</p>
+
+                <section tabindex="0" aria-labelledby="unsafe-blocks-as-stepping-landmarks">
+                    <h3 id="unsafe-blocks-as-stepping-landmarks"><code>unsafe</code> blocks as stepping landmarks</h3>
+                    <p>Because Rust 2024 requires explicit <code>unsafe { ... }</code> blocks inside <code>unsafe fn</code> bodies (via the <code>unsafe_op_in_unsafe_fn</code> lint), a function that previously had a single implicit unsafe region now has one or more explicit ones. This is useful when stepping: a breakpoint or step into the opening of an <code>unsafe</code> block marks the transition from safe to unsafe code. In a backtrace, this transition is often visible as a frame belonging to a function with an unsafe precondition, which is exactly the kind of frame you want to inspect first when debugging unsafe logic.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="no-references-to-static-mut">
+                    <h3 id="no-references-to-static-mut">No references to <code>static mut</code></h3>
+                    <p>Rust 2024 forbids references to <code>static mut</code>. If you are debugging code that reads or writes global state, you will now see accesses through raw pointers or through interior-mutability primitives such as <code>Mutex</code>, <code>AtomicUsize</code>, or <code>UnsafeCell</code>. When you step through code that updates a global, the update will appear as a method call on one of those types rather than as a simple assignment to a mutable reference. This changes what you see as you step, but it does not change the fundamental mechanics of stepping or frame inspection.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="no-mangle-and-frame-names">
+                    <h3 id="no-mangle-and-frame-names"><code>#[unsafe(no_mangle)]</code> and frame names</h3>
+                    <p>A function exposed with <code>#[unsafe(no_mangle)]</code> appears in the debugger with its exact source name. When you step into such a function from C or from another Rust crate, the frame name will be readable and predictable. This is particularly useful when debugging FFI, where you want to see the boundary between the Rust and C portions of the program clearly.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="async-and-2024">
+                    <h3 id="async-and-2024">Async and 2024</h3>
+                    <p>The Rust 2024 edition does not change the fundamental shape of async execution: an <code>async fn</code> still returns a future, and an executor still polls it. What it does change is the visual structure of async code, particularly around <code>async</code> blocks and closures, and around <code>async</code> in traits. When you step through async code compiled with the 2024 edition, you may see slightly different compiler-generated names for futures and <code>poll</code> methods, but the debugging discipline is the same as for earlier editions.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch8">
+                <h2 id="summary-ch8">Summary</h2>
+                <p>In this chapter, we covered the three interlocking tools of source-level execution control:</p>
+                <ul>
+                    <li><strong>Stepping</strong>: <code>next</code> stays at the current level, <code>step</code> descends into a call, and <code>finish</code> ascends back to the caller. The mental model is one level down, one level up, or stay put.</li>
+                    <li><strong>Frames</strong>: the levels of the call stack. Each frame has its own function, arguments, and locals. Selecting a frame changes the target of subsequent inspection commands.</li>
+                    <li><strong>Backtraces</strong>: the full list of frames, read as a map from the current location outward to the program entry.</li>
+                </ul>
+                <p>We looked at how stepping interacts with Rust-specific constructs such as inlining, iterator chains, trait dispatch, macros, and async functions. We also worked through a small example that demonstrated the interplay of stepping and frame selection across multiple function calls.</p>
+                <p>We saw that frame selection is separate from execution position: you can inspect any frame in the stack without disturbing the program’s location. This is one of the most useful and least obvious features of a source-level debugger, and it is often the key to understanding a bug that lives in a caller rather than in the current function.</p>
+                <p>Finally, we reviewed the Rust 2024 specifics that affect stepping and frames: <code>unsafe</code> blocks as explicit landmarks, the disappearance of <code>&amp;static mut</code>, the readability of <code>#[unsafe(no_mangle)]</code> frames, and the shape of async code under the new edition.</p>
+                <p>In the next chapter, we will turn to inspecting Rust values in detail: structs, enums, <code>Option</code>, <code>Result</code>, references, and the ways that Rust’s types show up in the debugger.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-07.html">← Chapter 7</a>
+            <a class="nav-next" href="./chapter-09.html">Chapter 9 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+

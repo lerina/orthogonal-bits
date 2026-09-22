@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 13: Threads and Async Rust – Rust Debugging with LLDB</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode">
+            ☀️ Light
+        </button>
+    </div>
+
+    <header role="banner" aria-label="Manual header">
+        <span class="brand">
+            orthogonal_bits <span class="muted">~</span>
+            <a href="./index.html" aria-label="Home (top level)">/resources</a>
+        </span>
+        <p><a href="./index.html">← Back to Table of Contents</a></p>
+    </header>
+
+    <hr>
+
+    <main id="main-content" role="main">
+
+        <section tabindex="0" aria-labelledby="ch13-heading">
+            <h1 id="ch13-heading">Chapter 13: Threads and Async Rust</h1>
+
+            <p>So far, every program we have debugged has had a single thread of execution and a single synchronous call stack. This is a useful starting point, but most real Rust programs are concurrent: they use operating system threads, or they use async Rust on a runtime, or both. Debugging these programs is not fundamentally different from debugging single-threaded ones, but the structure of execution changes in ways that affect what you see, how you navigate, and what questions make sense to ask.</p>
+            <p>In this chapter, we will look at debugging concurrent Rust programs. We will start with threads, then move to async. We will see how to inspect multiple stacks, how to select the thread or task you care about, and how to distinguish application code from runtime machinery.</p>
+
+            <section tabindex="0" aria-labelledby="threads">
+                <h2 id="threads">Threads</h2>
+                <p>Rust programs can use multiple threads through:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>std::thread
+Tokio
+async runtimes
+thread pools
+libraries</code></pre>
+                <p>LLDB can inspect them.</p>
+                <p>Use:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>thread list</code></pre>
+                <p>Then:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>thread backtrace all</code></pre>
+                <p>The latter displays backtraces for all threads. LLDB documents <code>thread list</code>, thread selection, and <code>thread backtrace all</code> as core thread-inspection operations.</p>
+
+                <section tabindex="0" aria-labelledby="what-a-thread-list-shows">
+                    <h3 id="what-a-thread-list-shows">What a thread list shows</h3>
+                    <p>When you run a Rust program that spawns threads, and then stop the debugger (with a breakpoint, a signal, or a crash), <code>thread list</code> shows something like:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Process 12345 stopped
+* thread #1: tid = 12345, 0x... libc.so.6`__poll, name = 'main_thread', stop reason = breakpoint 1.1
+  thread #2: tid = 12346, 0x... libc.so.6`__futex_wait, name = 'worker_1'
+  thread #3: tid = 12347, 0x... libc.so.6`__futex_wait, name = 'worker_2'
+  thread #4: tid = 12348, 0x... libc.so.6`__futex_wait, name = 'worker_3'</code></pre>
+                    <p>Read this carefully:</p>
+                    <ul>
+                        <li><strong>The asterisk (*)</strong> marks the currently selected thread. This is the thread the debugger is showing you when you run commands such as <code>bt</code> and <code>frame variable</code>.</li>
+                        <li><strong>thread #1</strong>: The first thread. In a typical Rust program, this is the main thread, or a thread the runtime spawned as part of startup.</li>
+                        <li><strong>tid = 12345</strong>: The operating system's thread ID. This is the identifier the kernel uses to schedule the thread. It is different from the debugger's thread number.</li>
+                        <li><strong>0x... libc.so.6\`__poll</strong>: The current instruction address and its symbolic location. Here, the thread is blocked in a <code>poll</code> call. This is common when a thread is waiting for something, such as I/O or a message.</li>
+                        <li><strong>name = 'worker_1'</strong>: The thread's name. Rust lets you give a thread a name with <code>std::thread::Builder::new().name("worker_1").spawn(...)</code>. Naming threads is a practice that greatly helps debugging.</li>
+                        <li><strong>stop reason = breakpoint 1.1</strong>: Why this thread stopped. Only one thread is typically stopped at a time (the one that hit the breakpoint); the others are still running or blocked, but the debugger has paused the whole process, so they are effectively frozen.</li>
+                    </ul>
+                    <p>This is the top-level view of a multithreaded program: which threads exist, what each is doing, and which one is currently selected.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="selecting-a-thread">
+                    <h3 id="selecting-a-thread">Selecting a thread</h3>
+                    <p>List threads:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread list</code></pre>
+                    <p>Then:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread select 2</code></pre>
+                    <p>Now subsequent frame commands refer to that thread.</p>
+                    <p>Then:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt</code></pre>
+                    <p>This gives you that thread's call stack.</p>
+                    <p>The debugging sequence becomes:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread list
+→ select suspicious thread
+→ bt
+→ frame select
+→ frame variable</code></pre>
+                    <p>This is the standard workflow for multithreaded debugging. You identify the thread whose state interests you, select it, and then use all the frame-inspection tools you already know.</p>
+                    <p>A note on thread selection and stability: the debugger's thread numbers (1, 2, 3, ...) are stable within a session, but the operating system's thread IDs can be reused after a thread exits. When you use <code>thread select</code>, prefer the debugger's thread number, not the OS thread ID.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="backtraces-across-threads">
+                    <h3 id="backtraces-across-threads">Backtraces across threads</h3>
+                    <p>To see the backtrace for all threads at once:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread backtrace all</code></pre>
+                    <p>This produces a concatenated list of backtraces, one per thread. For programs with many threads, the output can be very long. In a screen-reader workflow, this is often overwhelming; consider using <code>thread list</code> first to identify the thread that is interesting, and then <code>thread select N</code> followed by <code>bt</code> to inspect only that thread's stack.</p>
+                    <p>Still, <code>thread backtrace all</code> is valuable when:</p>
+                    <ul>
+                        <li>You do not know which thread is relevant.</li>
+                        <li>You want to confirm that a deadlock involves two specific threads.</li>
+                        <li>You want to check whether a worker thread has finished its job or is still running.</li>
+                        <li>You want to see the overall shape of the program's concurrency.</li>
+                    </ul>
+                    <p>In those cases, the full output is exactly what you want, even if it is long.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-thread-example">
+                    <h3 id="a-worked-thread-example">A worked thread example</h3>
+                    <p>Consider:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use std::thread;
+use std::time::Duration;
+
+fn worker(id: u32) {
+    for i in 0..5 {
+        println!("worker {} step {}", id, i);
+        thread::sleep(Duration::from_millis(100));
+    }
+}
+
+fn main() {
+    let handles: Vec&lt;_&gt; = (0..3)
+        .map(|id| {
+            thread::Builder::new()
+                .name(format!("worker_{}", id))
+                .spawn(move || worker(id))
+                .expect("failed to spawn thread")
+        })
+        .collect();
+
+    for handle in handles {
+        handle.join().expect("thread panicked");
+    }
+
+    println!("all workers finished");
+}</code></pre>
+                    <p>Build the program:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>cargo build</code></pre>
+                    <p>Launch under LLDB:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>rust-lldb target/debug/thread_demo</code></pre>
+                    <p>Set a breakpoint inside <code>worker</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name worker
+(lldb) run</code></pre>
+                    <p>The first breakpoint hit occurs in one of the worker threads. Immediately ask:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) thread list</code></pre>
+                    <p>You should see several threads: the main thread, waiting in <code>join</code> or in the runtime, and the worker threads, some of which may also have reached <code>worker</code>. The asterisk marks the currently selected thread—likely the one that hit the breakpoint.</p>
+                    <p>Inspect its backtrace:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                    <p>You should see <code>worker</code>, then the thread startup machinery, then the runtime.</p>
+                    <p>Inspect its arguments:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable id</code></pre>
+                    <p>The value tells you which worker triggered the breakpoint. If it is <code>id = 0</code>, you know worker 0 reached <code>worker</code> first.</p>
+                    <p>Continue:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) continue</code></pre>
+                    <p>Another thread may hit the breakpoint. Inspect again:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt
+(lldb) frame variable id</code></pre>
+                    <p>Now the id may be 1 or 2, depending on scheduling. Continue a few more times. You will see the workers interleave, which is exactly what you expect from concurrent execution.</p>
+                    <p>To see all threads at once:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) thread backtrace all</code></pre>
+                    <p>This output will show, for each thread, where it currently is. The main thread will likely be blocked in a <code>join</code>; the other worker threads will be in <code>worker</code>, in <code>sleep</code>, or possibly finished.</p>
+                    <p>Quit:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) quit</code></pre>
+                    <p>This small session illustrates the essential multithreaded debugging workflow: list threads, select one, inspect its backtrace and locals, and continue to observe the next interesting stop.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="named-threads">
+                    <h3 id="named-threads">Named threads</h3>
+                    <p>In the example above, we used <code>thread::Builder::new().name(format!("worker_{}", id))</code>. This is not just a convenience. It is one of the highest-leverage debugging practices in concurrent Rust.</p>
+                    <p>When you inspect <code>thread list</code>, the <code>name</code> field is shown for each thread. If your threads are named, you can immediately tell which is which:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>* thread #1: tid = ..., name = 'main'
+  thread #2: tid = ..., name = 'worker_0'
+  thread #3: tid = ..., name = 'worker_1'
+  thread #4: tid = ..., name = 'worker_2'</code></pre>
+                    <p>Without names, the list shows only thread numbers and IDs, which is much harder to reason about. Naming threads is a small effort with a large payoff, especially when debugging a program you did not write or have not read in a while.</p>
+                    <p>A convention that works well in practice: use the purpose of the thread as the name, and add a numeric suffix if there are multiple. For example:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>request-handler-0
+request-handler-1
+log-writer
+cache-refresher</code></pre>
+                    <p>When you see a stop in <code>cache-refresher</code>, you know exactly what that thread is for.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="findings-in-thread-backs">
+                    <h3 id="findings-in-thread-backs">Findings in thread backtraces</h3>
+                    <p>Backtraces for threads have the same shape as backtraces for the main thread: current frame at the top, callers below, runtime machinery at the bottom. The frames you care about are, again, the ones belonging to your own code. Common patterns:</p>
+                    <ul>
+                        <li><strong>Worker thread in a library function</strong>: The top frame is <code>libc</code> or <code>std</code> machinery, such as <code>__futex_wait</code> or <code>epoll_wait</code>. Below that, you will see the application function that called the blocking operation.</li>
+                        <li><strong>Worker thread in a channel receive</strong>: The top frame is <code>std::sync::mpsc</code> machinery. Below that, the application function that called <code>recv</code>.</li>
+                        <li><strong>Worker thread in a lock acquisition</strong>: The top frame is <code>std::sync::Mutex</code> or <code>parking_lot</code>. Below that, the application code that tried to acquire the lock.</li>
+                        <li><strong>Worker thread that has finished</strong>: The thread may still exist briefly after it has finished its work, but the runtime will clean it up.</li>
+                    </ul>
+                    <p>The pattern of “deepest frame of my own crate is where the interesting call happened” applies to all threads, not just the main thread.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="threads-and-deadlocks">
+                    <h3 id="threads-and-deadlocks">Threads and deadlocks</h3>
+                    <p>A deadlock occurs when two or more threads are each waiting for a resource held by another. From the outside, a deadlocked program appears to hang: no output, no progress, no crash.</p>
+                    <p>Under the debugger, a deadlock is easy to confirm:</p>
+                    <ol>
+                        <li>Run the program.</li>
+                        <li>When it hangs, interrupt the debugger. In LLDB, this usually means sending an interrupt from the terminal, for example <kbd>Ctrl</kbd>+<kbd>C</kbd>.</li>
+                        <li>At the LLDB prompt, run <code>thread list</code>.</li>
+                        <li>Run <code>thread backtrace all</code>.</li>
+                    </ol>
+                    <p>Each thread's backtrace tells you what it is currently doing. If two threads are both blocked in a lock acquisition, and one holds the lock the other is waiting for, and vice versa, you have found the deadlock.</p>
+                    <p>In particular, look for frames such as:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>std::sync::Mutex::lock
+std::sync::RwLock::read
+std::sync::RwLock::write
+parking_lot::Mutex::lock</code></pre>
+                    <p>These are the classic signatures of a thread waiting on a lock. If multiple threads are waiting on locks, and no thread holds any lock in a state that could be released, the program is deadlocked.</p>
+                    <p>The debugger does not diagnose the deadlock for you, but it gives you the evidence. From there, you can reason about the lock ordering and identify which pair of locks is the culprit.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="thread-panic-diagnostics">
+                    <h3 id="thread-panic-diagnostics">Thread panic diagnostics</h3>
+                    <p>When a thread panics, the runtime unwinds that thread's stack. The other threads are unaffected (unless the panic strategy is <code>abort</code>). Under LLDB, the stop occurs on the panicking thread, and the other threads are frozen at whatever they were doing.</p>
+                    <p>A useful pattern:</p>
+                    <ol>
+                        <li>Run the program.</li>
+                        <li>The panic occurs. The debugger stops.</li>
+                        <li>Run <code>thread list</code>. Note which thread has the stop reason.</li>
+                        <li>Run <code>bt</code> on that thread.</li>
+                        <li>Find the first frame belonging to your own code. That is the panic site.</li>
+                        <li>Optionally, run <code>thread backtrace all</code> to see where the other threads were at the moment of panic. This is often useful for debugging interactions between threads.</li>
+                    </ol>
+                    <p>When a thread panics, the runtime also marks the thread's state. If the thread was joined by another thread, that other thread receives an <code>Err</code> from <code>join</code>. If you want to observe this, set a breakpoint at the join site and inspect the result.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-and-async-debugging">
+                <h2 id="rust-and-async-debugging">Rust and async debugging</h2>
+                <p>Async Rust requires a different mental model.</p>
+                <p>A function such as:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>async fn load_config()</code></pre>
+                <p>does not execute simply as an ordinary function call from beginning to end.</p>
+                <p>It creates a future.</p>
+                <p>The executor polls that future.</p>
+                <p>Execution may suspend at:</p>
+                <pre tabindex="0" role="region" aria-label="Code sample"><code>.await</code></pre>
+                <p>and resume later.</p>
+                <p>Therefore:</p>
+                <blockquote>
+                    <p>A source-level async call chain is not identical to a simple synchronous stack trace.</p>
+                </blockquote>
+                <p>LLDB may show executor/runtime frames between your application frames.</p>
+                <p>Do not mistake runtime machinery for the application architecture.</p>
+                <p>Look for the frames belonging to your crate.</p>
+
+                <section tabindex="0" aria-labelledby="async-debugging-expanded-model">
+                    <h3 id="async-debugging-expanded-model">Async debugging: expanded model</h3>
+                    <p>Async Rust is not just multithreading. It is a different execution model.</p>
+                    <p>An <code>async fn</code> returns a future. The future is a state machine. Each <code>.await</code> is a possible suspension point.</p>
+                    <p>When you debug async code, LLDB may show:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>your application frame
+runtime frame
+poll frame
+waker frame
+your application frame again</code></pre>
+                    <p>That is expected.</p>
+                    <p>Do not try to single-step through the entire runtime. Instead, set breakpoints at application boundaries:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>request created
+request parsed
+operation started
+await reached
+response received
+state updated
+error converted</code></pre>
+                    <p>Then use <code>continue</code> to move between those boundaries.</p>
+                    <p>A practical async debugging sequence:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>breakpoint set --name load_config
+run
+frame variable
+next
+step
+finish
+bt
+continue</code></pre>
+                    <p>Look for frames belonging to your crate. Treat Tokio, async-std, or other runtime frames as machinery unless the bug is specifically in the runtime.</p>
+
+                    <section tabindex="0" aria-labelledby="the-async-state-machine">
+                        <h4 id="the-async-state-machine">The async state machine</h4>
+                        <p>To understand why async debugging looks different, it helps to understand what the compiler generates. An <code>async fn</code> such as:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>async fn load() -&gt; Config {
+    let raw = read().await;
+    let parsed = parse(raw).await;
+    parsed
+}</code></pre>
+                        <p>is compiled into something like a struct with a <code>poll</code> method. The struct has one variant per suspension point:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>enum LoadFuture {
+    Start,
+    AwaitingRead { read_future: ReadFuture },
+    AwaitingParse { raw: String, parse_future: ParseFuture },
+    Done,
+}</code></pre>
+                        <p>Each call to <code>poll</code> advances the future by one step, or returns <code>Poll::Pending</code> if the awaited operation is not ready yet. When the awaited operation completes, the runtime wakes the future and calls <code>poll</code> again, which resumes from where it left off.</p>
+                        <p>When you inspect an async function in the debugger, the compiler-generated struct is what you see. The frame for <code>load</code> is not a conventional stack frame—it is a <code>poll</code> method invocation on the future struct. The frame's local variables include the current state of the future, and the values accumulated so far.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="breakpoints-at-await-points">
+                        <h4 id="breakpoints-at-await-points">Breakpoints at <code>.await</code> points</h4>
+                        <p>In source, a <code>.await</code> is a single token. In the compiled code, it is a call to <code>poll</code> on the future being awaited. If you set a breakpoint at the source line containing the <code>.await</code>, LLDB will typically stop just before the future is polled.</p>
+                        <p>This is a useful observation point. At that moment, the future has been created but not yet polled. Inspecting the future shows its initial state. After the breakpoint, you can step forward or continue, and the runtime will poll the future.</p>
+                        <p>After the future completes, execution resumes on the same line, and the result of the awaited operation is available. To inspect the result, set a breakpoint on the line immediately after the <code>.await</code>.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-an-await">
+                    <h3 id="debugging-an-await">Debugging an <code>.await</code></h3>
+                    <p>Suppose:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>let response = client.get(url).await?;</code></pre>
+                    <p>Break before the line.</p>
+                    <p>Inspect:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>url
+client</code></pre>
+                    <p>Step.</p>
+                    <p>If execution enters runtime machinery, use:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>finish</code></pre>
+                    <p>or continue toward the next breakpoint in your own code.</p>
+                    <p>A practical strategy is to set breakpoints at meaningful application-level boundaries:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>request creation
+request dispatch
+response handling
+error conversion
+state update</code></pre>
+                    <p>rather than attempting to single-step through the entire async runtime.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="tokio-debugging">
+                    <h3 id="tokio-debugging">Tokio debugging</h3>
+                    <p>With Tokio, your application may run inside:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>runtime worker threads
+scheduler code
+polling machinery
+waker machinery</code></pre>
+                    <p>Do not attempt to understand all of it immediately.</p>
+                    <p>First identify:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Which task?
+
+Which application function?
+
+Which state?
+
+Which await boundary?</code></pre>
+                    <p>Then investigate only the relevant path.</p>
+                    <p>For asynchronous debugging, breakpoints at your own functions are generally more useful than stepping continuously through runtime internals.</p>
+
+                    <section tabindex="0" aria-labelledby="what-tokio-frames-look-like">
+                        <h4 id="what-tokio-frames-look-like">What Tokio frames look like</h4>
+                        <p>A typical backtrace when stopped inside async code under Tokio might look like:</p>
+                        <pre tabindex="0" role="region" aria-label="Code sample"><code>frame #0: my_app::fetch_data at src/fetch.rs:42
+frame #1: my_app::handle_request::{{closure}} at src/handlers.rs:18
+frame #2: tokio::runtime::task::core::Core::poll at ...
+frame #3: tokio::runtime::task::harness::Harness::poll_inner at ...
+frame #4: tokio::runtime::task::harness::Harness::poll at ...
+frame #5: tokio::runtime::task::raw::poll at ...
+frame #6: tokio::runtime::scheduler::multi_thread::worker::run at ...
+frame #7: tokio::runtime::blocking::pool::spawn_thread::{{closure}} at ...
+frame #8: std::sys::pal::unix::thread::Thread::new::thread_start at ...</code></pre>
+                        <p>Frames #0 and #1 belong to your application. Frames #2 through #5 are the Tokio task machinery. Frames #6 and #7 are the runtime worker. Frame #8 is the underlying OS thread.</p>
+                        <p>When you step forward from frame #0, you may end up in frame #2 (the runtime's task poll), which is rarely what you want. Instead, use <code>finish</code> to return from your function, or set a breakpoint in a subsequent application function and use <code>continue</code>.</p>
+                        <p>The pattern is: application frames are the interesting ones; runtime frames are the machinery that drives them. Do not try to reason about the application in terms of the runtime's internal structure.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="naming-tasks">
+                        <h4 id="naming-tasks">Naming tasks</h4>
+                        <p>Tokio supports naming tasks via <code>tokio::task::Builder</code>. Named tasks appear in logs and, in some cases, in the debugger's output. This is analogous to naming threads: a small effort that greatly helps debugging, particularly in a runtime with many concurrent tasks.</p>
+                        <p>If you have a task that handles HTTP requests, name it <code>http-handler</code>. If you have a task that refreshes a cache periodically, name it <code>cache-refresher</code>. When a panic or a hang occurs, the task name in the backtrace immediately identifies which part of the system was involved.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="the-tokio-runtime-as-a-thread-pool">
+                        <h4 id="the-tokio-runtime-as-a-thread-pool">The Tokio runtime as a thread pool</h4>
+                        <p>An important fact about Tokio: it is a thread pool. A small number of OS threads (typically one per CPU core) execute many async tasks. From LLDB's perspective, this means:</p>
+                        <ul>
+                            <li><code>thread list</code> shows a handful of runtime worker threads, not one thread per task.</li>
+                            <li>Each worker thread may be currently executing a different task, and the task it is executing can change between stops.</li>
+                            <li>The mapping between a task and a thread is not fixed. A task can migrate between threads.</li>
+                        </ul>
+                        <p>This is why <code>thread list</code> alone is not sufficient for async debugging. You may see three worker threads and a dozen tasks in flight; the debugger shows you the threads, not the tasks.</p>
+                        <p>To inspect a specific task, you can:</p>
+                        <ul>
+                            <li>Set a breakpoint at the task's entry function. When the breakpoint fires, the thread executing the task is selected, and you can inspect the task's state.</li>
+                            <li>Use application-level logging to trace task progress.</li>
+                            <li>Use Tokio's built-in task inspection tools, if available.</li>
+                        </ul>
+                        <p>The key insight is that <code>thread list</code> tells you about OS threads, and OS threads are not the unit of interest in async code. The unit of interest is the task, and tasks are not directly visible in the debugger's thread list.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="debugging-a-panic-in-async-code">
+                    <h3 id="debugging-a-panic-in-async-code">Debugging a panic in async code</h3>
+                    <p>When a panic occurs:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>bt</code></pre>
+                    <p>Then separate:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>your application frames</code></pre>
+                    <p>from:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>Tokio/runtime frames</code></pre>
+                    <p>The important question is:</p>
+                    <blockquote>
+                        <p>Which application frame produced the invalid state?</p>
+                    </blockquote>
+                    <p>Then inspect:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>frame variable</code></pre>
+                    <p>and trace backward.</p>
+
+                    <section tabindex="0" aria-labelledby="panics-and-task-termination">
+                        <h4 id="panics-and-task-termination">Panics and task termination</h4>
+                        <p>An async task that panics does not necessarily crash the program. By default, Tokio catches panics that occur inside tasks and marks the task as failed. The runtime continues running other tasks. Depending on how the task was spawned, the panic may or may not be propagated:</p>
+                        <ul>
+                            <li><strong>If the task was spawned with <code>tokio::spawn</code></strong>: The panic is caught, and the task's <code>JoinHandle</code> returns an <code>Err</code> containing the panic payload. The rest of the runtime continues.</li>
+                            <li><strong>If the task was awaited directly</strong> (not spawned): The panic propagates to the awaiting task, which may cause the whole program to abort if it reaches the top of the runtime.</li>
+                            <li><strong>If the panic strategy is <code>abort</code></strong>: The program aborts on the first panic, regardless of where it occurs.</li>
+                        </ul>
+                        <p>When you stop on a panic in async code, the backtrace may show many runtime frames between the panic site and the application frames that led to it. The first application frame is the panic site. Below it, frames show the async task chain, which may be non-contiguous because the task has been suspended and resumed multiple times.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="finding-the-task-that-panicked">
+                        <h4 id="finding-the-task-that-panicked">Finding the task that panicked</h4>
+                        <p>In a runtime with many tasks, it is not always obvious which task panicked. A few strategies:</p>
+                        <ul>
+                            <li><strong>Look for the task name</strong>: If tasks are named, the backtrace may include the name in the task machinery frames.</li>
+                            <li><strong>Look at the panic message</strong>: The message often references the source location of the panic, which identifies the function that panicked.</li>
+                            <li><strong>Look at application frames below the runtime frames</strong>: The lowest application frame in the backtrace is usually the entry point of the task, which identifies the task's responsibility.</li>
+                        </ul>
+                        <p>Once you have identified the task, you can set a breakpoint in its entry function to reproduce the panic in a controlled way.</p>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="threads-versus-tasks">
+                    <h3 id="threads-versus-tasks">Threads versus tasks</h3>
+                    <p>Do not automatically equate:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>thread</code></pre>
+                    <p>with:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>async task</code></pre>
+                    <p>A Tokio runtime may execute many tasks on a smaller number of worker threads.</p>
+                    <p>Therefore:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>LLDB thread
+≠
+Tokio task</code></pre>
+                    <p>A thread backtrace can tell you which OS thread is executing.</p>
+                    <p>It does not automatically tell you the complete logical async task history.</p>
+                    <p>For async debugging, combine:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>LLDB
++
+application logging
++
+task identifiers where appropriate
++
+targeted breakpoints</code></pre>
+
+                    <section tabindex="0" aria-labelledby="why-this-matters">
+                        <h4 id="why-this-matters">Why this matters</h4>
+                        <p>The mismatch between threads and tasks affects how you interpret the debugger's output.</p>
+                        <ul>
+                            <li><strong>Thread count is not task count</strong>: If you see three worker threads, you cannot conclude that there are three tasks. There may be hundreds of tasks being multiplexed onto those threads.</li>
+                            <li><strong>Thread identity is not task identity</strong>: If a breakpoint fires on thread #2 and later fires again on thread #2, it does not necessarily mean the same task is executing. It might be a different task that happens to be scheduled on the same thread.</li>
+                            <li><strong>Thread backtrace is not task backtrace</strong>: The backtrace of a worker thread shows the synchronous call chain of the currently executing task poll. It does not show the async call chain that led to the current state, because that chain is spread across earlier polls of the task, which have already returned.</li>
+                        </ul>
+                        <p>This is why async debugging benefits enormously from application-level logging and from naming tasks. The debugger alone cannot reconstruct the async call graph; it can only show you the current moment.</p>
+                    </section>
+
+                    <section tabindex="0" aria-labelledby="practical-advice">
+                        <h4 id="practical-advice">Practical advice</h4>
+                        <p>When debugging async Rust, keep these principles in mind:</p>
+                        <ul>
+                            <li><strong>Prefer breakpoints at your own functions</strong> over stepping through runtime internals.</li>
+                            <li><strong>Use <code>continue</code> aggressively</strong> to move between meaningful application boundaries.</li>
+                            <li><strong>Name your tasks</strong> whenever possible, using <code>tokio::task::Builder</code> or equivalent.</li>
+                            <li><strong>Log task-level events</strong>, such as task start, task end, and task errors. The logs complement the debugger's view.</li>
+                            <li><strong>Do not try to follow a single task through all its suspensions</strong>. Instead, observe it at each application-level boundary.</li>
+                            <li><strong>When a task hangs, look at what it is waiting for</strong>: usually an I/O operation, a channel receive, or a lock. The frame below the runtime machinery is the application frame that initiated the wait.</li>
+                        </ul>
+                    </section>
+                </section>
+
+                <section tabindex="0" aria-labelledby="async-vs-sync-in-the-backtrace">
+                    <h3 id="async-vs-sync-in-the-backtrace">Async vs. sync in the backtrace</h3>
+                    <p>One of the most confusing aspects of async debugging is that the backtrace mixes async and sync frames.</p>
+                    <p>In synchronous code, every frame in the backtrace corresponds to a function that is currently executing. In async code, this is still technically true, but the frames do not correspond to the source-level call chain. A frame for <code>load_config</code> at the top of a poll method does not mean that <code>load_config</code> was called from the runtime; it means that the runtime is currently polling the future that <code>load_config</code> returned.</p>
+                    <p>To distinguish the two, look at the names:</p>
+                    <ul>
+                        <li><strong>Synchronous frames</strong>: named after the source functions you wrote.</li>
+                        <li><strong>Async poll frames</strong>: often named <code>poll</code>, or <code>{{closure}}</code>, or contain <code>async_block</code>.</li>
+                        <li><strong>Runtime frames</strong>: named after the runtime crate, such as <code>tokio::runtime::task::harness::Harness::poll</code>.</li>
+                    </ul>
+                    <p>A frame like <code>my_app::load_config::{{closure}}</code> is the async state machine for <code>load_config</code>. It is the current point in the async function's execution, being polled by the runtime. The frames below it are the runtime's own stack, which is executing the poll call.</p>
+                    <p>Once you learn to read these frames, async backtraces become much less intimidating.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="a-worked-async-example">
+                    <h3 id="a-worked-async-example">A worked async example</h3>
+                    <p>Consider a small Tokio program:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>use tokio::time::{sleep, Duration};
+
+async fn fetch_value(id: u32) -&gt; u32 {
+    sleep(Duration::from_millis(100)).await;
+    id * 2
+}
+
+async fn process(id: u32) -&gt; u32 {
+    let value = fetch_value(id).await;
+    value + 1
+}
+
+#[tokio::main]
+async fn main() {
+    let result = process(21).await;
+    println!("result: {}", result);
+}</code></pre>
+                    <p>Set a breakpoint inside <code>fetch_value</code>:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) breakpoint set --name fetch_value
+(lldb) run</code></pre>
+                    <p>The breakpoint fires once. Inspect the thread list:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) thread list</code></pre>
+                    <p>You will see several worker threads, but only one is currently stopped (the one that is polling this task). Note the thread name—if it is the Tokio runtime's thread, it may be named something generic.</p>
+                    <p>Inspect the backtrace:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) bt</code></pre>
+                    <p>You will see <code>fetch_value</code> at the top, then the async closure, then the runtime's task poll machinery. Below that, the runtime's worker.</p>
+                    <p>Inspect the argument:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) frame variable id</code></pre>
+                    <p>The value is 21. The task was created with this specific id. If you had several tasks with different ids, you could set a conditional breakpoint to isolate one.</p>
+                    <p>Continue:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) continue</code></pre>
+                    <p>Execution proceeds to <code>sleep</code>, which suspends the task. The runtime may poll other tasks in the meantime. Eventually, <code>sleep</code> completes, and the task resumes. If you had set a breakpoint after the <code>.await</code>, it would fire at that point, showing that the task has resumed.</p>
+                    <p>Quit:</p>
+                    <pre tabindex="0" role="region" aria-label="Code sample"><code>(lldb) quit</code></pre>
+                    <p>This example demonstrates the key pattern: the debugger stops at each application boundary where you have set a breakpoint, and the runtime handles suspension and resumption invisibly to the debugger's view.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="when-async-debugging-requires-logging">
+                    <h3 id="when-async-debugging-requires-logging">When async debugging requires logging</h3>
+                    <p>In a complex async program with hundreds of concurrent tasks, even careful breakpoint placement may not be enough. The runtime multiplexes tasks in ways that make single-task debugging difficult. In these cases, logging becomes the primary tool, and the debugger becomes a supplement.</p>
+                    <p>A practical combination:</p>
+                    <ul>
+                        <li><strong>Structured logging</strong>: Log each task's start, end, and error paths. Include a task identifier in every log entry.</li>
+                        <li><strong>Correlation IDs</strong>: Assign a unique ID to each request or unit of work, and propagate it through the logs. This makes it possible to reconstruct a single task's history even when it interleaves with others.</li>
+                        <li><strong>Targeted debugger use</strong>: When the logs narrow the problem to a specific task and time, set a conditional breakpoint that fires only for that task.</li>
+                        <li><strong>Selective task injection</strong>: If the runtime supports it, use the ability to spawn tasks with specific settings (single-threaded runtime, or a specific scheduler) to reduce nondeterminism during debugging.</li>
+                    </ul>
+                    <p>This combination is standard practice in production Rust systems. The debugger and logging are complementary, not alternatives.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="rust-2024-notes-on-threads-and-async">
+                <h2 id="rust-2024-notes-on-threads-and-async">Rust 2024 notes on threads and async</h2>
+                <p>A few Rust 2024 specifics affect thread and async debugging.</p>
+
+                <section tabindex="0" aria-labelledby="async-closures-and-2024">
+                    <h3 id="async-closures-and-2024">Async closures and 2024</h3>
+                    <p>Rust 2024 stabilizes async closures, which allow closures that are themselves <code>async</code>. From a debugging perspective, the compiled representation of an async closure is similar to an async function: a state machine with a <code>poll</code> method. The frame for an async closure may include additional compiler-generated names, but the essential structure is the same as for <code>async fn</code>.</p>
+                    <p>When you set a breakpoint inside an async closure, the source-line breakpoint is often the most reliable way to reach it. Name-based breakpoints on closure names can be fragile because closure names are not part of the stable API.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="async-in-traits-and-2024">
+                    <h3 id="async-in-traits-and-2024">Async in traits and 2024</h3>
+                    <p>Rust 2024 continues to support <code>async fn</code> in traits, either via the trait's <code>async fn</code> syntax or via the <code>async-trait</code> crate. When debugging async trait methods, the backtrace shows the concrete implementation being called, wrapped in the state machine for the trait method. As with other async code, look for the application frames and ignore the runtime machinery.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="thread-scoped-and-2024">
+                    <h3 id="thread-scoped-and-2024">Thread-scoped and 2024</h3>
+                    <p>Rust's scoped threads (<code>std::thread::scope</code>) allow threads to borrow data from the enclosing scope. This is a source-level change that affects when threads finish: they are guaranteed to finish before the enclosing scope ends. From a debugging perspective, scoped threads appear like ordinary threads in <code>thread list</code>, but the guarantee that they finish before the enclosing scope ends makes their behavior slightly more predictable.</p>
+                </section>
+
+                <section tabindex="0" aria-labelledby="unsafe-extern-and-threads">
+                    <h3 id="unsafe-extern-and-threads"><code>unsafe extern</code> and threads</h3>
+                    <p>When Rust code calls into C libraries that spawn or manage threads, the interaction between Rust's thread model and the C library's thread model can be subtle. In Rust 2024, the declaration of the foreign function is inside an <code>unsafe extern</code> block, and any thread-related invariants are the caller's responsibility. From a debugging perspective, this means that threads created inside C code may not have Rust names and may not appear as standard Rust worker threads. They will still appear in <code>thread list</code>, but their names may be empty or generic.</p>
+                </section>
+            </section>
+
+            <section tabindex="0" aria-labelledby="summary-ch13">
+                <h2 id="summary-ch13">Summary</h2>
+                <p>In this chapter, we covered debugging concurrent Rust programs:</p>
+                <ul>
+                    <li><strong>Threads</strong>: how to list them, select one, read its backtrace, and inspect its frames. Named threads greatly simplify this process.</li>
+                    <li><strong>Multithreaded workflow</strong>: the pattern of list, select, inspect, continue. Each thread has its own stack; the selected thread determines which stack you see.</li>
+                    <li><strong>Deadlocks</strong>: the debugger does not diagnose them, but it provides the evidence. If multiple threads are blocked on lock acquisitions, and no thread can make progress, the program is likely deadlocked.</li>
+                    <li><strong>Async Rust</strong>: a different execution model, where an <code>async fn</code> returns a future and an executor polls it. The debugger shows runtime machinery between application frames; this is expected and not a bug.</li>
+                    <li><strong>Tokio</strong>: a thread pool that runs many tasks on a few threads. <code>thread list</code> shows threads, not tasks. Prefer application breakpoints and logging over stepping through runtime internals.</li>
+                    <li><strong>Panics in async code</strong>: caught by the runtime in most cases, propagated via the <code>JoinHandle</code>. The first application frame in the backtrace identifies the panic site.</li>
+                    <li><strong>Threads vs. tasks</strong>: a thread is not a task. A single OS thread may execute many tasks over time. The debugger's thread selection tells you about OS threads, not logical tasks.</li>
+                    <li><strong>Async vs. sync frames</strong>: async state machine frames are named after the async function with compiler-generated suffixes. Runtime frames are named after the runtime crate.</li>
+                    <li><strong>Rust 2024 specifics</strong>: async closures and async-in-trait are stabilized, scoped threads give stronger guarantees, and <code>unsafe extern</code> for C thread functions affects how foreign threads appear.</li>
+                </ul>
+                <p>The unifying principle for all concurrent debugging: the debugger shows you the machine's view, but the questions you ask are about the program's behavior. Translating between the two is what makes concurrent debugging productive.</p>
+                <p>In the next chapter, we turn to debugging tests, examples, and workspace binaries: the smaller executables that Cargo produces for specific purposes, and how to debug them directly.</p>
+            </section>
+        </section>
+
+        <nav class="page-nav" aria-label="Page navigation">
+            <a class="nav-prev" href="./chapter-12.html">← Chapter 12</a>
+            <a class="nav-next" href="./chapter-14.html">Chapter 14 →</a>
+        </nav>
+
+    </main>
+
+    <script>
+        (function () {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Dark';
+            } else {
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Light';
+            }
+
+            toggleBtn.addEventListener('click', function () {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Dark' : '☀️ Light';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
+
