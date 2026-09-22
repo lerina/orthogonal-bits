@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Question-Code Spiking</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(32px, 6.8vw, 62px); line-height: 1.02; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 58ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--ink); letter-spacing: 0.02em; margin: 24px 0 8px 0; }
+  h3.sub:first-of-type{ margin-top: 6px; }
+  h4.subsub{ font-size: 12.5px; color: var(--riso-yellow); letter-spacing: 0.05em; margin: 16px 0 6px 0; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 13.5px; line-height: 1.78; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+  ul.plain, ol.plain{ margin: 8px 0 16px 0; padding-left: 20px; font-size: 13px; line-height: 1.75; color: var(--ink); max-width: 66ch; }
+  ul.plain li, ol.plain li{ margin-bottom: 5px; }
+
+  pre.code{
+    background: var(--paper-2); border: 1px solid var(--rule); border-left: 3px solid var(--riso-yellow);
+    padding: 10px 14px; margin: 10px 0 16px 0; overflow-x: auto;
+    font-size: 12.5px; line-height: 1.6; color: var(--riso-yellow);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  code.inline{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12.5px; }
+
+  .quote{
+    margin: 14px 0; padding: 12px 16px; border-left: 3px solid var(--riso-pink);
+    background: var(--paper-2); font-style: italic; color: var(--ink); font-size: 13.5px; line-height: 1.7;
+  }
+
+  /* narrative log */
+  .log{
+    background: var(--paper-3); border: 1px solid var(--riso-pink); box-shadow: 0 0 0 1px rgba(255,46,99,0.15);
+    padding: 18px 20px; margin: 22px 0; font-size: 13.5px; line-height: 1.8; color: var(--ink);
+  }
+  .log .tag{ display:block; font-size: 10px; letter-spacing: 0.16em; color: var(--riso-pink); margin-bottom: 10px; }
+  .log p{ margin: 0 0 10px 0; }
+  .log p:last-child{ margin-bottom: 0; }
+  .log em{ color: var(--riso-yellow); font-style: italic; }
+
+  .partintro{ font-size: 14px; line-height: 1.8; color: var(--ink); max-width: 68ch; margin-bottom: 4px; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="THE OTHER JOB" role="banner">
+      <div class="stamp">DEAD RECKONING ARCHIVE</div>
+      <h1 class="masthead">QUESTION-CODE<br>SPIKING</h1>
+      <p class="tagline">Most of what a Signal Runner actually does isn't breaking in anywhere. It's sitting with a piece of code nobody trusts yet and figuring out, precisely, what it does — before anyone decides what to do about it.</p>
+      <div class="cover-foot">
+        <span>NOT PENETRATION — COMPREHENSION</span>
+        <span>20 SECTIONS</span>
+        <span>ONE RECOVERED APP</span>
+      </div>
+    </header>
+
+    <!-- MISSION SETUP -->
+    <section class="panel" aria-labelledby="setup-h" data-fold="THE JOB">
+      <div class="kicker">THE JOB THAT ISN'T A BREAK-IN</div>
+      <h2 class="section" id="setup-h">The App on the Recovered Phone</h2>
+      <p class="copy">The device came to the Line through a contact who wouldn't say much about where it had actually come from — only that it belonged to someone who worked warehouse floor shifts for a logistics subcontractor, and that it had started running hot and draining battery about three weeks into the job. Nobody's disputing that it's malicious. What nobody can say yet is <em>what it actually does</em> — whether it's tracking location, logging keystrokes, listening through the mic, reporting productivity metrics somewhere, or all four at once.</p>
+      <p class="copy">Dial's sponsor didn't ask for a break-in this time. There was nothing to break into — the code was already sitting right there, extracted and waiting, no ICE guarding it, no RUSTCORE checkpoint standing between Dial and the source. The job was smaller and, it turned out, harder: read it. Actually understand it. Before anyone decided whether to warn the worker, sell the finding, or burn the whole subcontractor's reputation with it.</p>
+      <p class="copy">The file the sponsor sent over wasn't a manual this time either — not really. It was a method for exactly this kind of job, titled plainly enough that Dial almost skimmed past it before reading the first line twice.</p>
+    </section>
+
+    <main id="main-content">
+
+    <!-- PART ONE -->
+    <section class="panel" aria-labelledby="p1-h" data-fold="PART ONE">
+      <div class="kicker">FIRST PASS</div>
+      <h2 class="section" id="p1-h">Sections 1 – 4: Entry Points and the First Execution Spine</h2>
+      <p class="partintro">The method opens by refusing the obvious move — read everything — and replacing it with a harder discipline: ask one question, answer it as cheaply as possible, and don't touch a line of code you don't have a reason to touch yet.</p>
+
+<h3 class="sub">Purpose</h3>
+<p class="copy">When entering an unfamiliar codebase, the objective is not to read every file.</p>
+<p class="copy">The objective is to build a reliable model of: what the system does, where its major parts are, how execution moves through them, what data moves between them, where important decisions are made, and which parts matter to the change you need to make.</p>
+<p class="copy">Use <strong>question-code spikes</strong> to discover this structure. Each spike answers one concrete question. The spike is temporary. The understanding is retained.</p>
+
+<h3 class="sub">1. The Central Question</h3>
+<p class="copy">Begin with one question:</p>
+<p class="copy"><strong>How does this codebase actually work?</strong></p>
+<p class="copy">Do not try to answer it immediately. Break it into eight investigation areas. A useful starting set is:</p>
+<ol class="plain">
+<li><strong>Purpose</strong> — What does the system do?</li>
+<li><strong>Entry points</strong> — Where does execution begin?</li>
+<li><strong>Structure</strong> — What are the major components?</li>
+<li><strong>Data</strong> — What information moves through the system?</li>
+<li><strong>Control flow</strong> — How does execution move between components?</li>
+<li><strong>Contracts</strong> — What does each component expect and produce?</li>
+<li><strong>State and policy</strong> — Where are important decisions and state changes made?</li>
+<li><strong>Tests and boundaries</strong> — How does the codebase demonstrate and constrain its behavior?</li>
+</ol>
+<p class="copy">These eight areas form the initial map. They are questions, not conclusions.</p>
+
+<h3 class="sub">2. First Pass: Reconnaissance</h3>
+<p class="copy">Do not open random source files. First establish the repository's shape. Use the tools available to you: directory listing, <code class="inline">rg</code>, <code class="inline">find</code>, <code class="inline">git</code>, language-specific tooling, build and test commands, documentation, package or dependency manifests.</p>
+<p class="copy">For a Rust repository, for example: <code class="inline">Cargo.toml</code>, <code class="inline">Cargo.lock</code>, workspace members, <code class="inline">src/</code>, <code class="inline">tests/</code>, binaries, libraries, examples, build scripts, feature definitions.</p>
+<p class="copy">The first question is: <strong>What kind of repository am I looking at?</strong></p>
+<p class="copy">Produce a short reconnaissance result:</p>
+<div class="quote">This is a workspace containing X crates. These appear to be libraries. These appear to be binaries. Tests are located here. The primary entry points appear to be here.</div>
+<p class="copy">Do not explain the implementation yet.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — RECON</span>
+  <p>Not a workspace, not really — a single stripped-down mobile binary and a handful of resource files, decompiled just enough to read. Still ran the same question anyway: what kind of thing am I looking at. Three modules. One does UI, one does something with the microphone, one talks to the network on a schedule nobody asked it to keep. Didn't open a single function body yet. Sponsor's voice again — <em>don't explain the implementation yet.</em></p>
+</div>
+
+<h3 class="sub">3. Find the Entry Points</h3>
+<p class="copy">The first major code question is: <strong>Where does execution enter the system?</strong></p>
+<p class="copy">Look for: <code class="inline">main</code>, library initialization, exported APIs, command handlers, event handlers, HTTP handlers, callbacks, service constructors, public functions, test entry points.</p>
+<p class="copy">For Rust, useful searches include:</p>
+<pre class="code">rg 'fn main'
+rg 'pub fn'
+rg 'pub struct'
+rg 'impl'</pre>
+<p class="copy">The exact searches depend on the codebase. Do not read every result. Identify the few locations from which significant execution begins. Then ask: <em>What happens immediately after entry?</em> That becomes the first code-reading spike.</p>
+
+<h3 class="sub">4. Trace One Real Execution Path</h3>
+<p class="copy">Choose one concrete operation. For example: <em>What happens when the user invokes command X?</em> Follow it from beginning to end. Record only the important transitions:</p>
+<pre class="code">entry point → dispatcher → service → core operation → output</pre>
+<p class="copy">Do not attempt to understand every function encountered. At each transition, ask: Who calls this? What does it receive? What does it produce? Why does control move here?</p>
+<p class="copy">This creates the first <strong>execution spine</strong>. The execution spine is more useful than a file-by-file summary.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG</span>
+  <p>Picked the operation that mattered most: what happens when the screen goes dark. Traced it start to end without opening anything else. App wakes on a timer → checks a permissions flag it already silently holds → opens the mic stream for four seconds → writes a small file → the network module picks the file up on its own schedule. Four arrows. That's the whole spine. Didn't need to read a single line of UI code to get it.</p>
+</div>
+
+    </section>
+
+    <!-- PART TWO -->
+    <section class="panel" aria-labelledby="p2-h" data-fold="PART TWO">
+      <div class="kicker">GOING DEEPER</div>
+      <h2 class="section" id="p2-h">Sections 5 – 9: The Eight Areas and the First Real Spikes</h2>
+      <p class="partintro">With a spine established, the method turns the eight starting questions into something an apprentice can actually act on — and gives the discipline for turning any stray unknown into a five-minute investigation instead of an open-ended dread.</p>
+
+<h3 class="sub">5. Build the Eight Investigation Areas</h3>
+<p class="copy">Now expand each major question into concrete spikes.</p>
+<h4 class="subsub">Purpose</h4>
+<p class="copy">Questions might include: What problem does the program solve? What is its primary user operation? What are its major modes? What behavior is explicitly promised?</p>
+<h4 class="subsub">Entry Points</h4>
+<p class="copy">Questions might include: Where does execution begin? What public APIs matter? What commands or events enter the system? Which functions are externally callable?</p>
+<h4 class="subsub">Structure</h4>
+<p class="copy">Questions might include: What are the major modules? Which modules depend on which others? Where is the core domain logic? Which components are infrastructure?</p>
+<h4 class="subsub">Data</h4>
+<p class="copy">Questions might include: What are the important types? What data enters the system? What transformations occur? What data leaves the system?</p>
+<h4 class="subsub">Control Flow</h4>
+<p class="copy">Questions might include: What calls what? Where are branches made? Where are loops or retries? Where does asynchronous work occur?</p>
+<h4 class="subsub">Contracts</h4>
+<p class="copy">Questions might include: What does each important function require? What does it return? How are errors represented? Which invariants does it rely on?</p>
+<h4 class="subsub">State and Policy</h4>
+<p class="copy">Questions might include: Where is state stored? Where is state changed? Where are important decisions made? Which code expresses policy rather than mechanism?</p>
+<h4 class="subsub">Tests and Boundaries</h4>
+<p class="copy">Questions might include: What behavior is tested? Which components are tested independently? Where are external systems accessed? What assumptions are enforced by tests?</p>
+
+<h3 class="sub">6. Turn Questions into Spikes</h3>
+<p class="copy">Every important unknown becomes a small investigation. Examples:</p>
+<p class="copy"><strong>Question:</strong> Where is the parser's output consumed?</p>
+<p class="copy"><strong>Spike:</strong> Search for the parser's return type and follow its uses.</p>
+<p class="copy"><strong>Question:</strong> Who owns this state?</p>
+<p class="copy"><strong>Spike:</strong> Find where the type is constructed, stored, mutated, and dropped.</p>
+<p class="copy"><strong>Question:</strong> What happens when this operation fails?</p>
+<p class="copy"><strong>Spike:</strong> Trace the error from its creation to the externally visible result.</p>
+<p class="copy"><strong>Question:</strong> Is this module policy or mechanism?</p>
+<p class="copy"><strong>Spike:</strong> Find its callers and determine whether it makes decisions or merely performs operations.</p>
+<p class="copy"><strong>Question:</strong> What is the real public interface?</p>
+<p class="copy"><strong>Spike:</strong> Inspect exported symbols and their external callers.</p>
+<p class="copy">The spike can be as simple as a search. <strong>Question code does not always mean writing new code.</strong> The principle is:</p>
+<p class="copy"><em>Use the smallest executable investigation that can answer the question.</em></p>
+<p class="copy">That may be: <code class="inline">rg</code>, <code class="inline">ast-grep</code>, a compiler experiment, a tiny Rust program, a test, a debugger session, a benchmark, or a controlled modification.</p>
+
+<h3 class="sub">7. Definition, Users, Owners</h3>
+<p class="copy">For important symbols, use three questions.</p>
+<p class="copy"><strong>Definition:</strong> Where is this thing defined? Find the struct, enum, trait, function, constant, or module.</p>
+<p class="copy"><strong>Users:</strong> Who uses it? Find callers, constructors, implementations, pattern matches, and consumers.</p>
+<p class="copy"><strong>Owner:</strong> Which part of the system is responsible for its behavior? This is more important than merely knowing where the symbol is defined. A type may be defined in one module while its meaning is determined by another. The goal is to discover <strong>responsibility</strong>, not just location.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — DEFINITION, USERS, OWNER</span>
+  <p>The permissions flag from the spine — found where it's defined, easy. Found who reads it, easy. The owner question was the one that actually mattered: nothing in the app ever sets that flag to true. It ships true. Whoever built this never intended the worker to have a real choice about it. That's not a bug. That's the whole case, sitting in one boolean nobody bothered to hide.</p>
+</div>
+
+<h3 class="sub">8. Follow Data Before Reading Details</h3>
+<p class="copy">When control flow becomes confusing, follow the data. Ask: What enters this component? Then: What happens to it? Then: Where does it go?</p>
+<p class="copy">For each important type: find where it is created, find where it is transformed, find where it is consumed, find where it is stored, find where it is destroyed or leaves the system. This often reveals the architecture faster than reading functions from top to bottom.</p>
+
+<h3 class="sub">9. Follow Ownership and State</h3>
+<p class="copy">For Rust code, ownership can reveal architectural responsibility. For an important value, ask: Who creates it? Who owns it? Is it borrowed? Is it cloned? Is it moved? Where does it become mutable? Where does it cross a component boundary?</p>
+<p class="copy">These are architectural questions disguised as Rust questions. A function signature can therefore be a useful design document. For example:</p>
+<pre class="code">fn process(input: &Input) -> Result&lt;Output, Error&gt;</pre>
+<p class="copy">immediately raises questions: Who owns <code class="inline">Input</code>? Why is it borrowed? Who owns the resulting <code class="inline">Output</code>? What failures are possible? Which layer defines <code class="inline">Error</code>? Each question can become a spike.</p>
+
+    </section>
+
+    <!-- PART THREE -->
+    <section class="panel" aria-labelledby="p3-h" data-fold="PART THREE">
+      <div class="kicker">THE SMOKING GUN</div>
+      <h2 class="section" id="p3-h">Sections 10 – 14: Evidence, the Compiler, and the Live System</h2>
+      <p class="partintro">A finding is not a fact until it can survive being checked. This stretch of the method is where the job stops being reading and starts being proof.</p>
+
+<h3 class="sub">10. Use Tests as Behavioral Evidence</h3>
+<p class="copy">Tests are often easier to understand than implementation. Start with a test that exercises the behavior you care about. Ask: What behavior does this test consider important?</p>
+<p class="copy">Then trace:</p>
+<pre class="code">test → public interface → implementation → dependencies</pre>
+<p class="copy">Tests provide evidence about intended behavior. Implementation shows how that behavior is currently achieved. When the two disagree, record the discrepancy instead of immediately deciding which one is correct.</p>
+
+<h3 class="sub">11. Use the Compiler as an Investigator</h3>
+<p class="copy">In a Rust codebase, compilation can answer questions directly. Examples: <em>What happens if this type is changed?</em> Make a temporary change. Compile. Observe the compiler's dependency chain.</p>
+<p class="copy">Or: <em>Which code depends on this trait?</em> Temporarily modify the trait or signature and inspect the resulting diagnostics. The compiler becomes a <strong>dependency probe</strong>. This is especially useful when static reading becomes difficult.</p>
+
+<h3 class="sub">12. Use rg for Textual Relationships</h3>
+<p class="copy"><code class="inline">rg</code> answers: <em>Where does this name or pattern occur?</em> Use it to find: definitions, callers, constructors, implementations, error messages, configuration, tests, feature flags.</p>
+<p class="copy">Do not interpret every match. Use successive searches to narrow the question. A typical investigation is:</p>
+<pre class="code">symbol
+→ definition
+→ constructors
+→ callers
+→ consumers
+→ tests</pre>
+<p class="copy">The result is a relationship map.</p>
+
+<h3 class="sub">13. Use Structural Search for Structural Questions</h3>
+<p class="copy">Text search is insufficient when the question concerns syntax. Use structural search when you need to ask: Which functions return this type? Which structs contain this field? Which implementations provide this trait? Which calls occur inside this pattern? Which modules contain this kind of declaration?</p>
+<p class="copy">For Rust, <code class="inline">ast-grep</code> can complement <code class="inline">rg</code>. The division is:</p>
+<pre class="code">rg          → textual evidence
+ast-grep    → structural evidence
+Helix       → close reading and navigation
+rust-analyzer → semantic relationships
+compiler    → dependency evidence
+LLDB        → runtime behavior</pre>
+<p class="copy">No single tool needs to explain the entire codebase.</p>
+
+<h3 class="sub">14. Runtime Spikes</h3>
+<p class="copy">Static analysis eventually reaches a limit. Then run the system. A runtime spike asks: <em>What actually happens?</em></p>
+<p class="copy">Examples: Run one command. Feed one real input. Trigger one error. Set one debugger breakpoint. Inspect one stack trace. Measure one operation. Log one state transition.</p>
+<p class="copy">The purpose is not debugging in the traditional sense. The purpose is <strong>architecture discovery through execution</strong>.</p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — THE RUNTIME SPIKE</span>
+  <p>Everything up to here was static. Couldn't be completely sure until the app actually ran once, in a sandbox, with the mic wired to a dummy input instead of a live room. Logged the one state transition that mattered: the moment the permissions flag gets read, right before the mic stream opens. It read <code class="inline">true</code> on a fresh install, no prompt, no consent screen ever shown. That's the whole finding. Not a guess anymore.</p>
+</div>
+
+    </section>
+
+    <!-- PART FOUR -->
+    <section class="panel" aria-labelledby="p4-h" data-fold="PART FOUR">
+      <div class="kicker">CLOSING THE CASE</div>
+      <h2 class="section" id="p4-h">Sections 15 – 20: The Map, the Loop, and the Harvest</h2>
+      <p class="partintro">A finished investigation isn't the one that answered every question. It's the one that knows exactly which questions are still open, and can hand off everything else as something solid.</p>
+
+<h3 class="sub">15. Build the Skeleton Map</h3>
+<p class="copy">After several spikes, you should be able to state: The system enters here. It passes through these components. This component owns this responsibility. This data is transformed here. This boundary separates these concerns. This failure travels through these layers.</p>
+<p class="copy">That is your skeleton map. Do not fill it with every function. Keep only the relationships necessary to navigate the system.</p>
+
+<h3 class="sub">16. The Codebase 64-Spike</h3>
+<p class="copy">You can now use the 64-item structure as an investigation inventory. The center is: <strong>Comprehend this codebase.</strong></p>
+<p class="copy">The eight surrounding questions are: Purpose, Entry points, Structure, Data, Control flow, Contracts, State and policy, Tests and boundaries. Each expands into eight concrete investigation questions.</p>
+<p class="copy">For example, <strong>Entry Points</strong>:</p>
+<ol class="plain">
+<li>Where does execution begin?</li>
+<li>What public APIs exist?</li>
+<li>What commands enter the system?</li>
+<li>What events enter the system?</li>
+<li>What initializes the system?</li>
+<li>What configuration enters the system?</li>
+<li>What external callers exist?</li>
+<li>What is the simplest complete execution path?</li>
+</ol>
+<p class="copy">That produces eight useful spikes without requiring you to invent arbitrary tasks. Do the same for the other seven areas. The result is a <strong>64-question codebase investigation map</strong>. You do not have to answer all 64. Use the map to choose the next question.</p>
+
+<h3 class="sub">17. Prioritize by Information Gain</h3>
+<p class="copy">The best next spike is not necessarily the easiest one. Prefer questions whose answers will explain many other things. For example: <em>Where is the central data type transformed?</em> may explain several modules, multiple functions, several tests, and the primary execution path. That is a high-information spike.</p>
+<p class="copy">A useful rule is: <strong>Choose the question that is most likely to collapse several unknowns at once.</strong> This is more useful than simply working from the top of the file tree.</p>
+
+<h3 class="sub">18. The Comprehension Loop</h3>
+<p class="copy">Use this loop continuously:</p>
+<ol class="plain">
+<li><strong>Locate.</strong> Find the relevant symbol or component.</li>
+<li><strong>Define.</strong> Determine what it is.</li>
+<li><strong>Trace users.</strong> Find who calls or consumes it.</li>
+<li><strong>Trace ownership.</strong> Determine who is responsible for its behavior.</li>
+<li><strong>Trace data.</strong> Follow important values through it.</li>
+<li><strong>Run a spike.</strong> Test an uncertain assumption.</li>
+<li><strong>Recall.</strong> Close the source and explain the path from memory.</li>
+<li><strong>Verify.</strong> Check your explanation against the code or runtime.</li>
+<li><strong>Harvest.</strong> Record only the essential understanding.</li>
+<li><strong>Update the map.</strong> Add newly discovered relationships.</li>
+<li><strong>Delete the scaffolding.</strong> Remove temporary experiments.</li>
+<li><strong>Choose the next question.</strong></li>
+</ol>
+
+<h3 class="sub">19. When Are You Done?</h3>
+<p class="copy">You do not need to understand every line. You have sufficient comprehension when you can answer, without reopening the entire repository:</p>
+<ul class="plain">
+<li>What does this system do?</li>
+<li>Where does execution enter?</li>
+<li>What are its major components?</li>
+<li>What is the main execution path?</li>
+<li>What are the important data types?</li>
+<li>Where does important data change?</li>
+<li>Which component owns each major responsibility?</li>
+<li>Where are important decisions made?</li>
+<li>How are errors propagated?</li>
+<li>What are the important external boundaries?</li>
+<li>Which tests demonstrate the behavior?</li>
+<li>Where should a proposed change probably live?</li>
+<li>What assumptions are still uncertain?</li>
+</ul>
+<p class="copy">The final question is important: <strong>What do I still not know?</strong> Unknowns are not failures. They are the next spikes.</p>
+
+<h3 class="sub">20. The Final Harvest</h3>
+<p class="copy">When the investigation reaches a useful stopping point, produce a compact codebase model. It should contain:</p>
+<p class="copy"><strong>Purpose</strong> — What the system exists to do.<br>
+<strong>Architecture</strong> — Its major components and responsibilities.<br>
+<strong>Execution spine</strong> — The principal path through the system.<br>
+<strong>Data spine</strong> — The important data and how it changes.<br>
+<strong>Contracts</strong> — The important interfaces and failure boundaries.<br>
+<strong>Ownership</strong> — Which component is responsible for what.<br>
+<strong>Evidence</strong> — The tests, runtime behavior, and source relationships supporting the model.<br>
+<strong>Open questions</strong> — What remains uncertain.</p>
+<p class="copy">This is the durable result of the investigation. The temporary spikes can disappear.</p>
+
+<h3 class="sub">The Principle</h3>
+<p class="copy">Do not read a codebase from beginning to end. <strong>Interrogate it.</strong></p>
+<p class="copy">Ask a question. Find the smallest investigation that can answer it. Run the investigation. Recall the result. Verify it. Harvest the essence. Update the map. Then ask the next question.</p>
+<p class="copy">The codebase gradually changes from an unfamiliar collection of files into a network of known relationships.</p>
+<div class="quote">Locate. Trace. Probe. Recall. Harvest. Map. Repeat.</div>
+<p class="copy">The goal is not to remember the code. The goal is to know <strong>where the answer lives, how the parts relate, and what evidence supports your understanding.</strong></p>
+
+<div class="log">
+  <span class="tag">DIAL'S LOG — THE HARVEST</span>
+  <p>Purpose: track a warehouse worker without their knowledge, disguised as a battery-optimization utility. Architecture: three modules, one lying about what it does, one listening, one reporting. Execution spine: wake, check a flag that was never really a choice, listen four seconds, write, upload on a schedule. Ownership: the flag's default value is the whole case. Evidence: one sandboxed run, timestamped, logged. Open questions: who the reports actually go to, and whether this is one subcontractor's idea or a template running on a lot more phones than this one.</p>
+  <p>Handed the harvest to the sponsor, not the raw decompile. Four sentences and a log file instead of a folder nobody outside the Line would ever read. First time a job of mine ended with something someone else could actually use.</p>
+</div>
+
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">D I A L &nbsp; · &nbsp; T H E &nbsp; O T H E R &nbsp; J O B</div>
+      <p class="closer">No vault, no ICE, no checkpoint with a name people whisper. Just a boolean that defaulted to a lie, found the same way everything else gets found on the Line — one honest question at a time, until the code ran out of places to hide it.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
