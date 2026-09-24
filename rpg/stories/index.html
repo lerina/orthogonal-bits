@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Signal Runner Stories</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 48px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .breadcrumb{ font-size: 11px; letter-spacing: 0.1em; color: var(--ink-dim); margin-bottom: 22px; }
+  .breadcrumb a{ color: var(--riso-yellow); text-decoration:none; }
+  .breadcrumb a:hover, .breadcrumb a:focus{ text-decoration: underline; }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(48px, 10vw, 96px); line-height: 0.9; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 22px; font-size: 14px; letter-spacing: 0.05em; color: var(--riso-yellow); max-width: 46ch; line-height: 1.6; }
+  .cover-foot{ margin-top: 40px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 27px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.75; max-width: 66ch; color: var(--ink); }
+
+  /* chapter list */
+  .chapters{ margin-top: 18px; display:flex; flex-direction:column; }
+  .chapter{ padding: 18px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 50px 1fr; gap: 16px; align-items:start; }
+  .chapter:first-child{ border-top:none; }
+  .chapter .chnum{ font-family:'Anton', sans-serif; font-size: 24px; color: var(--rule); line-height: 1; }
+  .chapter h4{ margin: 0 0 6px 0; font-size: 14.5px; }
+  .chapter h4 a{ color: var(--riso-pink); text-decoration:none; }
+  .chapter h4 a:hover, .chapter h4 a:focus{ text-decoration: underline; }
+  .chapter p{ margin:0; font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; max-width: 60ch; }
+  .chapter .filename{ display:block; margin-top:4px; font-size: 10.5px; color: var(--ink-dim); opacity:0.7; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 12.5px; color: var(--ink); line-height: 1.8; max-width: 46ch; margin-left:auto; margin-right:auto; }
+  .back a.enter{
+    display:inline-block; margin-top:22px; border: 1px solid var(--riso-yellow); color: var(--riso-yellow);
+    padding: 9px 18px; font-size: 12px; letter-spacing: 0.1em; text-decoration:none;
+  }
+  .back a.enter:hover, .back a.enter:focus{ background: var(--riso-yellow); color: var(--paper); }
+
+  @media (max-width: 640px){ .panel{ padding: 34px 22px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="STORY INDEX" role="banner">
+      <div class="breadcrumb"><a href="../07.capslock-signal-runner.html">&larr; THE SIGNAL RUNNER</a></div>
+      <div class="stamp">DEAD RECKONING ARCHIVE</div>
+      <h1 class="masthead">SIGNAL RUNNER<br>STORIES</h1>
+      <p class="tagline">Two threads. One legend already gone, one recruit just starting. Six chapters between them.</p>
+      <div class="cover-foot">
+        <span>THE COMPILE TRILOGY</span>
+        <span>DIAL'S FIRST DESCENT</span>
+      </div>
+    </header>
+
+    <main id="main-content">
+
+    <!-- COMPILE -->
+    <section class="panel" aria-labelledby="compile-h" data-fold="THE LEGEND">
+      <div class="kicker">FOUNDER · GHOST · AUTHOR OF THE FIELD MANUAL</div>
+      <h2 class="section" id="compile-h">Compile</h2>
+      <p class="copy">The woman who cracked a RUSTCORE vault with nothing but a terminal and a habit of asking one precise question at a time — and vanished eleven years ago without explaining why.</p>
+
+      <div class="chapters">
+        <div class="chapter">
+          <div class="chnum">01</div>
+          <div>
+            <h4><a href="compile_story_01-ask.html">The Woman Who Asked</a></h4>
+            <p>Her origin, the First Principle, and the RUSTCORE Vault job that made the name.</p>
+            <span class="filename">compile_story_01-ask.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">02</div>
+          <div>
+            <h4><a href="compile_story_02-method.html">The Method She Left Behind</a></h4>
+            <p>Question → Query → Answer → Narrow → Trace → Verify, and the standards she held it to.</p>
+            <span class="filename">compile_story_02-method.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">03</div>
+          <div>
+            <h4><a href="compile_story_03-ghost.html">The Question She Never Answered</a></h4>
+            <p>The disappearance, the cult of quiet belief around her, and her last recorded lesson.</p>
+            <span class="filename">compile_story_03-ghost.html</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DIAL -->
+    <section class="panel" aria-labelledby="dial-h" data-fold="THE RECRUIT">
+      <div class="kicker">NEWLY VOUCHED, DEAD RECKONING LINE</div>
+      <h2 class="section" id="dial-h">Dial</h2>
+      <p class="copy">A recruit learning the Line's craft from scratch — one borrowed terminal, one mission protocol, and one job that turned out to matter more than training ever could.</p>
+
+      <div class="chapters">
+        <div class="chapter">
+          <div class="chnum">01</div>
+          <div>
+            <h4><a href="dial01-terminal-inspection.html">Terminal Code Inspection and Navigation</a></h4>
+            <p>Four nights with a borrowed machine — rg, Helix, Orca, and the discipline of a controlled descent.</p>
+            <span class="filename">dial01-terminal-inspection.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">02</div>
+          <div>
+            <h4><a href="dial02-mission-protocol.html">The Mission Protocol</a></h4>
+            <p>The second file — C-A-P-S-L-O-C-K — and the first real job it gets used on.</p>
+            <span class="filename">dial02-mission-protocol.html</span>
+          </div>
+        </div>
+        <div class="chapter">
+          <div class="chnum">03</div>
+          <div>
+            <h4><a href="dial03-question-code-spiking.html">Question-Code Spiking</a></h4>
+            <p>Not a break-in — a recovered app, a hidden permissions flag, and the job that ends with proof instead of access.</p>
+            <span class="filename">dial03-question-code-spiking.html</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">S I G N A L &nbsp; R U N N E R &nbsp; S T O R I E S</div>
+      <p class="closer">One legend, one recruit, the same discipline underneath both — ask the smallest question, answer it completely, then ask the next one.</p>
+      <a class="enter" href="../07.capslock-signal-runner.html">&larr; BACK TO THE SIGNAL RUNNER</a>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
