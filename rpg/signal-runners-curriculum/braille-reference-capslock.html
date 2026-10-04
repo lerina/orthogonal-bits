@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAPSLOCK — Braille Reference: Alphabet &amp; Rust Symbols</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+  :root{
+    --paper: #1b1712;
+    --paper-2: #211c16;
+    --paper-3: #171310;
+    --ink: #e9e1d1;
+    --ink-dim: #a99d87;
+    --riso-pink: #ff2e63;
+    --riso-yellow: #d8ff3e;
+    --rule: #4a4136;
+  }
+
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; background: var(--paper); color: var(--ink); font-family: 'Space Mono', monospace; }
+
+  .skip-link{
+    position:absolute; left:-9999px; top:0;
+    background: var(--riso-pink); color: var(--paper);
+    padding:10px 16px; font-size:12px; letter-spacing:0.08em; z-index:100;
+  }
+  .skip-link:focus{ left: 10px; top:10px; }
+
+  .sheet{
+    max-width: 960px; margin: 0 auto;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(circle at 85% 80%, rgba(255,255,255,0.025), transparent 45%),
+      var(--paper);
+    position: relative; overflow: hidden; border: 1px solid #000;
+  }
+  .sheet::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    pointer-events:none; mix-blend-mode: overlay;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr; }
+  .panel{ padding: 46px 44px; position: relative; }
+  .panel + .panel{ border-top: 2px dashed var(--rule); }
+  .panel::after{
+    content: attr(data-fold); position: absolute; top: -11px; right: 20px;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--ink-dim);
+    background: var(--paper); padding: 0 8px;
+  }
+
+  .cover{ padding-top: 54px; padding-bottom: 54px; }
+  .stamp{
+    display:inline-block; border: 2px solid var(--riso-pink); color: var(--riso-pink);
+    font-size: 11px; letter-spacing: 0.2em; padding: 4px 10px; transform: rotate(-3deg); margin-bottom: 26px;
+  }
+  h1.masthead{
+    font-family: 'Anton', sans-serif; font-weight: 400;
+    font-size: clamp(34px, 7.2vw, 66px); line-height: 1.0; margin: 0;
+    letter-spacing: 0.01em; color: var(--ink); text-shadow: 4px 4px 0 var(--riso-pink);
+  }
+  .tagline{ margin-top: 20px; font-size: 14px; letter-spacing: 0.03em; color: var(--riso-yellow); max-width: 58ch; line-height: 1.65; }
+  .cover-foot{ margin-top: 36px; display:flex; gap: 24px; flex-wrap: wrap; font-size: 12px; color: var(--ink-dim); }
+
+  h2.section{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 26px; color: var(--riso-pink); margin: 0 0 6px 0; letter-spacing: 0.01em; }
+  h3.sub{ font-family: 'Anton', sans-serif; font-weight: 400; font-size: 15px; color: var(--riso-yellow); letter-spacing: 0.02em; margin: 22px 0 6px 0; }
+  .kicker{ font-size: 11px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 20px; }
+  p.copy{ font-size: 14px; line-height: 1.78; max-width: 68ch; color: var(--ink); }
+  p.copy + p.copy{ margin-top: 12px; }
+  .anchor{ color: var(--riso-pink); font-style: italic; }
+
+  /* alphabet grid (AKU / BLV / CMX layout) */
+  .abc-grid{
+    margin-top: 20px; display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  .abc-col{ background: var(--paper-2); border: 1px solid var(--rule); padding: 14px 16px; }
+  .abc-col h4{ margin:0 0 10px 0; font-size: 12px; letter-spacing:0.12em; color: var(--riso-yellow); }
+  .abc-row{ display:flex; justify-content:space-between; padding: 5px 0; border-top: 1px solid var(--rule); font-size: 13px; }
+  .abc-row:first-of-type{ border-top:none; }
+  .abc-row .ltr{ color: var(--riso-pink); font-weight:700; }
+  .abc-row .dots{ color: var(--ink-dim); }
+  @media (max-width: 700px){ .abc-grid{ grid-template-columns: 1fr; } }
+
+  table.reftable{ width:100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 12.5px; }
+  table.reftable caption{ caption-side: top; text-align:left; font-size:10px; letter-spacing:0.12em; color:var(--ink-dim); margin-bottom:8px; }
+  table.reftable th{
+    text-align:left; font-size: 10px; letter-spacing: 0.1em; color: var(--riso-yellow);
+    border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; text-transform: uppercase; vertical-align: bottom;
+  }
+  table.reftable td{ padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); color: var(--ink); vertical-align: top; }
+  table.reftable tr:last-child td{ border-bottom: none; }
+  table.reftable td.glyph{ font-size: 20px; color: var(--riso-pink); }
+  table.reftable td.dots{ color: var(--ink-dim); white-space: nowrap; }
+  code.inline{ background: var(--paper-2); border: 1px solid var(--rule); padding: 1px 6px; color: var(--riso-yellow); font-size: 12.5px; }
+
+  .tip{ background: var(--paper-3); border-left: 3px solid var(--riso-yellow); padding: 14px 18px; margin: 18px 0; font-size: 13px; color: var(--ink); line-height:1.7; }
+  .tip .tag{ display:block; font-size:10px; letter-spacing:0.14em; color:var(--riso-yellow); margin-bottom:8px; }
+
+  /* mnemonics */
+  .mnemonics{ margin-top: 16px; display:flex; flex-direction:column; }
+  .mline{ padding: 10px 0; border-top: 1px solid var(--rule); display:grid; grid-template-columns: 90px 1fr; gap: 14px; }
+  .mline:first-child{ border-top:none; }
+  .mline .grp{ color: var(--riso-pink); font-weight:700; font-size:13px; }
+  .mline .sent{ color: var(--ink-dim); font-size:13px; }
+
+  .back{ text-align:center; padding-top: 54px; padding-bottom: 54px; }
+  .back .glyph{ font-family:'Anton', sans-serif; font-size: 16px; color: var(--ink-dim); letter-spacing: 0.28em; }
+  .back .closer{ margin-top: 16px; font-size: 13px; color: var(--ink); line-height: 1.85; max-width: 48ch; margin-left:auto; margin-right:auto; }
+
+  @media (max-width: 640px){ .panel{ padding: 32px 20px; } }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="sheet">
+  <div class="panels">
+
+    <!-- COVER -->
+    <header class="panel cover" data-fold="FIELD REFERENCE" role="banner">
+      <div class="stamp">BRAILLE MATRIX REFERENCE</div>
+      <h1 class="masthead">BRAILLE —<br>ALPHABET &amp;<br>RUST SYMBOLS</h1>
+      <p class="tagline">Six dots, read under the fingertips instead of rendered on a screen. The same cell layout every Braille Matrix in the sprawl runs on — letters first, then the Rust-specific punctuation a Signal Runner actually lives in all day.</p>
+      <div class="cover-foot">
+        <span>DOTS 1–6</span>
+        <span>26 LETTERS</span>
+        <span>RUST OPERATORS &amp; MACROS</span>
+      </div>
+    </header>
+
+    <!-- LORE NOTE -->
+    <section class="panel" aria-labelledby="lore-h" data-fold="FIELD NOTE">
+      <div class="kicker">WHY THIS CARD EXISTS</div>
+      <h2 class="section" id="lore-h">Reading Code Under the Fingertips</h2>
+      <p class="copy">A Braille Matrix doesn't render syntax highlighting. It refreshes raised dots against the skin, cell by cell, and the operator a hand reads under the first two fingers has to be exactly as unambiguous as the character it represents — no color, no font weight, nothing but geometry to tell an assignment from an equality check. This card is the cell layout every Signal Runner eventually has memorized cold: the standard alphabet first, then the symbol set that actually matters once the alphabet stops being the hard part and Rust's own punctuation starts.</p>
+    </section>
+
+    <main id="main-content">
+
+    <!-- ALPHABET -->
+    <section class="panel" aria-labelledby="abc-h" data-fold="THE ALPHABET">
+      <div class="kicker">STANDARD BRAILLE ALPHABET</div>
+      <h2 class="section" id="abc-h">Dots 1–6</h2>
+      <p class="copy">The alphabet is built in three rows of ten, each row reusing the shape of the row above it with dots added. The grouping below keeps that relationship visible — read down a column and the pattern from A through J repeats itself twice, once with dot 3 added, once with dots 3 and 6.</p>
+
+      <div class="abc-grid">
+        <div class="abc-col">
+          <h4>A – J</h4>
+          <div class="abc-row"><span class="ltr">a</span><span class="dots">1</span></div>
+          <div class="abc-row"><span class="ltr">b</span><span class="dots">1-2</span></div>
+          <div class="abc-row"><span class="ltr">c</span><span class="dots">1-4</span></div>
+          <div class="abc-row"><span class="ltr">d</span><span class="dots">1-4-5</span></div>
+          <div class="abc-row"><span class="ltr">e</span><span class="dots">1-5</span></div>
+          <div class="abc-row"><span class="ltr">f</span><span class="dots">1-2-4</span></div>
+          <div class="abc-row"><span class="ltr">g</span><span class="dots">1-2-4-5</span></div>
+          <div class="abc-row"><span class="ltr">h</span><span class="dots">1-2-5</span></div>
+          <div class="abc-row"><span class="ltr">i</span><span class="dots">2-4</span></div>
+          <div class="abc-row"><span class="ltr">j</span><span class="dots">2-4-5</span></div>
+        </div>
+        <div class="abc-col">
+          <h4>K – T (+dot 3)</h4>
+          <div class="abc-row"><span class="ltr">k</span><span class="dots">1-3</span></div>
+          <div class="abc-row"><span class="ltr">l</span><span class="dots">1-2-3</span></div>
+          <div class="abc-row"><span class="ltr">m</span><span class="dots">1-3-4</span></div>
+          <div class="abc-row"><span class="ltr">n</span><span class="dots">1-3-4-5</span></div>
+          <div class="abc-row"><span class="ltr">o</span><span class="dots">1-3-5</span></div>
+          <div class="abc-row"><span class="ltr">p</span><span class="dots">1-2-3-4</span></div>
+          <div class="abc-row"><span class="ltr">q</span><span class="dots">1-2-3-4-5</span></div>
+          <div class="abc-row"><span class="ltr">r</span><span class="dots">1-2-3-5</span></div>
+          <div class="abc-row"><span class="ltr">s</span><span class="dots">2-3-4</span></div>
+          <div class="abc-row"><span class="ltr">t</span><span class="dots">2-3-4-5</span></div>
+        </div>
+        <div class="abc-col">
+          <h4>U – Z (+dots 3-6)</h4>
+          <div class="abc-row"><span class="ltr">u</span><span class="dots">1-3-6</span></div>
+          <div class="abc-row"><span class="ltr">v</span><span class="dots">1-2-3-6</span></div>
+          <div class="abc-row"><span class="ltr">w</span><span class="dots">2-4-5-6</span></div>
+          <div class="abc-row"><span class="ltr">x</span><span class="dots">1-3-4-6</span></div>
+          <div class="abc-row"><span class="ltr">y</span><span class="dots">1-3-4-5-6</span></div>
+          <div class="abc-row"><span class="ltr">z</span><span class="dots">1-3-5-6</span></div>
+        </div>
+      </div>
+
+      <h3 class="sub">Memory Anchors</h3>
+      <div class="mnemonics">
+        <div class="mline"><span class="grp">A K U</span><span class="sent">A kind unicorn</span></div>
+        <div class="mline"><span class="grp">B L V</span><span class="sent">Brave lions vanish</span></div>
+        <div class="mline"><span class="grp">C M X</span><span class="sent">Clever medical x-ray</span></div>
+        <div class="mline"><span class="grp">D N Y</span><span class="sent">Daring nurses yodel</span></div>
+        <div class="mline"><span class="grp">E O Z</span><span class="sent">Eager owls zoom</span></div>
+        <div class="mline"><span class="grp">F P</span><span class="sent">Funny pigs</span></div>
+        <div class="mline"><span class="grp">G Q</span><span class="sent">Gentle queens</span></div>
+        <div class="mline"><span class="grp">H R</span><span class="sent">Happy robots</span></div>
+        <div class="mline"><span class="grp">I S</span><span class="sent">Icy snakes</span></div>
+        <div class="mline"><span class="grp">J T W</span><span class="sent">Jolly tigers win</span></div>
+      </div>
+    </section>
+
+    <!-- OPERATORS -->
+    <section class="panel" aria-labelledby="ops-h" data-fold="OPERATORS">
+      <div class="kicker">RUST SYMBOL SET</div>
+      <h2 class="section" id="ops-h">Operators</h2>
+      <table class="reftable" aria-label="Rust operator braille mapping">
+        <thead><tr><th scope="col">Symbol</th><th scope="col">Dots</th><th scope="col">Cell</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">+</code></td><td class="dots">3-4-6</td><td class="glyph">⠬</td></tr>
+          <tr><td><code class="inline">-</code></td><td class="dots">3-6</td><td class="glyph">⠤</td></tr>
+          <tr><td><code class="inline">*</code></td><td class="dots">1-6</td><td class="glyph">⠡</td></tr>
+          <tr><td><code class="inline">/</code></td><td class="dots">3-4</td><td class="glyph">⠌</td></tr>
+          <tr><td><code class="inline">%</code></td><td class="dots">1-4-6</td><td class="glyph">⠩</td></tr>
+          <tr><td><code class="inline">=</code></td><td class="dots">4-6, 1-3</td><td class="glyph">⠨⠅</td></tr>
+          <tr><td><code class="inline">==</code></td><td class="dots">4-6,1-3, 4-6,1-3</td><td class="glyph">⠨⠅⠨⠅</td></tr>
+          <tr><td><code class="inline">!=</code></td><td class="dots">2-3-4-6, 4-6,1-3</td><td class="glyph">⠮⠨⠅</td></tr>
+          <tr><td><code class="inline">&lt;</code></td><td class="dots">2-3-6</td><td class="glyph">⠦</td></tr>
+          <tr><td><code class="inline">&gt;</code></td><td class="dots">2-3-5</td><td class="glyph">⠖</td></tr>
+          <tr><td><code class="inline">&lt;=</code></td><td class="dots">2-3-6, 4-6,1-3</td><td class="glyph">⠦⠨⠅</td></tr>
+          <tr><td><code class="inline">&gt;=</code></td><td class="dots">2-3-5, 4-6,1-3</td><td class="glyph">⠖⠨⠅</td></tr>
+          <tr><td><code class="inline">&amp;&amp;</code></td><td class="dots">1-2-3-4-6, 1-2-3-4-6</td><td class="glyph">⠯⠯</td></tr>
+          <tr><td><code class="inline">||</code></td><td class="dots">1-2-3-4-5-6, 1-2-3-4-5-6</td><td class="glyph">⠿⠿</td></tr>
+          <tr><td><code class="inline">&amp;</code></td><td class="dots">1-2-3-4-6</td><td class="glyph">⠯</td></tr>
+          <tr><td><code class="inline">|</code></td><td class="dots">1-2-3-4-5-6</td><td class="glyph">⠿</td></tr>
+          <tr><td><code class="inline">^</code></td><td class="dots">1-6, 2-5-6</td><td class="glyph">⠡⠲</td></tr>
+          <tr><td><code class="inline">!</code></td><td class="dots">2-3-4-6</td><td class="glyph">⠮</td></tr>
+          <tr><td><code class="inline">&lt;&lt;</code></td><td class="dots">2-3-6, 2-3-6</td><td class="glyph">⠦⠦</td></tr>
+          <tr><td><code class="inline">&gt;&gt;</code></td><td class="dots">2-3-5, 2-3-5</td><td class="glyph">⠖⠖</td></tr>
+          <tr><td><code class="inline">+=</code></td><td class="dots">3-4-6, 4-6,1-3</td><td class="glyph">⠬⠨⠅</td></tr>
+          <tr><td><code class="inline">-=</code></td><td class="dots">3-6, 4-6,1-3</td><td class="glyph">⠤⠨⠅</td></tr>
+          <tr><td><code class="inline">*=</code></td><td class="dots">1-6, 4-6,1-3</td><td class="glyph">⠡⠨⠅</td></tr>
+          <tr><td><code class="inline">/=</code></td><td class="dots">3-4, 4-6,1-3</td><td class="glyph">⠌⠨⠅</td></tr>
+          <tr><td><code class="inline">%=</code></td><td class="dots">1-4-6, 4-6,1-3</td><td class="glyph">⠩⠨⠅</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Brackets</h3>
+      <table class="reftable" aria-label="Rust bracket braille mapping">
+        <thead><tr><th scope="col">Symbol</th><th scope="col">Dots</th><th scope="col">Cell</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">(</code></td><td class="dots">1-2-3-5-6</td><td class="glyph">⠷</td></tr>
+          <tr><td><code class="inline">)</code></td><td class="dots">2-3-4-5-6</td><td class="glyph">⠾</td></tr>
+          <tr><td><code class="inline">[</code></td><td class="dots">1-2-3-5-6, 1-2-3-5-6</td><td class="glyph">⠷⠷</td></tr>
+          <tr><td><code class="inline">]</code></td><td class="dots">2-3-4-5-6, 2-3-4-5-6</td><td class="glyph">⠾⠾</td></tr>
+          <tr><td><code class="inline">{</code></td><td class="dots">4-5-6, 1-2-3-5-6</td><td class="glyph">⠸⠷</td></tr>
+          <tr><td><code class="inline">}</code></td><td class="dots">4-5-6, 2-3-4-5-6</td><td class="glyph">⠸⠾</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="sub">Other Symbols</h3>
+      <table class="reftable" aria-label="Other symbol braille mapping">
+        <thead><tr><th scope="col">Symbol</th><th scope="col">Dots</th><th scope="col">Cell</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">::</code></td><td class="dots">2-5, 2-5</td><td class="glyph">⠒⠒</td></tr>
+          <tr><td><code class="inline">-&gt;</code></td><td class="dots">3-6, 2-3-5</td><td class="glyph">⠤⠖</td></tr>
+          <tr><td><code class="inline">=&gt;</code></td><td class="dots">4-6,1-3, 2-3-5</td><td class="glyph">⠨⠅⠖</td></tr>
+          <tr><td><code class="inline">.</code></td><td class="dots">4-6</td><td class="glyph">⠨</td></tr>
+          <tr><td><code class="inline">..</code></td><td class="dots">4-6, 4-6</td><td class="glyph">⠨⠨</td></tr>
+          <tr><td><code class="inline">..=</code></td><td class="dots">4-6, 4-6, 4-6,1-3</td><td class="glyph">⠨⠨⠨⠅</td></tr>
+          <tr><td><code class="inline">_</code></td><td class="dots">4-5-6, 3-6</td><td class="glyph">⠸⠤</td></tr>
+          <tr><td><code class="inline">'</code></td><td class="dots">3</td><td class="glyph">⠄</td></tr>
+          <tr><td><code class="inline">@</code></td><td class="dots">4</td><td class="glyph">⠈</td></tr>
+          <tr><td><code class="inline">?</code></td><td class="dots">2-3-6</td><td class="glyph">⠦</td></tr>
+          <tr><td><code class="inline">#</code></td><td class="dots">3-4-5-6</td><td class="glyph">⠼</td></tr>
+          <tr><td><code class="inline">$</code></td><td class="dots">1-2-4-6</td><td class="glyph">⠫</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- RUST SPECIFIC -->
+    <section class="panel" aria-labelledby="rust-h" data-fold="RUST-SPECIFIC">
+      <div class="kicker">MACROS &amp; LITERALS</div>
+      <h2 class="section" id="rust-h">Rust-Specific Sequences</h2>
+      <table class="reftable" aria-label="Rust-specific braille sequences">
+        <thead><tr><th scope="col">Pattern</th><th scope="col">Dots</th><th scope="col">Cell</th></tr></thead>
+        <tbody>
+          <tr><td><code class="inline">!</code> macro</td><td class="dots">2-3-4-6</td><td class="glyph">⠮</td></tr>
+          <tr><td><code class="inline">#[...]</code></td><td class="dots">3-4-5-6, 1-2-3-5-6, 2-3-4-5-6</td><td class="glyph">⠼⠷⠾</td></tr>
+          <tr><td><code class="inline">#![...]</code></td><td class="dots">3-4-5-6, 2-3-4-6, 1-2-3-5-6, 2-3-4-5-6</td><td class="glyph">⠼⠮⠷⠾</td></tr>
+          <tr><td><code class="inline">r"..."</code></td><td class="dots">1-2-3-5, 5, 3-5-6, 5</td><td class="glyph">⠗⠐⠴⠐</td></tr>
+          <tr><td><code class="inline">b"..."</code></td><td class="dots">1-2, 5, 3-5-6, 5</td><td class="glyph">⠃⠐⠴⠐</td></tr>
+          <tr><td><code class="inline">b'...'</code></td><td class="dots">1-2, 3, 3-5-6, 3</td><td class="glyph">⠃⠄⠴⠄</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- DISAMBIGUATION NOTE -->
+    <section class="panel" aria-labelledby="note-h" data-fold="READ THIS TWICE">
+      <div class="kicker">THE ONE MISTAKE THAT COSTS A JOB</div>
+      <h2 class="section" id="note-h">Similar Dots, Different Cells</h2>
+      <div class="tip">
+        <span class="tag">g VS =</span>
+        The letter <strong>g</strong> (⠛, dots 1-2-4-5) is <em>not</em> the same as <strong>=</strong> (⠨⠅, dots 4-6 then 1-3) — even though both involve overlapping dot numbers, they are built from a different number of cells entirely.
+      </div>
+      <p class="copy"><strong>g</strong> is a single cell: dots 1-2-4-5, read in one contact.</p>
+      <p class="copy"><strong>=</strong> is two cells, read as a sequence: the first cell is dots 4-6, the second cell is dots 1-3. Reading speed hides this difference fast — rushed fingers can blur a two-cell operator into something that feels like a single letter. Slow down on anything that starts with dots 4-6 until the second cell confirms what's actually there.</p>
+    </section>
+
+    </main>
+
+    <!-- BACK -->
+    <footer class="panel back" data-fold="END">
+      <div class="glyph">B R A I L L E &nbsp; M A T R I X &nbsp; R E F E R E N C E</div>
+      <p class="closer">Six dots, read fast enough to stop feeling like reading at all. That's the whole point of the hardware — and the only reason this card is worth memorizing instead of just keeping open in another pane.</p>
+    </footer>
+
+  </div>
+</div>
+
+</body>
+</html>
