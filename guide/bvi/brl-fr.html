@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Les règles pour le braille français — Édition accessible</title>
+    <style>
+        /* ----- DARK MODE (default) ----- */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a {
+            color: #88c0ff;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+        a:hover, a:focus {
+            color: #aaccff;
+            text-decoration: none;
+            background-color: #2a2a2a;
+            border-radius: 2px;
+            padding: 0 0.2rem;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            color: #f0f0f0;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        h1 { font-size: 2.2rem; }
+        h2 { font-size: 1.8rem; border-bottom: 1px solid #444; }
+        h3 { font-size: 1.4rem; }
+        hr {
+            border: 0;
+            border-top: 2px solid #444;
+            margin: 2rem 0;
+        }
+        code, .mono {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background: #1e1e1e;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            color: #d4d4d4;
+        }
+        /* ----- KEYBOARD-ACCESSIBLE <pre tabindex="0" role="region" aria-label="Code sample"> ----- */
+        pre {
+            background: #1e1e1e;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow: auto;
+            max-height: 400px;
+            tab-size: 4;
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            transition: outline 0.1s;
+        }
+        pre:focus-visible {
+            outline-color: #88c0ff;
+        }
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* ----- Braille glyphs ----- */
+        .braille {
+            font-family: 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', 'DejaVu Sans', sans-serif;
+            font-size: 1.5rem;
+            letter-spacing: 0.12em;
+            line-height: 1.2;
+            display: inline-block;
+        }
+
+        /* ----- Tables ----- */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.2rem 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            min-width: 420px;
+        }
+        th, td {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #444;
+            text-align: left;
+            vertical-align: middle;
+        }
+        th {
+            background: #1e1e1e;
+            font-weight: 600;
+            color: #f0f0f0;
+        }
+        caption {
+            caption-side: top;
+            text-align: left;
+            font-weight: 600;
+            padding: 0.4rem 0;
+            color: #f0f0f0;
+        }
+
+        /* ----- LIGHT MODE ----- */
+        body.light-mode {
+            background-color: #f9f9f9;
+            color: #111;
+        }
+        body.light-mode a {
+            color: #0055cc;
+        }
+        body.light-mode a:hover,
+        body.light-mode a:focus {
+            color: #003399;
+            background-color: #e6e6e6;
+        }
+        body.light-mode h1,
+        body.light-mode h2,
+        body.light-mode h3,
+        body.light-mode h4,
+        body.light-mode h5,
+        body.light-mode h6 {
+            color: #111;
+        }
+        body.light-mode h2 {
+            border-bottom-color: #ccc;
+        }
+        body.light-mode hr {
+            border-top-color: #ccc;
+        }
+        body.light-mode code,
+        body.light-mode .mono {
+            background: #eee;
+            color: #111;
+        }
+        body.light-mode pre {
+            background: #eee;
+        }
+        body.light-mode pre:focus-visible {
+            outline-color: #0055cc;
+        }
+        body.light-mode pre code {
+            background: transparent;
+        }
+        body.light-mode th {
+            background: #eaeaea;
+            color: #111;
+        }
+        body.light-mode th,
+        body.light-mode td {
+            border-color: #ccc;
+        }
+        body.light-mode caption {
+            color: #111;
+        }
+
+        /* ----- TOGGLE BUTTON ----- */
+        .theme-toggle-wrap {
+            margin-bottom: 1.5rem;
+            text-align: right;
+        }
+        .theme-toggle {
+            display: inline-block;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 0.6rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .theme-toggle:hover {
+            background: #777;
+        }
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+        body.light-mode .theme-toggle {
+            background: #333;
+            color: #fff;
+        }
+        body.light-mode .theme-toggle:hover {
+            background: #555;
+        }
+
+        /* Skip link */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e1e1e;
+            color: #fff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            border-radius: 0 0 8px 8px;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip link for keyboard users -->
+    <a class="skip-link" href="#main-content">Aller au contenu principal</a>
+
+    <!-- Toggle button -->
+    <div class="theme-toggle-wrap">
+        <button class="theme-toggle" id="themeToggle" aria-label="Basculer entre le mode sombre et le mode clair">
+            ☀️ Clair
+        </button>
+    </div>
+
+    <header role="banner" aria-label="En-tête du document">
+        <h1>Les règles pour le braille français</h1>
+        <h2>Édition accessible</h2>
+        <p><strong>Guide complet : règles de transcription et tables de correspondance</strong></p>
+        <p>Référence pratique pour la lecture et l'écriture du braille français</p>
+    </header>
+
+    <hr>
+
+    <!-- Navigation : Table des matières -->
+    <nav aria-label="Table des matières" role="navigation">
+        <h2 id="toc-heading">Table des matières</h2>
+        <ul aria-labelledby="toc-heading">
+            <li>
+                <a href="#regles-generales">Règles générales d'utilisation</a>
+                <ul>
+                    <li><a href="#espaces-ponctuation">Espaces et ponctuation</a></li>
+                    <li><a href="#majuscules">Majuscules</a></li>
+                    <li><a href="#nombres">Nombres et chiffres</a></li>
+                    <li><a href="#symboles-mathematiques">Symboles mathématiques et ordinaux</a></li>
+                    <li><a href="#coupure-mots">Coupure des mots et fin de ligne</a></li>
+                    <li><a href="#formatage">Formatage : italique, gras, souligné</a></li>
+                    <li><a href="#abreviations">Abréviations</a></li>
+                    <li><a href="#fin-vers">Signes de fin de vers et de strophe</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#complements">Compléments issus des ressources en ligne</a>
+                <ul>
+                    <li><a href="#accentuation-majuscules">Accentuation des majuscules</a></li>
+                    <li><a href="#majuscules-longues">Majuscules et mots de plus de trois lettres</a></li>
+                    <li><a href="#mise-en-page">Mise en page</a></li>
+                    <li><a href="#signe-lettre">Signe de lettre</a></li>
+                    <li><a href="#asterisque">Astérisque</a></li>
+                </ul>
+            </li>
+            <li>
+                <a href="#tableaux">Tableaux de correspondance du braille français</a>
+                <ul>
+                    <li><a href="#alphabet">Alphabet (lettres minuscules)</a></li>
+                    <li><a href="#lettres-accentuees">Lettres accentuées et ligatures</a></li>
+                    <li><a href="#chiffres">Chiffres</a></li>
+                    <li><a href="#ponctuation">Ponctuation et signes orthotypographiques</a></li>
+                    <li><a href="#symboles-math">Symboles mathématiques de base</a></li>
+                    <li><a href="#caracteres-speciaux">Caractères spéciaux et symboles informatiques</a></li>
+                </ul>
+            </li>
+            <li><a href="#resume">Résumé des règles essentielles</a></li>
+        </ul>
+    </nav>
+
+    <hr>
+
+    <!-- Main content starts here -->
+    <main id="main-content" role="main">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 1 : RÈGLES GÉNÉRALES                                  -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="regles-generales">
+            <h2 id="regles-generales">Règles générales d'utilisation</h2>
+
+            <!-- 1.1 Espaces et ponctuation -->
+            <section aria-labelledby="espaces-ponctuation">
+                <h3 id="espaces-ponctuation">🖋️ Espaces et ponctuation</h3>
+                <ul>
+                    <li><strong>Espace entre les mots</strong> : on utilise un espace entre deux mots, mais <strong>jamais avant un signe de ponctuation</strong>, seulement après.</li>
+                    <li><strong>Apostrophe</strong> : <strong>jamais d'espace</strong> ni avant ni après une apostrophe.</li>
+                    <li><strong>Parenthèses</strong> : jamais d'espace avant une parenthèse ouvrante, ni après une parenthèse ouvrante, ni avant la parenthèse fermante. Après une parenthèse fermante, on met un espace, <strong>sauf</strong> s'il y a un signe de ponctuation, auquel cas on place la ponctuation après.</li>
+                    <li><strong>Signes de ponctuation en général</strong> : le signe de ponctuation suit <strong>immédiatement</strong> le caractère qui le précède et est détaché du mot suivant par un espace constant d'une seule cellule braille.</li>
+                </ul>
+            </section>
+
+            <!-- 1.2 Majuscules -->
+            <section aria-labelledby="majuscules">
+                <h3 id="majuscules">🔠 Majuscules</h3>
+                <ul>
+                    <li><strong>Indicateur de majuscule</strong> : il correspond au caractère <strong>points 4-6</strong> (<span class="braille" aria-label="points 4-6">⠨</span>). Il doit être placé <strong>juste avant une lettre ou un mot, sans espace</strong>.</li>
+                    <li>Si le mot entier doit être en majuscules, on utilise le marqueur <strong>deux fois de suite</strong> (<span class="braille" aria-label="points 4-6, 4-6">⠨⠨</span>).</li>
+                    <li>Dans certains codes (comme le code britannique pour le français), le double signe de majuscule <strong>n'existe pas</strong> ; on place l'indicateur de majuscule devant le premier mot et devant chaque mot qui prend normalement une majuscule initiale.</li>
+                </ul>
+            </section>
+
+            <!-- 1.3 Nombres et chiffres -->
+            <section aria-labelledby="nombres">
+                <h3 id="nombres">🔢 Nombres et chiffres</h3>
+                <ul>
+                    <li><strong>Marqueur numérique</strong> : il est utilisé <strong>sans espace</strong> devant une lettre de la première série (A à J), qui devient alors un chiffre cardinal. Le marqueur numérique est le <strong>point 6</strong> (<span class="braille" aria-label="point 6">⠠</span>) ou, selon le code, les <strong>points 3-4-5-6</strong> (<span class="braille" aria-label="points 3-4-5-6">⠼</span>).</li>
+                    <li>Le marqueur numérique est <strong>effectif jusqu'au prochain espace</strong>. Ainsi, les nombres, même décimaux, sont écrits <strong>sans espace</strong>.</li>
+                    <li>Pour les <strong>chiffres ordinaux</strong> (1er, 2e, 3e), on utilise aussi le marqueur numérique, mais avec les caractères de la <strong>5e série</strong> (et non de la première). On ajoute les voyelles A, E, I (ou d'autres selon la langue) pour indiquer 1er, 2e, etc.</li>
+                    <li>Les <strong>chiffres romains</strong> s'écrivent comme en noir, avec des lettres majuscules. On utilise généralement le marqueur numérique, mais il est courant de les trouver sans.</li>
+                </ul>
+            </section>
+
+            <!-- 1.4 Symboles mathématiques et ordinaux -->
+            <section aria-labelledby="symboles-mathematiques">
+                <h3 id="symboles-mathematiques">➗ Symboles mathématiques et ordinaux</h3>
+                <ul>
+                    <li>Les symboles comme <strong>plus petit que, plus grand que, égalité</strong> sont suivis d'un nombre. Ils précèdent immédiatement le signe numérique, <strong>sans espace</strong> entre le symbole et le nombre. Si le symbole est adjacent à un mot, il est alors inséré <strong>entre espaces</strong>.</li>
+                    <li>Dans les abréviations, le <strong>point d'abréviation</strong> est représenté par le <strong>point 3</strong> (<span class="braille" aria-label="point 3">⠄</span>) (et non par le point final). Si l'abréviation termine une phrase, on utilise à la fois le point d'abréviation et le point final.</li>
+                </ul>
+            </section>
+
+            <!-- 1.5 Coupure des mots et fin de ligne -->
+            <section aria-labelledby="coupure-mots">
+                <h3 id="coupure-mots">📖 Coupure des mots et fin de ligne</h3>
+                <ul>
+                    <li><strong>Césure et retour à la ligne</strong> : on applique les <strong>mêmes règles qu'en noir</strong>.</li>
+                    <li><strong>Indicateur de nouvelle ligne</strong> : c'est un trait formé avec les <strong>points 3 et 6</strong> (<span class="braille" aria-label="points 3-6">⠤</span>). C'est le <strong>même symbole</strong> qui sert de <strong>trait d'union</strong>. La seule différence est la possibilité de placer ce symbole sur la nouvelle ligne pour économiser de la place.</li>
+                    <li><strong>Tiret (tiret de dialogue)</strong> : en français, le tiret est souvent utilisé à la place des guillemets. Il est rendu par les <strong>points 6/3-6</strong> (<span class="braille" aria-label="point 6, points 3-6">⠠⠤</span>), <strong>joint au mot suivant</strong> (précédé d'un espace mais non suivi d'une espace).</li>
+                </ul>
+            </section>
+
+            <!-- 1.6 Formatage -->
+            <section aria-labelledby="formatage">
+                <h3 id="formatage">✍️ Formatage : italique, gras, souligné</h3>
+                <ul>
+                    <li><strong>Principe général</strong> : il existe des signes indicateurs pour l'<strong>italique</strong>, le <strong>gras</strong> et le <strong>souligné</strong>. Ils servent principalement à retranscrire fidèlement un texte écrit en noir. En braille de base, le transcripteur s'abstient généralement de rendre compte des mises en évidence décoratives.</li>
+                </ul>
+
+                <h4>Italique — mot ou groupe de mots court</h4>
+                <ul>
+                    <li>On utilise le <strong>marqueur italique simple</strong> devant le mot, soit les <strong>points 4-5-6</strong> (<span class="braille" aria-label="points 4-5-6">⠸</span>).</li>
+                    <li>On l'utilise pour un maximum de <strong>trois mots</strong>.</li>
+                    <li><strong>Pas d'espace</strong> entre le marqueur et le mot.</li>
+                </ul>
+
+                <h4>Italique — phrase entière</h4>
+                <ul>
+                    <li>On utilise le <strong>signe italique composé</strong> : un premier caractère avec les <strong>points 2-5</strong> (<span class="braille" aria-label="points 2-5">⠒</span>), puis le caractère <strong>points 4-5-6</strong> (<span class="braille" aria-label="points 4-5-6">⠸</span>).</li>
+                    <li>On le place <strong>avant le premier mot</strong>.</li>
+                    <li>Un <strong>marqueur de fin d'italique</strong> (le marqueur simple, points 4-5-6) est placé <strong>avant le dernier mot concerné</strong>.</li>
+                </ul>
+
+                <h4>Gras ou souligné — mot ou groupe de mots court</h4>
+                <ul>
+                    <li>On utilise un <strong>marqueur simple</strong> avant un mot ou un maximum de trois mots.</li>
+                    <li><strong>Pas d'espace</strong> entre le marqueur et le mot.</li>
+                </ul>
+
+                <h4>Gras ou souligné — phrase entière</h4>
+                <ul>
+                    <li>On utilise un <strong>marqueur composé</strong> constitué du premier caractère <strong>points 2-5</strong> (<span class="braille" aria-label="points 2-5">⠒</span>) et du <strong>point 6</strong> (<span class="braille" aria-label="point 6">⠠</span>).</li>
+                    <li>On le place avant le premier mot.</li>
+                    <li>Un <strong>marqueur de fin</strong> (le marqueur simple, <strong>point 6</strong> <span class="braille" aria-label="point 6">⠠</span>) est placé avant le dernier mot concerné.</li>
+                </ul>
+
+                <h4>Remarque importante sur l'italique et la majuscule</h4>
+                <ul>
+                    <li>Dans certains codes, lorsque le signe italique est utilisé, il <strong>remplace le signe de majuscule</strong>.</li>
+                    <li>Si un mot italique contient une apostrophe, le signe italique doit être <strong>répété après l'apostrophe</strong>.</li>
+                </ul>
+            </section>
+
+            <!-- 1.7 Abréviations -->
+            <section aria-labelledby="abreviations">
+                <h3 id="abreviations">🔤 Abréviations</h3>
+                <ul>
+                    <li><strong>Principe</strong> : on utilise l'<strong>apostrophe</strong> (le <strong>point 3</strong> <span class="braille" aria-label="point 3">⠄</span> d'un caractère braille) à la place du point d'abréviation. Par exemple, <strong>M'</strong> pour « Monsieur », <strong>Me</strong> pour « Maître ».</li>
+                    <li><strong>Règles des abréviations braille</strong> : les abréviations conventionnelles du braille abrégé ne doivent <strong>pas être introduites</strong> dans la transcription d'abréviations de l'imprimé. Toute abréviation s'écrit <strong>sans espace et sur une même ligne</strong>.</li>
+                    <li><strong>Dates abrégées</strong> : on utilise l'indicateur numérique <strong>uniquement pour le premier chiffre</strong>, et on sépare les jours, mois et années par des <strong>tirets</strong>.</li>
+                    <li><strong>Abréviations avec majuscules</strong> (ex. C.E.S.) : le signe de majuscule doit <strong>précéder chaque lettre majuscule</strong>, que le point d'abréviation soit utilisé ou non dans l'imprimé.</li>
+                </ul>
+            </section>
+
+            <!-- 1.8 Fin de vers et de strophe -->
+            <section aria-labelledby="fin-vers">
+                <h3 id="fin-vers">🎼 Signes de fin de vers et de strophe</h3>
+                <ul>
+                    <li>Il existe un <strong>caractère de fin de vers</strong> ou <strong>fin de strophe</strong>.</li>
+                    <li>Pour gagner de la place, au lieu de revenir à la ligne, on utilise le signe de fin de vers ; <strong>redoublé</strong>, il devient le signe de <strong>fin de strophe</strong>.</li>
+                </ul>
+            </section>
+        </section>
+
+        <hr>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 2 : COMPLÉMENTS EN LIGNE                              -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="complements">
+            <h2 id="complements">Compléments issus des ressources en ligne</h2>
+
+            <section aria-labelledby="accentuation-majuscules">
+                <h3 id="accentuation-majuscules">📝 Accentuation des majuscules</h3>
+                <p>Une règle contraignante du braille français impose d'<strong>ajouter l'accent aux voyelles en majuscule</strong>, même si l'imprimé omet souvent cet accent. Le signe de l'accent doit être utilisé correctement pour la lettre accentuée.</p>
+            </section>
+
+            <section aria-labelledby="majuscules-longues">
+                <h3 id="majuscules-longues">🔠 Majuscules et mots de plus de trois lettres</h3>
+                <p>Dans le <strong>Code Braille Français Uniformisé (CBFU)</strong>, le double signe de majuscule est placé devant <strong>chaque mot</strong> si <strong>moins de quatre mots consécutifs</strong> sont en majuscules. Au-delà, des règles de passage en majuscules s'appliquent.</p>
+            </section>
+
+            <section aria-labelledby="mise-en-page">
+                <h3 id="mise-en-page">📏 Mise en page</h3>
+                <p>Le braille français utilise quatre modes de mise en page : le <strong>centrage</strong> (pour les titres), le <strong>mode paragraphe ou alinéa</strong>, les notes (en retrait), etc. Les dimensions standard sont souvent de <strong>30 caractères par ligne</strong> et <strong>25 lignes par page</strong> (bien que des variantes existent).</p>
+            </section>
+
+            <section aria-labelledby="signe-lettre">
+                <h3 id="signe-lettre">🔤 Signe de lettre</h3>
+                <p>Le <strong>signe de lettre</strong> (<em>letter sign</em>) n'est <strong>jamais utilisé</strong> en français, ni avant les mots accentués, ni avant les chiffres romains. Il n'est requis que devant des mots étrangers accentués dans un contexte anglais.</p>
+            </section>
+
+            <section aria-labelledby="asterisque">
+                <h3 id="asterisque">⭐ Astérisque</h3>
+                <p>L'astérisque française est un signe unique en <strong>points 3-5</strong> (<span class="braille" aria-label="points 3-5">⠔</span>).</p>
+            </section>
+        </section>
+
+        <hr>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3 : TABLEAUX DE CORRESPONDANCE                        -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="tableaux">
+            <h2 id="tableaux">Tableaux de correspondance du braille français</h2>
+
+            <!-- 3.1 Alphabet -->
+            <section aria-labelledby="alphabet">
+                <h3 id="alphabet">🔠 Alphabet (lettres minuscules)</h3>
+                <p>Le tableau ci-dessous présente les 26 lettres de l'alphabet français avec leur configuration de points et leur caractère braille Unicode.</p>
+                <div class="table-wrap">
+                    <table>
+                        <caption>Alphabet braille français</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Lettre</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Braille</th>
+                                <th scope="col">Lettre</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Braille</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>a</td><td>1</td><td><span class="braille" aria-label="a, point 1">⠁</span></td>
+                                <td>n</td><td>1-3-4-5</td><td><span class="braille" aria-label="n, points 1-3-4-5">⠝</span></td>
+                            </tr>
+                            <tr>
+                                <td>b</td><td>1-2</td><td><span class="braille" aria-label="b, points 1-2">⠃</span></td>
+                                <td>o</td><td>1-3-5</td><td><span class="braille" aria-label="o, points 1-3-5">⠕</span></td>
+                            </tr>
+                            <tr>
+                                <td>c</td><td>1-4</td><td><span class="braille" aria-label="c, points 1-4">⠉</span></td>
+                                <td>p</td><td>1-2-3-4</td><td><span class="braille" aria-label="p, points 1-2-3-4">⠏</span></td>
+                            </tr>
+                            <tr>
+                                <td>d</td><td>1-4-5</td><td><span class="braille" aria-label="d, points 1-4-5">⠙</span></td>
+                                <td>q</td><td>1-2-3-4-5</td><td><span class="braille" aria-label="q, points 1-2-3-4-5">⠟</span></td>
+                            </tr>
+                            <tr>
+                                <td>e</td><td>1-5</td><td><span class="braille" aria-label="e, points 1-5">⠑</span></td>
+                                <td>r</td><td>1-2-3-5</td><td><span class="braille" aria-label="r, points 1-2-3-5">⠗</span></td>
+                            </tr>
+                            <tr>
+                                <td>f</td><td>1-2-4</td><td><span class="braille" aria-label="f, points 1-2-4">⠋</span></td>
+                                <td>s</td><td>2-3-4</td><td><span class="braille" aria-label="s, points 2-3-4">⠎</span></td>
+                            </tr>
+                            <tr>
+                                <td>g</td><td>1-2-4-5</td><td><span class="braille" aria-label="g, points 1-2-4-5">⠛</span></td>
+                                <td>t</td><td>2-3-4-5</td><td><span class="braille" aria-label="t, points 2-3-4-5">⠞</span></td>
+                            </tr>
+                            <tr>
+                                <td>h</td><td>1-2-5</td><td><span class="braille" aria-label="h, points 1-2-5">⠓</span></td>
+                                <td>u</td><td>1-3-6</td><td><span class="braille" aria-label="u, points 1-3-6">⠥</span></td>
+                            </tr>
+                            <tr>
+                                <td>i</td><td>2-4</td><td><span class="braille" aria-label="i, points 2-4">⠊</span></td>
+                                <td>v</td><td>1-2-3-6</td><td><span class="braille" aria-label="v, points 1-2-3-6">⠧</span></td>
+                            </tr>
+                            <tr>
+                                <td>j</td><td>2-4-5</td><td><span class="braille" aria-label="j, points 2-4-5">⠚</span></td>
+                                <td>w</td><td>2-4-5-6</td><td><span class="braille" aria-label="w, points 2-4-5-6">⠺</span></td>
+                            </tr>
+                            <tr>
+                                <td>k</td><td>1-3</td><td><span class="braille" aria-label="k, points 1-3">⠅</span></td>
+                                <td>x</td><td>1-3-4-6</td><td><span class="braille" aria-label="x, points 1-3-4-6">⠭</span></td>
+                            </tr>
+                            <tr>
+                                <td>l</td><td>1-2-3</td><td><span class="braille" aria-label="l, points 1-2-3">⠇</span></td>
+                                <td>y</td><td>1-3-4-5-6</td><td><span class="braille" aria-label="y, points 1-3-4-5-6">⠽</span></td>
+                            </tr>
+                            <tr>
+                                <td>m</td><td>1-3-4</td><td><span class="braille" aria-label="m, points 1-3-4">⠍</span></td>
+                                <td>z</td><td>1-3-5-6</td><td><span class="braille" aria-label="z, points 1-3-5-6">⠵</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><em>Note : le w est placé après le v dans l'ordre alphabétique français, bien qu'il soit la 23e lettre. En braille, il correspond à la combinaison 2-4-5-6, qui est la lettre j (2-4-5) avec le point 6 ajouté.</em></p>
+            </section>
+
+            <!-- 3.2 Lettres accentuées -->
+            <section aria-labelledby="lettres-accentuees">
+                <h3 id="lettres-accentuees">🔤 Lettres accentuées et ligatures</h3>
+                <div class="table-wrap">
+                    <table>
+                        <caption>Lettres accentuées et ligatures en braille français</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Caractère</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Braille</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>à</td><td>1-2-3-5-6</td><td><span class="braille" aria-label="à, points 1-2-3-5-6">⠷</span></td></tr>
+                            <tr><td>â</td><td>1-6</td><td><span class="braille" aria-label="â, points 1-6">⠡</span></td></tr>
+                            <tr><td>ç</td><td>1-2-3-4-6</td><td><span class="braille" aria-label="ç, points 1-2-3-4-6">⠯</span></td></tr>
+                            <tr><td>è</td><td>2-3-4-6</td><td><span class="braille" aria-label="è, points 2-3-4-6">⠮</span></td></tr>
+                            <tr><td>é</td><td>1-2-3-4-5-6</td><td><span class="braille" aria-label="é, points 1-2-3-4-5-6">⠿</span></td></tr>
+                            <tr><td>ê</td><td>1-2-6</td><td><span class="braille" aria-label="ê, points 1-2-6">⠣</span></td></tr>
+                            <tr><td>ë</td><td>1-2-4-6</td><td><span class="braille" aria-label="ë, points 1-2-4-6">⠫</span></td></tr>
+                            <tr><td>î</td><td>1-4-6</td><td><span class="braille" aria-label="î, points 1-4-6">⠩</span></td></tr>
+                            <tr><td>ï</td><td>1-2-4-5-6</td><td><span class="braille" aria-label="ï, points 1-2-4-5-6">⠻</span></td></tr>
+                            <tr><td>ô</td><td>1-4-5-6</td><td><span class="braille" aria-label="ô, points 1-4-5-6">⠹</span></td></tr>
+                            <tr><td>ù</td><td>2-3-4-5-6</td><td><span class="braille" aria-label="ù, points 2-3-4-5-6">⠾</span></td></tr>
+                            <tr><td>û</td><td>1-5-6</td><td><span class="braille" aria-label="û, points 1-5-6">⠱</span></td></tr>
+                            <tr><td>ü</td><td>1-2-5-6</td><td><span class="braille" aria-label="ü, points 1-2-5-6">⠳</span></td></tr>
+                            <tr><td>œ</td><td>2-4-6</td><td><span class="braille" aria-label="œ, points 2-4-6">⠪</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3.3 Chiffres -->
+            <section aria-labelledby="chiffres">
+                <h3 id="chiffres">🔢 Chiffres (avec marqueur numérique)</h3>
+                <p>Les chiffres s'obtiennent en plaçant le <strong>marqueur numérique</strong> (<span class="braille" aria-label="points 3-4-5-6">⠼</span>, points 3-4-5-6) devant les lettres de la première série (a-j). Le tableau ci-dessous donne la correspondance directe entre le chiffre et la combinaison de points utilisée (sans le préfixe).</p>
+                <div class="table-wrap">
+                    <table>
+                        <caption>Chiffres en braille français</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Chiffre</th>
+                                <th scope="col">Points (sans préfixe)</th>
+                                <th scope="col">Braille (avec préfixe ⠼)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1</td><td>1</td><td><span class="braille" aria-label="1, marqueur numérique puis point 1">⠼⠁</span></td></tr>
+                            <tr><td>2</td><td>1-2</td><td><span class="braille" aria-label="2, marqueur numérique puis points 1-2">⠼⠃</span></td></tr>
+                            <tr><td>3</td><td>1-4</td><td><span class="braille" aria-label="3, marqueur numérique puis points 1-4">⠼⠉</span></td></tr>
+                            <tr><td>4</td><td>1-4-5</td><td><span class="braille" aria-label="4, marqueur numérique puis points 1-4-5">⠼⠙</span></td></tr>
+                            <tr><td>5</td><td>1-5</td><td><span class="braille" aria-label="5, marqueur numérique puis points 1-5">⠼⠑</span></td></tr>
+                            <tr><td>6</td><td>1-2-4</td><td><span class="braille" aria-label="6, marqueur numérique puis points 1-2-4">⠼⠋</span></td></tr>
+                            <tr><td>7</td><td>1-2-4-5</td><td><span class="braille" aria-label="7, marqueur numérique puis points 1-2-4-5">⠼⠛</span></td></tr>
+                            <tr><td>8</td><td>1-2-5</td><td><span class="braille" aria-label="8, marqueur numérique puis points 1-2-5">⠼⠓</span></td></tr>
+                            <tr><td>9</td><td>2-4</td><td><span class="braille" aria-label="9, marqueur numérique puis points 2-4">⠼⠊</span></td></tr>
+                            <tr><td>0</td><td>2-4-5</td><td><span class="braille" aria-label="0, marqueur numérique puis points 2-4-5">⠼⠚</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3.4 Ponctuation -->
+            <section aria-labelledby="ponctuation">
+                <h3 id="ponctuation">📝 Ponctuation et signes orthotypographiques</h3>
+                <div class="table-wrap">
+                    <table>
+                        <caption>Ponctuation et signes orthotypographiques en braille français</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Signe</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Braille</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Virgule ( , )</td><td>2</td><td><span class="braille" aria-label="virgule, point 2">⠂</span></td></tr>
+                            <tr><td>Point-virgule ( ; )</td><td>2-3</td><td><span class="braille" aria-label="point-virgule, points 2-3">⠆</span></td></tr>
+                            <tr><td>Deux-points ( : )</td><td>2-5</td><td><span class="braille" aria-label="deux-points, points 2-5">⠢</span></td></tr>
+                            <tr><td>Point ( . )</td><td>2-5-6</td><td><span class="braille" aria-label="point, points 2-5-6">⠲</span></td></tr>
+                            <tr><td>Point d'interrogation ( ? )</td><td>2-6</td><td><span class="braille" aria-label="point d'interrogation, points 2-6">⠦</span></td></tr>
+                            <tr><td>Point d'exclamation ( ! )</td><td>2-3-5</td><td><span class="braille" aria-label="point d'exclamation, points 2-3-5">⠖</span></td></tr>
+                            <tr><td>Apostrophe ( ' )</td><td>3</td><td><span class="braille" aria-label="apostrophe, point 3">⠄</span></td></tr>
+                            <tr><td>Trait d'union ( - )</td><td>3-6</td><td><span class="braille" aria-label="trait d'union, points 3-6">⠤</span></td></tr>
+                            <tr><td>Guillemet ouvrant ( « )</td><td>2-3-6</td><td><span class="braille" aria-label="guillemet ouvrant, points 2-3-6">⠣</span></td></tr>
+                            <tr><td>Guillemet fermant ( » )</td><td>3-5-6</td><td><span class="braille" aria-label="guillemet fermant, points 3-5-6">⠜</span></td></tr>
+                            <tr><td>Parenthèse ouvrante ( ( )</td><td>2-3-6</td><td><span class="braille" aria-label="parenthèse ouvrante, points 2-3-6">⠣</span></td></tr>
+                            <tr><td>Parenthèse fermante ( ) )</td><td>3-5-6</td><td><span class="braille" aria-label="parenthèse fermante, points 3-5-6">⠜</span></td></tr>
+                            <tr><td>Barre oblique ( / )</td><td>3-4</td><td><span class="braille" aria-label="barre oblique, points 3-4">⠌</span></td></tr>
+                            <tr><td>Astérisque ( * )</td><td>3-5</td><td><span class="braille" aria-label="astérisque, points 3-5">⠔</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><em>Note : en braille français, les guillemets et les parenthèses partagent les mêmes signes (2-3-6 et 3-5-6) ; le contexte permet de les distinguer.</em></p>
+            </section>
+
+            <!-- 3.5 Symboles mathématiques -->
+            <section aria-labelledby="symboles-math">
+                <h3 id="symboles-math">➗ Symboles mathématiques de base</h3>
+                <div class="table-wrap">
+                    <table>
+                        <caption>Symboles mathématiques en braille français</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Symbole</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Braille</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>+ (addition)</td><td>2-3-5</td><td><span class="braille" aria-label="plus, points 2-3-5">⠖</span></td></tr>
+                            <tr><td>− (soustraction / moins)</td><td>3-6</td><td><span class="braille" aria-label="moins, points 3-6">⠤</span></td></tr>
+                            <tr><td>× (multiplication)</td><td>3-5</td><td><span class="braille" aria-label="multiplié par, points 3-5">⠔</span></td></tr>
+                            <tr><td>÷ (division)</td><td>2-5-6</td><td><span class="braille" aria-label="divisé par, points 2-5-6">⠲</span></td></tr>
+                            <tr><td>= (égalité)</td><td>2-3-5-6</td><td><span class="braille" aria-label="égal, points 2-3-5-6">⠶</span></td></tr>
+                            <tr><td>≠ (différent de)</td><td>4-6, 2-3-5-6</td><td><span class="braille" aria-label="différent de, points 4-6 puis 2-3-5-6">⠨⠶</span></td></tr>
+                            <tr><td>&lt; (inférieur à)</td><td>4-6, 1-2-6</td><td><span class="braille" aria-label="inférieur à, points 4-6 puis 1-2-6">⠨⠣</span></td></tr>
+                            <tr><td>&gt; (supérieur à)</td><td>4-6, 3-4-5</td><td><span class="braille" aria-label="supérieur à, points 4-6 puis 3-4-5">⠨⠜</span></td></tr>
+                            <tr><td>≤ (inférieur ou égal)</td><td>4-5, 1-2-6</td><td><span class="braille" aria-label="inférieur ou égal, points 4-5 puis 1-2-6">⠘⠣</span></td></tr>
+                            <tr><td>≥ (supérieur ou égal)</td><td>4-5, 3-4-5</td><td><span class="braille" aria-label="supérieur ou égal, points 4-5 puis 3-4-5">⠘⠜</span></td></tr>
+                            <tr><td>± (plus ou moins)</td><td>2-3-5, 3-6</td><td><span class="braille" aria-label="plus ou moins, points 2-3-5 puis 3-6">⠖⠤</span></td></tr>
+                            <tr><td>√ (racine carrée)</td><td>3-4-5</td><td><span class="braille" aria-label="racine carrée, points 3-4-5">⠜</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 3.6 Caractères spéciaux -->
+            <section aria-labelledby="caracteres-speciaux">
+                <h3 id="caracteres-speciaux">💻 Caractères spéciaux et symboles informatiques</h3>
+                <div class="table-wrap">
+                    <table>
+                        <caption>Caractères spéciaux en braille français</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Caractère</th>
+                                <th scope="col">Points</th>
+                                <th scope="col">Braille</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>@ (arobase)</td><td>4</td><td><span class="braille" aria-label="arobase, point 4">⠈</span></td></tr>
+                            <tr><td># (dièse)</td><td>3-4-5-6</td><td><span class="braille" aria-label="dièse, points 3-4-5-6">⠼</span></td></tr>
+                            <tr><td>&amp; (esperluette)</td><td>1-2-3-4-6</td><td><span class="braille" aria-label="esperluette, points 1-2-3-4-6">⠯</span></td></tr>
+                            <tr><td>% (pour cent)</td><td>6, 3-4-5-6, 4-6, 3-4-5-6</td><td><span class="braille" aria-label="pour cent, points 6 puis 3-4-5-6 puis 4-6 puis 3-4-5-6">⠠⠼⠨⠼</span></td></tr>
+                            <tr><td>° (degré)</td><td>4-5</td><td><span class="braille" aria-label="degré, points 4-5">⠘</span></td></tr>
+                            <tr><td>€ (euro)</td><td>4-6, 1-5</td><td><span class="braille" aria-label="euro, points 4-6 puis 1-5">⠨⠑</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+        <hr>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 4 : RÉSUMÉ                                            -->
+        <!-- ============================================================ -->
+        <section aria-labelledby="resume">
+            <h2 id="resume">Résumé des règles essentielles</h2>
+            <div class="table-wrap">
+                <table>
+                    <caption>Synthèse des règles principales</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Domaine</th>
+                            <th scope="col">Règle principale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Espacement</strong></td>
+                            <td>Pas d'espace avant la ponctuation ; espace après. Pas d'espace autour de l'apostrophe.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Majuscule</strong></td>
+                            <td>Indicateur points <strong>4-6</strong> (<span class="braille" aria-label="points 4-6">⠨</span>) devant chaque lettre ou mot, doublé pour un mot entier en majuscules.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Nombres</strong></td>
+                            <td>Marqueur numérique (point 6 <span class="braille" aria-label="point 6">⠠</span> ou points 3-4-5-6 <span class="braille" aria-label="points 3-4-5-6">⠼</span>) devant la première série A-J, effectif jusqu'à l'espace suivant. Ordinaux avec la 5e série.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Italique</strong></td>
+                            <td>Marqueur simple <strong>4-5-6</strong> (<span class="braille" aria-label="points 4-5-6">⠸</span>) pour ≤3 mots ; marqueur composé <strong>2-5 / 4-5-6</strong> (<span class="braille" aria-label="points 2-5 puis 4-5-6">⠒⠸</span>) pour une phrase, avec marqueur de fin.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gras/Souligné</strong></td>
+                            <td>Marqueur simple (point 6 <span class="braille" aria-label="point 6">⠠</span> ou selon le code) pour ≤3 mots ; marqueur composé <strong>2-5 + point 6</strong> (<span class="braille" aria-label="points 2-5 puis point 6">⠒⠠</span>) pour une phrase, avec marqueur de fin.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Abréviations</strong></td>
+                            <td>Apostrophe (point 3 <span class="braille" aria-label="point 3">⠄</span>) à la place du point ; pas d'espace dans une abréviation.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Césure</strong></td>
+                            <td>Mêmes règles qu'en noir ; indicateur de nouvelle ligne = points <strong>3-6</strong> (<span class="braille" aria-label="points 3-6">⠤</span>) (identique au trait d'union).</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p>Ce document constitue une référence complète pour la transcription et la lecture du braille français, intégrant les règles de formatage et les tables de correspondance des caractères.</p>
+        </section>
+
+    </main>
+
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const body = document.body;
+
+            // Check localStorage for saved preference; default to dark
+            const stored = localStorage.getItem('theme');
+            if (stored === 'light') {
+                body.classList.add('light-mode');
+                toggleBtn.textContent = '🌙 Sombre';   // currently light → show "Sombre"
+            } else {
+                // default: dark
+                body.classList.remove('light-mode');
+                toggleBtn.textContent = '☀️ Clair';    // currently dark → show "Clair"
+            }
+
+            // Toggle on click
+            toggleBtn.addEventListener('click', function() {
+                body.classList.toggle('light-mode');
+                const isLight = body.classList.contains('light-mode');
+                toggleBtn.textContent = isLight ? '🌙 Sombre' : '☀️ Clair';
+                localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            });
+        })();
+    </script>
+</body>
+</html>
